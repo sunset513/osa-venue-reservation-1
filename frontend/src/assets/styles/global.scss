@@ -1,0 +1,25 @@
+/* src/assets/styles/global.scss */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    "Helvetica Neue", Arial, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background-color: #f8f9fa;
+  color: #2d3436;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 共用的基礎轉場動畫 (配合 App.vue) */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
