@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: venue-db
+    restart: unless-stopped
+    ports:
+      # 左邊是對外(本機)的 3307，右邊是容器內的 3306
+      - "${DB_PORT:-3307}:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-venue_reservation_system}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-OsaVenue2026}
+      TZ: Asia/Taipei
+    volumes:
+      - db_data:/var/lib/mysql
+      # 掛載 seed SQL 檔案到初始化目錄
+      - ./venue_seed_v1.sql:/docker-entrypoint-initdb.d/01_seed.sql
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend/venue-reservation-service
+      dockerfile: Dockerfile
+    container_name: venue-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      # 啟用 application-dev.yaml
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-dev}
+      # 這裡的設定會覆蓋 yaml 檔的 localhost，強制後端去連名稱為 'db' 的容器
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${DB_NAME}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=${DB_ROOT_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy # 確保 DB 完全啟動才起後端
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: venue-frontend
+    restart: unless-stopped
+    ports:
+      # 將本機的 80 Port 映射到容器內 Vite 的 5173 Port
+      - "${FRONTEND_PORT:-80}:5173"
+    environment:
+      # 在開發模式下，直接透過環境變數傳遞給 Vite
+      - VITE_PROXY_TARGET=http://backend:8080
+      - VITE_API_BASE_URL=/api
+    depends_on:
+      - backend
+    volumes:
+      # 【關鍵】將本地前端程式碼掛載進容器，實現熱更新 (HMR)
+      - ./frontend:/app
+      # 避免本地的 node_modules 覆蓋掉容器內剛剛安裝好的 node_modules
+      - /app/node_modules
+
+volumes:
+  db_data:

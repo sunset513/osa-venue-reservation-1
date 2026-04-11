@@ -23,9 +23,10 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 // 允許來自前端的跨域請求
                 .allowedOrigins(
+                        "http://localhost",
                         "http://localhost:5173",      // Vite 開發服務器
                         "http://localhost:3000",      // 備用開發端口
-                        "http://127.0.0.1:5173"       // 本地迴環地址
+                        "http://127.0.0.1:5173"    // 本地迴環地址
                 )
                 // 允許的 HTTP 方法
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
