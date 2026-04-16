@@ -1,20 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper [
-  <!ELEMENT mapper (resultMap|select|insert|update|delete)*>
-  <!ATTLIST mapper namespace CDATA #REQUIRED>
-  <!ELEMENT resultMap (result)*>
-  <!ATTLIST resultMap id CDATA #REQUIRED type CDATA #REQUIRED>
-  <!ELEMENT result EMPTY>
-  <!ATTLIST result column CDATA #REQUIRED property CDATA #REQUIRED typeHandler CDATA #IMPLIED>
-  <!ELEMENT select (#PCDATA)>
-  <!ATTLIST select id CDATA #REQUIRED resultType CDATA #IMPLIED resultMap CDATA #IMPLIED>
-  <!ELEMENT insert (#PCDATA)>
-  <!ATTLIST insert id CDATA #REQUIRED parameterType CDATA #IMPLIED useGeneratedKeys (true|false) #IMPLIED keyProperty CDATA #IMPLIED>
-  <!ELEMENT update (#PCDATA)>
-  <!ATTLIST update id CDATA #REQUIRED parameterType CDATA #IMPLIED>
-  <!ELEMENT delete (#PCDATA)>
-  <!ATTLIST delete id CDATA #REQUIRED parameterType CDATA #IMPLIED>
-]>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="tw.edu.ncu.osa.venue_reservation_service.mapper.BookingMapper">
 
     <!-- ========================================== -->
@@ -143,6 +129,20 @@
           AND b.booking_date BETWEEN #{startDate} AND #{endDate}
         GROUP BY b.id, v.name, b.booking_date, b.time_slots, b.status, b.created_at, b.purpose, b.p_count, b.contact_info
         ORDER BY b.booking_date ASC, b.created_at ASC
+    </select>
+
+    <!-- ========================================== -->
+    <!-- 查詢衝突的「審核中」預約 -->
+    <!-- ========================================== -->
+
+    <select id="selectPendingConflictingBookings" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.Booking">
+        SELECT id, venue_id, user_id, booking_date, time_slots, status, purpose, p_count, contact_info, version, created_at, updated_at
+        FROM bookings
+        WHERE venue_id = #{venueId}
+        AND booking_date = #{date}
+        AND status = 1
+        AND (time_slots &amp; #{mask}) != 0
+        AND id != #{excludeBookingId}
     </select>
 
 </mapper>

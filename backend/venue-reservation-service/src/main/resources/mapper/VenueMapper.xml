@@ -1,18 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper [
-  <!ELEMENT mapper (resultMap|select|insert|update|delete)*>
-  <!ATTLIST mapper namespace CDATA #REQUIRED>
-  <!ELEMENT resultMap (id|result|collection)*>
-  <!ATTLIST resultMap id CDATA #REQUIRED type CDATA #REQUIRED>
-  <!ELEMENT id (#PCDATA)>
-  <!ATTLIST id property CDATA #REQUIRED column CDATA #REQUIRED>
-  <!ELEMENT result (#PCDATA)>
-  <!ATTLIST result property CDATA #REQUIRED column CDATA #REQUIRED>
-  <!ELEMENT collection (id|result)*>
-  <!ATTLIST collection property CDATA #REQUIRED ofType CDATA #REQUIRED>
-  <!ELEMENT select (#PCDATA)>
-  <!ATTLIST select id CDATA #REQUIRED resultType CDATA #IMPLIED resultMap CDATA #IMPLIED>
-]>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="tw.edu.ncu.osa.venue_reservation_service.mapper.VenueMapper">
 
     <!-- ========================================== -->
@@ -77,4 +65,3 @@
     </select>
 
 </mapper>
-

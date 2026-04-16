@@ -92,6 +92,21 @@ public interface BookingMapper {
      */
     int insertBookingEquipment(@Param("bookingId") Long bookingId, @Param("equipmentId") Long equipmentId);
 
+    /**
+     * 查詢與指定預約衝突的「審核中」預約
+     * @param venueId 場地 ID
+     * @param date 預約日期
+     * @param mask 24-bit 時段遮罩
+     * @param excludeBookingId 要排除的預約 ID（通常是當前通過的預約）
+     * @return 衝突的「審核中」預約列表
+     */
+    List<Booking> selectPendingConflictingBookings(
+            @Param("venueId") Long venueId,
+            @Param("date") LocalDate date,
+            @Param("mask") int mask,
+            @Param("excludeBookingId") Long excludeBookingId
+    );
+
     // ==========================================
     // 日曆視圖查詢
     // ==========================================

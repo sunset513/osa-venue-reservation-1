@@ -28,9 +28,17 @@ public class MockAuthInterceptor implements HandlerInterceptor {
 
         // MVP 階段：只要有這個 mock-token，就自動登入一個測試學生
         if ("mock-token-123".equals(token)) {
-            User mockUser = new User("110502000", "中央大學測試生", "STUDENT", 1L);
+            User mockUser = new User("110502000", "中央大學測試生", "USER", 1L, 0,null);
             UserContext.setUser(mockUser);
-            log.info("【MockAuthInterceptor】[preHandle] 用戶認證成功，userId={}，userName={}，role={}, unitId={}", 
+            log.info("【MockAuthInterceptor】[preHandle] 一般-用戶認證成功，userId={}，userName={}，role={}, unitId={}",
+                    mockUser.getUserId(), mockUser.getName(), mockUser.getRole(), mockUser.getUnitId());
+            log.debug("【MockAuthInterceptor】[preHandle] 用戶物件已存入 ThreadLocal");
+            return true;
+        }
+        if ("mock-token-admin-123".equals(token)) {
+            User mockUser = new User("110502001", "測試審核人員", "ADMIN", 1L, 0,null);
+            UserContext.setUser(mockUser);
+            log.info("【MockAuthInterceptor】[preHandle] 審核-用戶認證成功，userId={}，userName={}，role={}, unitId={}",
                     mockUser.getUserId(), mockUser.getName(), mockUser.getRole(), mockUser.getUnitId());
             log.debug("【MockAuthInterceptor】[preHandle] 用戶物件已存入 ThreadLocal");
             return true;

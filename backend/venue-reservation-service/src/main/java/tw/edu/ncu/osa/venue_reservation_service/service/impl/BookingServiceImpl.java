@@ -45,6 +45,7 @@ public class BookingServiceImpl implements BookingService {
         log.info("【BookingService】[createBooking] 將時段清單轉換為位元遮罩，slots={}，mask={}", 
                 request.getSlots(), String.format("0x%06X", requestMask));
 
+        // todo : 檢查申請時段是否玉已經提出的申請重複
         // 3. 衝突檢查：調用 Mapper 檢查資料庫是否有「已通過」且時段重疊的案件
         log.info("【BookingService】[createBooking] 進行時段衝突檢查，venueId={}, bookingDate={}", 
                 request.getVenueId(), request.getBookingDate());

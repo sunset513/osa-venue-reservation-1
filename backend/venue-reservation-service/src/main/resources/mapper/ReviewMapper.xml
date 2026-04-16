@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.edu.ncu.osa.venue_reservation_service.mapper.ReviewMapper">
+
+    <!-- ========================================== -->
+    <!-- 結果映射 -->
+    <!-- ========================================== -->
+
+    <resultMap id="bookingVOResultMap" type="tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO">
+        <result column="id" property="id"/>
+        <result column="venue_name" property="venueName"/>
+        <result column="booking_date" property="bookingDate"/>
+        <result column="slots" property="slots" typeHandler="tw.edu.ncu.osa.venue_reservation_service.util.TimeSlotTypeHandler"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="purpose" property="purpose"/>
+        <result column="p_count" property="pCount"/>
+        <result column="contact_info" property="contactInfo"/>
+        <result column="equipments" property="equipments" typeHandler="tw.edu.ncu.osa.venue_reservation_service.util.CommaSeparatedListTypeHandler"/>
+    </resultMap>
+
+    <!-- ========================================== -->
+    <!-- 查詢待審核預約列表 -->
+    <!-- ========================================== -->
+
+    <select id="selectPendingBookingsByVenueAndDateRange" resultMap="bookingVOResultMap">
+        SELECT
+            b.id,
+            v.name AS venue_name,
+            b.booking_date,
+            b.time_slots AS slots,
+            b.status,
+            b.created_at,
+            b.purpose,
+            b.p_count,
+            b.contact_info,
+            GROUP_CONCAT(e.name SEPARATOR ',') AS equipments
+        FROM bookings b
+        LEFT JOIN venues v ON b.venue_id = v.id
+        LEFT JOIN booking_equipment be ON b.id = be.booking_id
+        LEFT JOIN equipments e ON be.equipment_id = e.id
+        WHERE b.venue_id = #{venueId}
+        AND b.booking_date BETWEEN #{startDate} AND #{endDate}
+        AND b.status = 1
+        AND b.status != 4
+        GROUP BY b.id
+        ORDER BY b.created_at ASC
+    </select>
+
+    <!-- ========================================== -->
+    <!-- 查詢預約詳細資訊（含設備清單）-->
+    <!-- ========================================== -->
+
+    <select id="selectBookingWithEquipments" resultMap="bookingVOResultMap">
+        SELECT
+            b.id,
+            v.name AS venue_name,
+            b.booking_date,
+            b.time_slots AS slots,
+            b.status,
+            b.created_at,
+            b.purpose,
+            b.p_count,
+            b.contact_info,
+            GROUP_CONCAT(e.name SEPARATOR ',') AS equipments
+        FROM bookings b
+        LEFT JOIN venues v ON b.venue_id = v.id
+        LEFT JOIN booking_equipment be ON b.id = be.booking_id
+        LEFT JOIN equipments e ON be.equipment_id = e.id
+        WHERE b.id = #{bookingId}
+        AND b.status != 4
+        GROUP BY b.id
+    </select>
+
+    <!-- ========================================== -->
+    <!-- 查詢衝突的已通過預約 -->
+    <!-- ========================================== -->
+
+    <select id="selectConflictingApprovedBookings" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.Booking">
+        SELECT id, venue_id, user_id, booking_date, time_slots, status, purpose, p_count, contact_info, version, created_at, updated_at
+        FROM bookings
+        WHERE venue_id = #{venueId}
+        AND booking_date = #{bookingDate}
+        AND status = 2
+        AND (time_slots &amp; #{mask}) != 0
+        AND id != #{bookingId}
+    </select>
+
+    <!-- ========================================== -->
+    <!-- 批量更新狀態 -->
+    <!-- ========================================== -->
+
+    <update id="batchUpdateStatus">
+        UPDATE bookings
+        SET status = #{newStatus},
+            version = version + 1
+        WHERE id IN
+        <foreach item="id" index="index" collection="bookingIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- ========================================== -->
+    <!-- 軟刪除操作 -->
+    <!-- ========================================== -->
+
+    <update id="deleteSoftBooking">
+        UPDATE bookings
+        SET status = 4,
+            version = version + 1
+        WHERE id = #{bookingId}
+    </update>
+
+    <delete id="deleteBookingEquipmentsByBookingId">
+        DELETE FROM booking_equipment
+        WHERE booking_id = #{bookingId}
+    </delete>
+</mapper>
+

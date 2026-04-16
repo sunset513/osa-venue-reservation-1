@@ -2,6 +2,7 @@ package tw.edu.ncu.osa.venue_reservation_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -15,7 +16,7 @@ public class SecurityConfig {
         System.out.println("[1]Security Config Loaded!");
         http
                 // 0. 開啟 CORS 橋接 (讓 Security 讀取 WebConfig 的設定)
-                .cors(org.springframework.security.config.Customizer.withDefaults())
+                .cors(Customizer.withDefaults())
                 // 1. 關閉 CSRF (開發 API 必做，否則 POST 會被擋)
                 .csrf(csrf -> csrf.disable())
                 // 2. 設定路徑權限
