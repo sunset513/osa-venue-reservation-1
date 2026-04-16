@@ -8,12 +8,17 @@
 `Service` 層遵循 **單一職責原則 (SRP)**，僅處理與預約相關的業務邏輯。為了提升系統的健壯性，我們將利用 Spring 的聲明式事務（`@Transactional`）確保多表操作的原子性，並透過拋出特定的 `RuntimeException` 配合 `GlobalExceptionHandler` 來達成統一的錯誤響應格式。
 
 ## 二、 核心方法說明
-### 1. 獲取待審核預約列表 (`getPendingBookings`)
-* 功能描述：查詢所有狀態為的預約案，供管理員審核使用。
-* 參數：場地ID (預設為1)、日期範圍 (預設為當月)。
-* 詳細功能細節
-* 1. 基本上複用類似 getMyBookings 的邏輯，但不只要查出單一用戶的預約案，而是查詢特定場地所有的預約案。
-* 2. 查詢條件需加入場地ID，可以參考 BookingMapper 中的 getBookingsByVenueAndDateRange、selectBookingsByDateRangeForCalendar 等方法，進行修改。
+
+### 1. 獲取預約列表 (`getPendingBookings`)
+* 功能描述：根據場地 ID、日期範圍和狀態查詢預約案列表，支援靈活的過濾條件。
+* 參數：
+  - 場地ID (預設為1)
+  - 日期範圍 (預設為當月)
+  - 狀態過濾 (可選，支援 0-3 的狀態值，不填則查詢全部除了已刪除的 status=4)
+* 詳細功能細節：
+  1. 複用類似 getMyBookings 的邏輯，但不只查出單一用戶的預約案，而是查詢特定場地所有的預約案。
+  2. 查詢條件需加入場地ID，可以參考 BookingMapper 中的 getBookingsByVenueAndDateRange、selectBookingsByDateRangeForCalendar 等方法，進行修改。
+  3. 支援按狀態過濾：若前端指定 status 參數，則只查詢該狀態的預約；若不指定，則查詢所有狀態除了已刪除 (status=4) 的預約。
 
 ### 2. 審核預約申請 (`reviewBooking`)
 

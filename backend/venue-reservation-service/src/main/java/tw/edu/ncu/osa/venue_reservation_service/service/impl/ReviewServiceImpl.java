@@ -28,15 +28,15 @@ public class ReviewServiceImpl implements ReviewService {
     private final BookingMapper bookingMapper;
 
     // ==========================================
-    // 1. 查詢待審核預約列表
+    // 1. 查詢預約列表
     // ==========================================
 
     @Override
     @Transactional(readOnly = true)
-    public List<BookingVO> getPendingBookings(Long venueId, LocalDate startDate, LocalDate endDate) {
-        log.info("【ReviewService】[getPendingBookings] 開始查詢待審核預約列表");
+    public List<BookingVO> getPendingBookings(Long venueId, LocalDate startDate, LocalDate endDate, Integer status) {
+        log.info("【ReviewService】[getPendingBookings] 開始查詢預約列表");
 
-        // 設定預設場地 ID
+        // 如果未指定場地 ID，使用預設值（例如：1L）
         if (venueId == null) {
             venueId = 1L;
             log.info("【ReviewService】[getPendingBookings] 未指定場地 ID，使用預設值 venueId=1");
@@ -56,17 +56,23 @@ public class ReviewServiceImpl implements ReviewService {
             throw new RuntimeException("開始日期不能晚於結束日期");
         }
 
-        log.info("【ReviewService】[getPendingBookings] 查詢參數 - venueId={}, startDate={}, endDate={}",
-                venueId, startDate, endDate);
+        // 驗證狀態值有效性
+        if (status != null && (status < 0 || status > 3)) {
+            log.warn("【ReviewService】[getPendingBookings] 無效的狀態值，status={}", status);
+            throw new RuntimeException("狀態值無效，請輸入 0-3 或不填");
+        }
 
-        // 查詢待審核預約列表
-        List<BookingVO> pendingBookings = reviewMapper.selectPendingBookingsByVenueAndDateRange(
-                venueId, startDate, endDate
+        log.info("【ReviewService】[getPendingBookings] 查詢參數 - venueId={}, startDate={}, endDate={}, status={}",
+                venueId, startDate, endDate, status);
+
+        // 查詢預約列表
+        List<BookingVO> bookings = reviewMapper.selectBookingsByVenueAndDateRange(
+                venueId, startDate, endDate, status
         );
-        log.info("【ReviewService】[getPendingBookings] 查詢到 {} 筆待審核預約", pendingBookings.size());
-        log.debug("【ReviewService】[getPendingBookings] 待審核預約清單：{}", pendingBookings);
+        log.info("【ReviewService】[getPendingBookings] 查詢到 {} 筆預約", bookings.size());
+        log.debug("【ReviewService】[getPendingBookings] 預約清單：{}", bookings);
 
-        return pendingBookings;
+        return bookings;
     }
 
     // ==========================================

@@ -15,16 +15,33 @@ import java.util.List;
 public interface ReviewMapper {
 
     // ==========================================
-    // 查詢待審核預約列表
+    // 查詢預約列表
     // ==========================================
 
     /**
+     * 根據場地與日期範圍查詢預約列表
+     * @param venueId 場地 ID
+     * @param startDate 開始日期
+     * @param endDate 結束日期
+     * @param status 預約狀態 (0:未提交, 1:審核中, 2:已通過, 3:已拒絕，不填則查詢全部除了已刪除的)
+     * @return 預約列表
+     */
+    List<BookingVO> selectBookingsByVenueAndDateRange(
+            @Param("venueId") Long venueId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("status") Integer status
+    );
+
+    /**
      * 根據場地與日期範圍查詢待審核的預約列表
+     * 此方法保留以維持向後相容性
      * @param venueId 場地 ID
      * @param startDate 開始日期
      * @param endDate 結束日期
      * @return 待審核的預約列表 (狀態為 1 的預約)
      */
+    @Deprecated
     List<BookingVO> selectPendingBookingsByVenueAndDateRange(
             @Param("venueId") Long venueId,
             @Param("startDate") LocalDate startDate,

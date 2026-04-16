@@ -21,7 +21,37 @@
     </resultMap>
 
     <!-- ========================================== -->
-    <!-- 查詢待審核預約列表 -->
+    <!-- 查詢預約列表 -->
+    <!-- ========================================== -->
+
+    <select id="selectBookingsByVenueAndDateRange" resultMap="bookingVOResultMap">
+        SELECT
+            b.id,
+            v.name AS venue_name,
+            b.booking_date,
+            b.time_slots AS slots,
+            b.status,
+            b.created_at,
+            b.purpose,
+            b.p_count,
+            b.contact_info,
+            GROUP_CONCAT(e.name SEPARATOR ',') AS equipments
+        FROM bookings b
+        LEFT JOIN venues v ON b.venue_id = v.id
+        LEFT JOIN booking_equipment be ON b.id = be.booking_id
+        LEFT JOIN equipments e ON be.equipment_id = e.id
+        WHERE b.venue_id = #{venueId}
+        AND b.booking_date BETWEEN #{startDate} AND #{endDate}
+        AND b.status != 4
+        <if test="status != null">
+            AND b.status = #{status}
+        </if>
+        GROUP BY b.id
+        ORDER BY b.created_at ASC
+    </select>
+
+    <!-- ========================================== -->
+    <!-- 查詢待審核預約列表（向後相容） -->
     <!-- ========================================== -->
 
     <select id="selectPendingBookingsByVenueAndDateRange" resultMap="bookingVOResultMap">

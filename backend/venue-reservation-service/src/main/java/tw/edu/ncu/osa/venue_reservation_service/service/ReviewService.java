@@ -12,18 +12,19 @@ import java.util.List;
 public interface ReviewService {
 
     // ==========================================
-    // 查詢待審核預約
+    // 查詢預約
     // ==========================================
 
     /**
-     * 獲取待審核的預約列表
-     * 根據場地 ID 和日期範圍查詢所有狀態為「審核中」的預約案
+     * 獲取預約列表
+     * 根據場地 ID、日期範圍和狀態查詢預約案
      * @param venueId 場地 ID （預設值為 1）
      * @param startDate 開始日期 (預設為當月初)
      * @param endDate 結束日期 (預設為當月末)
-     * @return 待審核的預約列表
+     * @param status 預約狀態 (0:未提交, 1:審核中, 2:已通過, 3:已拒絕，不填則查詢全部除了已刪除的 status=4)
+     * @return 預約列表
      */
-    List<BookingVO> getPendingBookings(Long venueId, LocalDate startDate, LocalDate endDate);
+    List<BookingVO> getPendingBookings(Long venueId, LocalDate startDate, LocalDate endDate, Integer status);
 
     // ==========================================
     // 查詢預約詳細資訊

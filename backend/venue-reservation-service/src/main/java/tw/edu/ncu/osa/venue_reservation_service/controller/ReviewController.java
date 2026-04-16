@@ -41,37 +41,44 @@ public class ReviewController {
     // ==========================================
 
     /**
-     * 獲取待審核預約列表
-     * 查詢所有狀態為「審核中」的預約案，供管理員審核使用
+     * 獲取預約列表
+     * 根據查詢參數獲取預約案列表，支援按場地、日期範圍及狀態進行過濾
      * @param venueId 場地 ID （預設值為 1）
      * @param startDate 開始日期 (預設為當月初)
      * @param endDate 結束日期 (預設為當月末)
-     * @return 待審核的預約列表
+     * @param status 預約狀態 (0:未提交, 1:審核中, 2:已通過, 3:已拒絕，預設查詢全部，除了已刪除的)
+     * @return 預約列表
      */
     @GetMapping("/pending")
     @Operation(
-        summary = "獲取待審核預約列表",
+        summary = "獲取預約列表",
         description = """
-            查詢所有狀態為「審核中」的預約案，供管理員審核使用。
+            根據查詢參數獲取預約案列表，支援按場地、日期範圍及狀態進行過濾。
             
             **查詢參數說明：**
             - venueId: 場地 ID（預設值為 1，若要查詢其他場地請指定）
             - startDate: 開始日期，ISO 8601 格式（YYYY-MM-DD），預設為當月初
             - endDate: 結束日期，ISO 8601 格式（YYYY-MM-DD），預設為當月末
+            - status: 預約狀態（非必填）
+              - 0: 未提交
+              - 1: 審核中
+              - 2: 已通過
+              - 3: 已拒絕
+              - 不填：查詢全部狀態（除了已刪除的 status=4）
             
             **應用場景：**
-            管理員登入系統後，可使用此 API 獲取待審核的預約列表，
-            進一步查看詳細資訊後決定是否核准或拒絕
+            管理員登入系統後，可使用此 API 獲取預約列表，
+            支援按特定狀態過濾或查看全部狀態的預約，進一步查看詳細資訊後決定是否核准或拒絕
             """
     )
     @ApiResponses({
         @ApiResponse(
             responseCode = "200",
-            description = "成功取得待審核預約列表",
+            description = "成功取得預約列表",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(
-                    description = "成功回應，data 欄位包含待審核預約列表"
+                    description = "成功回應，data 欄位包含預約列表"
                 )
             )
         )
@@ -95,15 +102,21 @@ public class ReviewController {
                 description = "結束日期，ISO 8601 格式（YYYY-MM-DD）。預設為當月末",
                 example = "2026-04-30"
             )
-            LocalDate endDate) {
-        log.info("【ReviewController】收到請求：獲取待審核預約列表，venueId={}, startDate={}, endDate={}",
-                venueId, startDate, endDate);
+            LocalDate endDate,
+            @RequestParam(required = false)
+            @Parameter(
+                description = "預約狀態（0:未提交, 1:審核中, 2:已通過, 3:已拒絕，不填則查詢全部除了已刪除的）",
+                example = "1"
+            )
+            Integer status) {
+        log.info("【ReviewController】收到請求：獲取預約列表，venueId={}, startDate={}, endDate={}, status={}",
+                venueId, startDate, endDate, status);
         try {
-            List<BookingVO> pendingBookings = reviewService.getPendingBookings(venueId, startDate, endDate);
-            log.info("【ReviewController】成功獲取待審核預約列表，共 {} 筆預約", pendingBookings.size());
-            return Result.success(pendingBookings);
+            List<BookingVO> bookings = reviewService.getPendingBookings(venueId, startDate, endDate, status);
+            log.info("【ReviewController】成功獲取預約列表，共 {} 筆預約", bookings.size());
+            return Result.success(bookings);
         } catch (Exception e) {
-            log.error("【ReviewController】獲取待審核預約列表失敗", e);
+            log.error("【ReviewController】獲取預約列表失敗", e);
             throw e;
         }
     }

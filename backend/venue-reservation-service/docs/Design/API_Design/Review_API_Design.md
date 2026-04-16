@@ -41,16 +41,17 @@
 
 ## 二、 API 終端點 (Endpoints)
 
-### 1. 獲取待審核預約列表
+### 1. 獲取預約列表
 - **方法：** `GET`
 - **路徑：** `/reviews/pending`
-- **功能：** 查詢所有狀態為「審核中」的預約案，供管理員審核使用。
+- **功能：** 根據查詢參數獲取預約案列表，支援按場地、日期範圍及狀態進行過濾。
 - **查詢參數：**
   | 參數名稱 | 類型 | 必填 | 說明 |
   | :--- | :--- | :--- | :--- |
   | `venueId` | Long | 否 | 場地ID (預設為1) |
   | `startDate` | LocalDate | 否 | 開始日期 (格式：YYYY-MM-DD，預設為當月初) |
   | `endDate` | LocalDate | 否 | 結束日期 (格式：YYYY-MM-DD，預設為當月末) |
+  | `status` | Integer | 否 | 預約狀態 (0:未提交, 1:審核中, 2:已通過, 3:已拒絕，不填則查詢全部除了已刪除的 status=4) |
 
 - **響應格式 (`Result<List<BookingVO>>`)：**
     - **成功 (200 OK)：**
@@ -70,6 +71,18 @@
             "contactInfo": "{\"name\":\"王小明\",\"phone\":\"0912345678\",\"email\":\"xm@ncu.edu.tw\"}",
             "equipments": ["麥克風", "投影機"],
             "createdAt": "2026-04-03T10:00:00"
+          },
+          {
+            "id": 2,
+            "venueName": "會議室 A",
+            "bookingDate": "2026-04-11",
+            "slots": [10, 11],
+            "purpose": "會議",
+            "pCount": 10,
+            "status": 2,
+            "contactInfo": "{\"name\":\"李小華\",\"phone\":\"0987654321\",\"email\":\"lh@ncu.edu.tw\"}",
+            "equipments": ["投影機"],
+            "createdAt": "2026-04-04T14:30:00"
           }
         ]
       }
