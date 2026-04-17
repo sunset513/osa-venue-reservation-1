@@ -3,6 +3,7 @@ import UnitSelector from "@/views/UnitSelector.vue";
 import VenueSelector from "@/views/VenueSelector.vue";
 import VenueCalendar from "@/views/VenueCalendar.vue";
 import ReviewCalendar from "@/views/ReviewCalendar.vue";
+import { validateRouteAccess } from "./guards";
 
 const routes = [
   {
@@ -15,12 +16,20 @@ const routes = [
     name: "VenueSelector",
     component: VenueSelector,
     props: true, // 將路徑參數轉為組件的 props
+    meta: {
+      validateUnit: true,
+      redirectOnInvalid: "/",
+    },
   },
   {
     path: "/venue/:venueId",
     name: "VenueCalendar",
     component: VenueCalendar,
     props: true, // 將路徑參數轉為組件的 props
+    meta: {
+      validateVenue: true,
+      redirectOnInvalid: "/",
+    },
   },
   {
     path: "/review",
@@ -32,6 +41,10 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+router.beforeEach(async (to) => {
+  return validateRouteAccess(to);
 });
 
 export default router;
