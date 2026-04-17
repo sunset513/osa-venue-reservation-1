@@ -50,8 +50,8 @@ export const getEventColorConfig = (status, isMine = false) => {
   if (!isMine) {
     // 他人的預約 (僅顯示已佔用)
     return {
-      backgroundColor: "#b2bec3", // 淺灰
-      borderColor: "#636e72",
+      backgroundColor: "#4A9A57",
+      borderColor: "#3d8148",
       textColor: "#ffffff",
     };
   }

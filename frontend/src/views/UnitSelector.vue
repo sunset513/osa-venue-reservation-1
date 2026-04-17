@@ -1,5 +1,5 @@
 <template>
-  <div class="selector-page">
+  <div class="selector-page page-enter">
     <header class="page-header">
       <h1>選擇管理單位</h1>
       <p>請先選擇場地所屬的行政或教學單位</p>
@@ -75,13 +75,13 @@ const selectUnit = (unit) => {
   opacity: 0.6;
   cursor: not-allowed;
   position: relative;
-  background-color: #fafafa; /* 稍微深一點的背景色 */
+  background-color: rgba(var(--blue-900-rgb), 0.02); /* 稍微深一點的背景色 */
 
   /* 覆蓋共用樣式的 hover 效果，防止浮動和變色 */
   &:hover {
     transform: none;
-    box-shadow: none;
-    border-color: #eee;
+    box-shadow: var(--shadow-soft);
+    border-color: rgba(var(--blue-900-rgb), 0.08);
   }
 }
 
@@ -90,11 +90,11 @@ const selectUnit = (unit) => {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background-color: #ffeaa7;
-  color: #d63031;
-  font-size: 0.75rem;
+  background-color: rgba(214, 165, 54, 0.18);
+  color: var(--danger);
+  font-size: var(--text-xs);
   padding: 0.2rem 0.6rem;
-  border-radius: 4px;
+  border-radius: 999px;
   font-weight: 700;
 }
 </style>

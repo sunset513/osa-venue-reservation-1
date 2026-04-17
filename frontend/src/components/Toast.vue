@@ -89,11 +89,12 @@ const removeToast = (id) => {
   gap: 1rem;
   padding: 0.75rem 1rem;
   margin-bottom: 0.5rem;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--blue-900-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
   pointer-events: auto;
-  background-color: white;
-  color: #333;
+  background-color: var(--card);
+  color: var(--ink);
   min-width: 280px;
   max-width: 400px;
   word-break: break-word;
@@ -115,7 +116,7 @@ const removeToast = (id) => {
 
   .toast-message {
     flex: 1;
-    font-size: 0.95rem;
+    font-size: var(--text-sm);
     line-height: 1.5;
   }
 
@@ -124,44 +125,44 @@ const removeToast = (id) => {
     border: none;
     cursor: pointer;
     padding: 0;
-    color: #999;
+    color: var(--muted);
     font-size: 1.2rem;
     flex-shrink: 0;
 
     &:hover {
-      color: #333;
+      color: var(--ink);
     }
   }
 
   &-success {
-    border-left: 4px solid #28a745;
+    border-left: 4px solid var(--status-approved);
 
     .toast-icon {
-      color: #28a745;
+      color: var(--status-approved);
     }
   }
 
   &-error {
-    border-left: 4px solid #dc3545;
+    border-left: 4px solid var(--status-rejected);
 
     .toast-icon {
-      color: #dc3545;
+      color: var(--status-rejected);
     }
   }
 
   &-warning {
-    border-left: 4px solid #ffc107;
+    border-left: 4px solid var(--status-pending);
 
     .toast-icon {
-      color: #ffc107;
+      color: var(--status-pending);
     }
   }
 
   &-info {
-    border-left: 4px solid #0984e3;
+    border-left: 4px solid var(--status-info);
 
     .toast-icon {
-      color: #0984e3;
+      color: var(--status-info);
     }
   }
 }

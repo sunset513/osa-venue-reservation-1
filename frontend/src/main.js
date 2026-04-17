@@ -17,8 +17,8 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
 
-// 導入全局樣式
-import "./assets/styles/global.scss";
+// 導入全局設計系統
+import "./style/style.css";
 
 // 建立 Vue 應用實例
 const app = createApp(App);

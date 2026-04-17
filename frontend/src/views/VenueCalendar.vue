@@ -1,5 +1,5 @@
 <template>
-  <div class="calendar-page">
+  <div class="calendar-page page-enter">
     <header class="page-header" v-if="venueInfo">
       <div class="header-left">
         <button class="back-btn" @click="$router.back()">← 返回場地列表</button>
@@ -22,6 +22,17 @@
     </div>
   </div>
 
+  <DayScheduleModal
+    :visible="isDayModalVisible"
+    :selectedDate="selectedDate"
+    :dayOfWeek="selectedDayOfWeek"
+    :venueName="venueInfo?.name || ''"
+    :bookings="selectedDayBookings"
+    @close="closeDayModal"
+    @create="openCreateModalFromDay"
+    @edit-booking="openEditModal"
+  />
+
   <BookingModal
     v-model:visible="isModalVisible"
     :mode="modalMode"
@@ -33,8 +44,9 @@
 
 <script setup>
 import BookingModal from "@/components/booking/BookingModal.vue";
-import { ref, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import DayScheduleModal from "@/components/booking/DayScheduleModal.vue";
+import { ref, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
 // 簡化 FullCalendar 引入，移除 timeGrid
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -51,7 +63,6 @@ import { useToast } from "@/utils/useToast.js";
 const { warning } = useToast();
 
 const route = useRoute();
-const router = useRouter();
 const venueId = route.params.venueId;
 
 const venueInfo = ref(null);
@@ -59,9 +70,36 @@ const loading = ref(true);
 const isFetchingEvents = ref(false);
 const calendarRef = ref(null);
 const events = ref([]);
+const monthlyBookings = ref([]);
 const isModalVisible = ref(false);
+const isDayModalVisible = ref(false);
 const modalMode = ref("create");
 const modalInitialData = ref({});
+const selectedDate = ref("");
+const selectedDayOfWeek = ref("");
+
+const selectedDayBookings = computed(() => {
+  if (!selectedDate.value) return [];
+
+  return monthlyBookings.value
+    .filter((booking) => booking.bookingDate === selectedDate.value && booking.status !== 0)
+    .sort((a, b) => Math.min(...a.slots) - Math.min(...b.slots))
+    .map((booking) => {
+      const parsedContact = parseContactInfo(booking.contactInfo);
+
+      return {
+        id: booking.id,
+        purpose: booking.purpose || "",
+        contactName: parsedContact.name || "預約人",
+        participantCount: booking.pCount || 0,
+        timeRange: formatSlotsAsTimeRange(booking.slots),
+        statusText: getStatusText(booking.status),
+        statusClass: getStatusClass(booking.status),
+        isEditable: booking.status === 1,
+        originalData: booking,
+      };
+    });
+});
 
 // 將不連續的 slots 分組 (例如 [8,9,14,15] 變成 [[8,9], [14,15]])
 const groupContiguousSlots = (slots) => {
@@ -82,6 +120,149 @@ const groupContiguousSlots = (slots) => {
   return groups;
 };
 
+const parseContactInfo = (contactInfo) => {
+  if (!contactInfo) return { name: "", phone: "", email: "" };
+
+  try {
+    return JSON.parse(contactInfo);
+  } catch (error) {
+    console.error("聯絡人資訊解析失敗:", error);
+    return { name: "", phone: "", email: "" };
+  }
+};
+
+const padZero = (num) => num.toString().padStart(2, "0");
+
+const formatSlotsAsTimeRange = (slots) => {
+  if (!slots || slots.length === 0) return "";
+
+  const sortedSlots = [...slots].sort((a, b) => a - b);
+  const start = sortedSlots[0];
+  const end = sortedSlots[sortedSlots.length - 1] + 1;
+
+  return `${padZero(start)}:00 - ${padZero(end)}:00`;
+};
+
+const getStatusText = (status) => {
+  switch (status) {
+    case 1:
+      return "審核中";
+    case 2:
+      return "已核准";
+    case 3:
+      return "已拒絕";
+    default:
+      return "已撤回";
+  }
+};
+
+const getStatusClass = (status) => {
+  switch (status) {
+    case 1:
+      return "is-pending";
+    case 2:
+      return "is-approved";
+    case 3:
+      return "is-rejected";
+    default:
+      return "is-withdrawn";
+  }
+};
+
+const renderEventContent = (arg) => {
+  const purpose = arg.event.extendedProps.originalData?.purpose?.trim();
+  const fallbackLabel = arg.event.title;
+  const label = purpose || fallbackLabel;
+
+  return {
+    html: `
+      <div class="calendar-event-content">
+        <span class="calendar-event-time">${arg.timeText}</span>
+        <span class="calendar-event-purpose">${label}</span>
+      </div>
+    `,
+  };
+};
+
+const renderMoreLinkContent = (arg) => {
+  return {
+    html: `<span class="calendar-more-link-text">還有 ${arg.num} 個</span>`,
+  };
+};
+
+const formatDateKey = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getDailyEventCount = (date) => {
+  const dateKey = formatDateKey(date);
+  return events.value.filter((event) => event.start?.split("T")[0] === dateKey).length;
+};
+
+const openDayModal = (dateStr) => {
+  selectedDate.value = dateStr;
+
+  const targetDate = new Date(`${dateStr}T00:00:00`);
+  selectedDayOfWeek.value = targetDate.toLocaleDateString("zh-TW", {
+    weekday: "long",
+  });
+
+  isDayModalVisible.value = true;
+};
+
+const closeDayModal = () => {
+  isDayModalVisible.value = false;
+};
+
+const openCreateModal = (dateStr) => {
+  modalMode.value = "create";
+  modalInitialData.value = { dateStr };
+  isModalVisible.value = true;
+};
+
+const openCreateModalFromDay = () => {
+  closeDayModal();
+  openCreateModal(selectedDate.value);
+};
+
+const openEditModal = (originalData) => {
+  modalMode.value = "edit";
+
+  const mappedEquipmentIds =
+    originalData.equipments && venueInfo.value?.equipments
+      ? venueInfo.value.equipments
+          .filter((eq) => originalData.equipments.includes(eq.name))
+          .map((eq) => eq.id)
+      : [];
+
+  modalInitialData.value = {
+    id: originalData.id,
+    dateStr: originalData.bookingDate,
+    slots: originalData.slots,
+    purpose: originalData.purpose || "",
+    participantCount: originalData.pCount || 1,
+    contactInfo: parseContactInfo(originalData.contactInfo),
+    equipmentIds: mappedEquipmentIds,
+  };
+
+  isDayModalVisible.value = false;
+  isModalVisible.value = true;
+};
+
+const renderDayCellContent = (arg) => {
+  const count = getDailyEventCount(arg.date);
+
+  return {
+    html: `
+      <span class="calendar-day-number">${arg.dayNumberText}</span>
+      ${count > 0 ? `<span class="calendar-day-count">${count}</span>` : ""}
+    `,
+  };
+};
+
 // --- FullCalendar 配置 (專注於月視圖) ---
 const calendarOptions = ref({
   plugins: [dayGridPlugin, interactionPlugin],
@@ -94,8 +275,11 @@ const calendarOptions = ref({
   locale: "zh-tw",
   firstDay: 1,
   height: "auto",
-  dayMaxEvents: true, // 若一天太多預約，顯示「+X 更多」，避免格子無限拉長
+  dayMaxEvents: 3, // 每日最多顯示 3 筆活動，其餘收合到更多連結
   displayEventEnd: true, // 顯示結束時間
+  dayCellContent: renderDayCellContent,
+  eventContent: renderEventContent,
+  moreLinkContent: renderMoreLinkContent,
   eventTimeFormat: {
     // 強制顯示 24 小時制 (例如 08:00)
     hour: "2-digit",
@@ -110,9 +294,7 @@ const calendarOptions = ref({
 
   dateClick: (info) => {
     const dateStr = info.dateStr.split("T")[0];
-    modalMode.value = "create";
-    modalInitialData.value = { dateStr: dateStr };
-    isModalVisible.value = true;
+    openDayModal(dateStr);
   },
 
   eventClick: (info) => {
@@ -120,37 +302,7 @@ const calendarOptions = ref({
     const originalData = info.event.extendedProps.originalData;
 
     if (isMine && originalData) {
-      modalMode.value = "edit";
-
-      // 處理聯絡人資訊解析
-      let parsedContact = { name: "", phone: "", email: "" };
-      if (originalData.contactInfo) {
-        try {
-          parsedContact = JSON.parse(originalData.contactInfo);
-        } catch (e) {
-          console.error("聯絡人資訊解析失敗:", e);
-        }
-      }
-
-      // 將後端回傳的「設備名稱陣列」轉換為前端表單需要的「設備 ID 陣列」
-      let mappedEquipmentIds = [];
-      if (originalData.equipments && venueInfo.value?.equipments) {
-        mappedEquipmentIds = venueInfo.value.equipments
-          .filter((eq) => originalData.equipments.includes(eq.name))
-          .map((eq) => eq.id);
-      }
-
-      modalInitialData.value = {
-        id: originalData.id,
-        dateStr: info.event.startStr.split("T")[0],
-        slots: originalData.slots,
-        purpose: originalData.purpose || "",
-        participantCount: originalData.pCount || 1,
-        contactInfo: parsedContact,
-        equipmentIds: mappedEquipmentIds, // ✨ 將轉換好的 ID 傳給 Modal
-      };
-
-      isModalVisible.value = true;
+      openEditModal(originalData);
     } else if (!isMine) {
       warning("該時段已被其他人預約，請選擇其他時段。");
     }
@@ -161,6 +313,7 @@ const calendarOptions = ref({
 const loadEvents = async (view) => {
   isFetchingEvents.value = true;
   events.value = [];
+  monthlyBookings.value = [];
 
   try {
     const currentStart = view.currentStart;
@@ -174,6 +327,7 @@ const loadEvents = async (view) => {
 
     // 新版 API 會在 apiData.bookings 中回傳該月所有的詳細預約
     if (apiData && apiData.bookings) {
+      monthlyBookings.value = apiData.bookings;
       apiData.bookings.forEach((booking) => {
         // 狀態 0(已撤回) 與 3(已拒絕) 視為未佔用，不顯示在日曆上
         if (booking.status !== 1 && booking.status !== 2) return;
@@ -214,6 +368,7 @@ const loadEvents = async (view) => {
 const handleModalSuccess = async () => {
   // 1. 確保彈窗被關閉
   isModalVisible.value = false;
+  isDayModalVisible.value = false;
 
   // 2. 手動重新觸發資料載入，讓月曆刷新
   if (calendarRef.value) {
@@ -238,30 +393,22 @@ onMounted(async () => {
 .calendar-page {
   .page-header {
     margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #eee;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--line);
 
     .back-btn {
-      background: none;
-      border: none;
-      color: #0984e3;
-      cursor: pointer;
       margin-bottom: 0.5rem;
-      padding: 0;
-      &:hover {
-        text-decoration: underline;
-      }
     }
+
     h1 {
-      color: #2d3436;
       margin: 0 0 0.5rem 0;
     }
 
     .venue-meta {
       display: flex;
       gap: 2rem;
-      color: #636e72;
-      font-size: 0.9rem;
+      color: var(--muted);
+      font-size: var(--text-base);
       align-items: center;
     }
   }
@@ -270,30 +417,36 @@ onMounted(async () => {
     display: flex;
     gap: 1rem;
     align-items: center;
+
     .legend-dot {
       display: inline-block;
       width: 12px;
       height: 12px;
       border-radius: 50%;
       margin-right: 4px;
+
       &.my-approved {
-        background-color: #0984e3;
+        background-color: var(--status-occupied);
       }
+
       &.my-pending {
-        background-color: #fdcb6e;
+        background-color: var(--status-pending);
       }
+
       &.others {
-        background-color: #b2bec3;
+        background-color: var(--status-approved);
       }
     }
   }
 
   .calendar-container {
-    background: white;
+    background: var(--card);
     padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(var(--blue-900-rgb), 0.08);
+    box-shadow: var(--shadow-soft);
     transition: opacity 0.3s;
+    overflow-x: auto;
 
     &.is-loading {
       opacity: 0.5;
@@ -302,44 +455,215 @@ onMounted(async () => {
   }
 
   :deep(.fc) {
+    min-width: 720px;
+
     /* --- 新增：優化頂部切換列的排版 --- */
     .fc-toolbar.fc-header-toolbar {
-      justify-content: center; /* 強制整個 Toolbar 置中 */
+      justify-content: center;
+      /* 強制整個 Toolbar 置中 */
       margin-bottom: 1.5rem;
     }
 
     .fc-toolbar-chunk {
       display: flex;
       align-items: center;
-      gap: 1rem; /* 讓左右箭頭跟中間的標題保持一點呼吸空間 */
+      gap: 1rem;
+      /* 讓左右箭頭跟中間的標題保持一點呼吸空間 */
     }
 
     .fc-toolbar-title {
       font-size: 1.5rem;
-      color: #2d3436;
+      color: var(--ink);
       font-weight: bold;
     }
+
     /* --------------------------------- */
 
     .fc-button-primary {
-      font-size: 0.6rem;
-      color: #2d3436;
-      background-color: #dbe0e4;
+      font-size: 0.75rem;
+      color: var(--ink);
+      background-color: var(--surface-muted);
+      border: 1px solid rgba(var(--blue-900-rgb), 0.08);
+      border-radius: 999px;
+
       &:hover {
         transition: all 0.3s;
-        background-color: #1e2225;
-        color: white;
+        background-color: var(--blue-900);
+        color: #ffffff;
       }
+
       &:disabled {
-        background-color: #74b9ff;
-        border-color: #74b9ff;
+        background-color: var(--accent-soft);
+        border-color: var(--accent-soft);
       }
     }
+
+    .fc-daygrid-day {
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: rgba(var(--blue-900-rgb), 0.03);
+      }
+    }
+
     .fc-event {
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 8px;
       padding: 2px 4px;
       font-size: 0.85em;
+      transition:
+        filter 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+
+      &:hover {
+        filter: brightness(0.94);
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+        transform: translateY(-1px);
+      }
+    }
+
+    .fc-daygrid-more-link {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 0.35rem;
+      color: var(--ink);
+      font-size: 1.05rem;
+      font-weight: 700;
+      text-decoration: none;
+
+      &:hover {
+        color: var(--accent);
+        text-decoration: none;
+      }
+    }
+
+    .calendar-more-link-text {
+      display: inline-block;
+      line-height: 1.2;
+    }
+
+    .fc-daygrid-day-top {
+      position: relative;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 0.25rem 0.35rem;
+      min-height: 2rem;
+    }
+
+    .fc-daygrid-day-number {
+      width: 100%;
+      padding: 0;
+      text-align: left;
+      line-height: 1;
+      text-decoration: none;
+    }
+
+    .calendar-day-number {
+      width: 100%;
+      display: block;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1;
+      text-align: left;
+    }
+
+    .calendar-day-count {
+      position: absolute;
+      top: 50%;
+      right: 0.35rem;
+      transform: translateY(-50%);
+      min-width: 1.6rem;
+      height: 1.6rem;
+      padding: 0 0.45rem;
+      border-radius: 999px;
+      background-color: var(--accent);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .calendar-event-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      line-height: 1.2;
+    }
+
+    .calendar-event-purpose,
+    .calendar-event-time {
+      display: block;
+      white-space: normal;
+      word-break: break-word;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page-header {
+      .venue-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+    }
+
+    .calendar-container {
+      padding: 0.75rem;
+      border-radius: var(--radius);
+    }
+
+    :deep(.fc) {
+      min-width: 680px;
+
+      .fc-toolbar.fc-header-toolbar {
+        margin-bottom: 1rem;
+      }
+
+      .fc-toolbar-title {
+        font-size: 1.15rem;
+      }
+
+      .fc-toolbar-chunk {
+        gap: 0.5rem;
+      }
+
+      .fc-col-header-cell-cushion {
+        padding: 0.35rem 0.15rem;
+        font-size: 0.85rem;
+      }
+
+      .fc-daygrid-day-top {
+        min-height: 1.75rem;
+        padding: 0.2rem 0.25rem;
+      }
+
+      .calendar-day-number {
+        font-size: 1rem;
+      }
+
+      .calendar-day-count {
+        right: 0.25rem;
+        min-width: 1.4rem;
+        height: 1.4rem;
+        padding: 0 0.35rem;
+        font-size: 0.75rem;
+      }
+
+      .fc-event {
+        padding: 2px 3px;
+        font-size: 0.75rem;
+      }
+
+      .calendar-event-content {
+        gap: 1px;
+      }
     }
   }
 }

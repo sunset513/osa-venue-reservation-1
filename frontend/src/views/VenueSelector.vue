@@ -1,5 +1,5 @@
 <template>
-  <div class="selector-page">
+  <div class="selector-page page-enter">
     <header class="page-header">
       <button class="back-btn" @click="$router.push('/')">← 返回單位</button>
       <h1>選擇場地</h1>

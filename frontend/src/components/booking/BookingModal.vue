@@ -108,13 +108,21 @@
           @click="handleSubmit"
           :disabled="isSubmitting"
         >
-          {{
-            isSubmitting
-              ? "送出中..."
-              : mode === "create"
-                ? "送出申請"
-                : "儲存修改"
-          }}
+          <template v-if="!isSubmitting">
+            <span class="btn-icon">
+              {{ mode === "create" ? "+" : "" }}
+              <Save v-if="mode === 'edit'" :size="16" />
+            </span>
+          </template>
+          <span>
+            {{
+              isSubmitting
+                ? "送出中..."
+                : mode === "create"
+                  ? "送出申請"
+                  : "儲存修改"
+            }}
+          </span>
         </button>
       </footer>
     </div>
@@ -123,6 +131,7 @@
 
 <script setup>
 import { ref, reactive, watch } from "vue";
+import { Save } from "lucide-vue-next";
 import { createBooking, updateBooking } from "@/api/booking";
 import { useToast } from "@/utils/useToast.js";
 
@@ -232,51 +241,62 @@ const handleSubmit = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.45);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: 1rem;
 }
 .modal-container {
-  background: white;
+  background: var(--card);
   width: 100%;
   max-width: 500px;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(var(--blue-900-rgb), 0.08);
+  box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
   max-height: 90vh;
+  overflow: hidden;
 }
 .modal-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #eee;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--line);
   display: flex;
   justify-content: space-between;
   align-items: center;
   h2 {
     margin: 0;
-    font-size: 1.25rem;
-    color: #2d3436;
+    font-size: var(--text-xl);
+    color: var(--ink);
   }
   .close-btn {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: #636e72;
+    color: var(--muted);
   }
 }
 .modal-body {
   padding: 1.5rem;
   overflow-y: auto;
+  background: #fbfcfe;
 }
 .modal-footer {
   padding: 1rem 1.5rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--line);
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
+}
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
 }
 .form-group {
   margin-bottom: 1.25rem;
@@ -289,38 +309,39 @@ const handleSubmit = async () => {
   }
 }
 .form-section-title {
-  font-weight: bold;
-  color: #2d3436;
+  font-weight: 700;
+  color: var(--ink);
   margin: 1rem 0 0.5rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--line);
 }
 label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #2d3436;
-  font-size: 0.9rem;
+  color: var(--ink);
+  font-size: var(--text-sm);
 }
 .required {
-  color: #d63031;
+  color: var(--danger);
 }
 input[type="text"],
 input[type="number"],
 input[type="tel"],
 input[type="email"] {
   width: 100%;
-  padding: 0.6rem;
-  border: 1px solid #dfe6e9;
-  border-radius: 4px;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
   &:focus {
     outline: none;
-    border-color: #0984e3;
+    border-color: var(--accent);
   }
 }
 .disabled-input {
-  background-color: #f1f2f6;
-  color: #636e72;
+  background-color: var(--surface-muted);
+  color: var(--muted);
   cursor: not-allowed;
 }
 .slots-grid {
@@ -330,15 +351,16 @@ input[type="email"] {
   max-height: 150px;
   overflow-y: auto;
   padding: 0.5rem;
-  border: 1px solid #eee;
-  border-radius: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
 }
 .slot-checkbox,
 .eq-checkbox {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   cursor: pointer;
   margin: 0;
 }
@@ -348,34 +370,23 @@ input[type="email"] {
   gap: 1rem;
 }
 .error-text {
-  color: #d63031;
-  font-size: 0.8rem;
+  color: var(--danger);
+  font-size: var(--text-sm);
   margin-top: 0.25rem;
   display: block;
 }
-.btn {
-  padding: 0.5rem 1.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  border: none;
-  font-weight: 500;
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0.5rem;
   }
-}
-.btn-primary {
-  background-color: #0984e3;
-  color: white;
-  &:hover {
-    background-color: #076bbb;
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
   }
-}
-.btn-secondary {
-  background-color: #f1f2f6;
-  color: #2d3436;
-  &:hover {
-    background-color: #e2e6ea;
+
+  .modal-footer {
+    flex-direction: column-reverse;
   }
 }
 </style>
