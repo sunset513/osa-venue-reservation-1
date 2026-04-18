@@ -101,7 +101,10 @@
           @click="closeModal"
           :disabled="isSubmitting"
         >
-          取消
+          <span class="btn-icon">
+            <X :size="16" />
+          </span>
+          <span>取消</span>
         </button>
         <button
           class="btn btn-primary"
@@ -110,7 +113,7 @@
         >
           <template v-if="!isSubmitting">
             <span class="btn-icon">
-              {{ mode === "create" ? "+" : "" }}
+              <Plus v-if="mode === 'create'" :size="16" />
               <Save v-if="mode === 'edit'" :size="16" />
             </span>
           </template>
@@ -131,7 +134,7 @@
 
 <script setup>
 import { ref, reactive, watch } from "vue";
-import { Save } from "lucide-vue-next";
+import { Plus, Save, X } from "lucide-vue-next";
 import { createBooking, updateBooking } from "@/api/booking";
 import { useToast } from "@/utils/useToast.js";
 

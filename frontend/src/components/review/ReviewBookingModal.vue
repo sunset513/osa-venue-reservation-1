@@ -72,7 +72,10 @@
 
       <footer class="modal-footer">
         <button class="btn btn-secondary" type="button" :disabled="processing" @click="$emit('close')">
-          關閉
+          <span class="btn-icon">
+            <X :size="16" />
+          </span>
+          <span>關閉</span>
         </button>
         <button
           v-for="action in actions"
@@ -83,7 +86,10 @@
           :disabled="processing"
           @click="emitAction(action)"
         >
-          {{ action.label }}
+          <span class="btn-icon">
+            <component :is="action.icon" :size="16" />
+          </span>
+          <span>{{ action.label }}</span>
         </button>
       </footer>
     </div>
@@ -92,6 +98,7 @@
 
 <script setup>
 import { computed } from "vue";
+import { Check, Clock3, RotateCcw, X, XCircle } from "lucide-vue-next";
 import { formatSlotGroupsAsTimeRange, getBookingStatusMeta } from "@/utils/dateHelper";
 
 const props = defineProps({
@@ -125,21 +132,21 @@ const actions = computed(() => {
   switch (props.booking?.status) {
     case 1:
       return [
-        { key: "reject", label: "拒絕申請", variant: "btn-danger", type: "update-status", status: 3 },
-        { key: "approve", label: "通過申請", variant: "btn-primary", type: "approve" },
+        { key: "reject", label: "拒絕申請", icon: XCircle, variant: "btn-danger", type: "update-status", status: 3 },
+        { key: "approve", label: "通過申請", icon: Check, variant: "btn-primary", type: "approve" },
       ];
     case 2:
       return [
-        { key: "revoke", label: "改為拒絕", variant: "btn-danger", type: "update-status", status: 3 },
+        { key: "revoke", label: "改為拒絕", icon: XCircle, variant: "btn-danger", type: "update-status", status: 3 },
       ];
     case 3:
       return [
-        { key: "pending", label: "改為審核中", variant: "btn-secondary-alt", type: "update-status", status: 1 },
-        { key: "approve-rejected", label: "改為通過", variant: "btn-primary", type: "update-status", status: 2 },
+        { key: "pending", label: "改為審核中", icon: Clock3, variant: "btn-secondary-alt", type: "update-status", status: 1 },
+        { key: "approve-rejected", label: "改為通過", icon: Check, variant: "btn-primary", type: "update-status", status: 2 },
       ];
     case 0:
       return [
-        { key: "restore", label: "改為審核中", variant: "btn-secondary-alt", type: "update-status", status: 1 },
+        { key: "restore", label: "改為審核中", icon: RotateCcw, variant: "btn-secondary-alt", type: "update-status", status: 1 },
       ];
     default:
       return [];
@@ -186,7 +193,7 @@ const emitAction = (action) => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -372,6 +379,15 @@ const emitAction = (action) => {
   border-top: 1px solid var(--line);
   justify-content: flex-end;
   background: #ffffff;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 .btn-danger {

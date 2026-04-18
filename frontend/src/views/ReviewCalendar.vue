@@ -562,6 +562,11 @@ onMounted(async () => {
       }
     }
 
+    .fc-popover,
+    .fc-more-popover {
+      z-index: 20 !important;
+    }
+
     .fc-daygrid-day-top {
       position: relative;
       display: flex;

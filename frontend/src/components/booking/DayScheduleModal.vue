@@ -46,9 +46,16 @@
       </div>
 
       <footer class="modal-footer">
-        <button class="btn btn-secondary" @click="closeModal">關閉</button>
+        <button class="btn btn-secondary" @click="closeModal">
+          <span class="btn-icon">
+            <X :size="16" />
+          </span>
+          <span>關閉</span>
+        </button>
         <button class="btn btn-primary" @click="$emit('create')">
-          <span class="btn-icon">+</span>
+          <span class="btn-icon">
+            <Plus :size="16" />
+          </span>
           <span>新增預約</span>
         </button>
       </footer>
@@ -58,6 +65,7 @@
 
 <script setup>
 import { computed } from "vue";
+import { Plus, X } from "lucide-vue-next";
 
 const props = defineProps({
   visible: Boolean,
