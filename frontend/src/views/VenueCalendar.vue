@@ -862,6 +862,26 @@ watch(
       line-height: 1.2;
     }
 
+    .fc-popover,
+    .fc-more-popover {
+      z-index: 20 !important;
+      isolation: isolate;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .fc-popover-header,
+    .fc-popover-body {
+      position: relative;
+      z-index: 1;
+      background: #ffffff;
+    }
+
+    .fc-popover .calendar-day-count,
+    .fc-more-popover .calendar-day-count {
+      display: none;
+    }
+
     .fc-daygrid-day-top {
       position: relative;
       display: flex;
@@ -906,6 +926,7 @@ watch(
       font-size: 0.85rem;
       font-weight: 700;
       line-height: 1;
+      z-index: 0;
     }
 
     .calendar-event-content {

@@ -3,28 +3,25 @@
     <div class="modal-container">
       <header class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-title-icon">▦</span>
+          <span class="modal-title-icon">審</span>
           <h2>{{ formattedTitle }}</h2>
         </div>
-        <button class="close-btn" @click="closeModal">✕</button>
+        <button class="close-btn" type="button" @click="closeModal">✕</button>
       </header>
 
       <div class="modal-body">
-        <div v-if="bookings.length === 0" class="empty-state">
-          這一天目前沒有活動，可以直接新增預約。
-        </div>
+        <div v-if="bookings.length === 0" class="empty-state">這一天目前沒有申請活動。</div>
 
         <div v-else class="schedule-list">
           <article
             v-for="booking in bookings"
             :key="booking.id"
             class="schedule-card"
-            :class="{ 'is-editable': booking.isEditable }"
-            @click="handleCardClick(booking)"
+            @click="emit('open-detail', booking.id)"
           >
             <div class="schedule-main">
               <div class="schedule-top">
-                <span class="venue-chip">{{ venueName || "未提供場地" }}</span>
+                <span class="venue-chip">{{ booking.venueName }}</span>
                 <span class="contact-name">{{ booking.contactName }}</span>
               </div>
 
@@ -40,9 +37,7 @@
                 <span class="status-badge" :class="booking.statusClass">
                   {{ booking.statusText }}
                 </span>
-                <span class="count-badge">
-                  {{ booking.participantCount }}人
-                </span>
+                <span class="count-badge">{{ booking.participantCount }}人</span>
               </div>
             </div>
           </article>
@@ -50,17 +45,9 @@
       </div>
 
       <footer class="modal-footer">
-        <button class="btn btn-secondary" @click="closeModal">
-          <span class="btn-icon">
-            <X :size="16" />
-          </span>
+        <button class="btn btn-secondary" type="button" @click="closeModal">
+          <span class="btn-icon">×</span>
           <span>關閉</span>
-        </button>
-        <button class="btn btn-primary" @click="$emit('create')">
-          <span class="btn-icon">
-            <Plus :size="16" />
-          </span>
-          <span>新增預約</span>
         </button>
       </footer>
     </div>
@@ -69,7 +56,6 @@
 
 <script setup>
 import { computed } from "vue";
-import { Plus, X } from "lucide-vue-next";
 
 const props = defineProps({
   visible: Boolean,
@@ -81,32 +67,23 @@ const props = defineProps({
     type: String,
     default: "",
   },
-  venueName: {
-    type: String,
-    default: "",
-  },
   bookings: {
     type: Array,
     default: () => [],
   },
 });
 
-const emit = defineEmits(["close", "create", "edit-booking"]);
+const emit = defineEmits(["close", "open-detail"]);
 
 const formattedTitle = computed(() => {
-  if (!props.selectedDate) return "預約詳情";
+  if (!props.selectedDate) return "申請活動詳情";
 
   const [year, month, day] = props.selectedDate.split("-");
-  return `${year}年${Number(month)}月${Number(day)}日 ${props.dayOfWeek} 預約詳情`;
+  return `${year}年${Number(month)}月${Number(day)}日 ${props.dayOfWeek} 申請活動詳情`;
 });
 
 const closeModal = () => {
   emit("close");
-};
-
-const handleCardClick = (booking) => {
-  if (!booking.isEditable) return;
-  emit("edit-booking", booking.originalData);
 };
 </script>
 
@@ -114,32 +91,33 @@ const handleCardClick = (booking) => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  display: flex;
-  justify-content: center;
-  align-items: center;
   z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
 }
 
 .modal-container {
-  background: #ffffff;
   width: min(100%, 1080px);
   max-height: min(90vh, 900px);
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(var(--blue-900-rgb), 0.08);
-  box-shadow: var(--shadow);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(var(--blue-900-rgb), 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
 }
 
 .modal-header {
   padding: 1.5rem 2rem;
   border-bottom: 1px solid var(--line);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .modal-title-group {
@@ -155,17 +133,26 @@ const handleCardClick = (booking) => {
 }
 
 .modal-title-icon {
-  font-size: 1.6rem;
-  color: var(--accent);
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f4d37b 0%, #efd28a 100%);
+  color: #684b00;
+  font-size: 1.15rem;
+  font-weight: 800;
 }
 
 .close-btn {
+  padding: 0;
   border: none;
   background: none;
-  font-size: 2rem;
   color: var(--muted);
-  cursor: pointer;
+  font-size: 2rem;
   line-height: 1;
+  cursor: pointer;
 }
 
 .modal-body {
@@ -200,6 +187,7 @@ const handleCardClick = (booking) => {
   justify-content: space-between;
   gap: 1rem;
   background: #ffffff;
+  cursor: pointer;
   transition:
     background-color 0.2s ease,
     box-shadow 0.2s ease,
@@ -209,18 +197,10 @@ const handleCardClick = (booking) => {
     border-bottom: none;
   }
 
-  &.is-editable {
-    cursor: pointer;
-
-    &:hover {
-      background: rgba(var(--blue-900-rgb), 0.04);
-      box-shadow: inset 0 0 0 1px rgba(var(--blue-900-rgb), 0.1);
-      transform: translateY(-1px);
-    }
-  }
-
-  &:not(.is-editable):hover {
-    background: rgba(var(--blue-900-rgb), 0.02);
+  &:hover {
+    background: rgba(var(--blue-900-rgb), 0.04);
+    box-shadow: inset 0 0 0 1px rgba(var(--blue-900-rgb), 0.1);
+    transform: translateY(-1px);
   }
 }
 
@@ -250,13 +230,6 @@ const handleCardClick = (booking) => {
 }
 
 .contact-name {
-  font-size: var(--text-base);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.time-range {
-  margin-left: auto;
   font-size: var(--text-base);
   font-weight: 700;
   color: var(--ink);
@@ -397,14 +370,9 @@ const handleCardClick = (booking) => {
   }
 
   .contact-name,
-  .time-range,
-  .purpose {
-    font-size: 0.95rem;
-  }
-
+  .purpose,
   .time-range {
-    width: auto;
-    margin-left: 0;
+    font-size: 0.95rem;
   }
 
   .schedule-badges {

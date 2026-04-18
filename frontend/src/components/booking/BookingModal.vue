@@ -248,7 +248,7 @@ const handleSubmit = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 1200;
   padding: 1rem;
 }
 .modal-container {

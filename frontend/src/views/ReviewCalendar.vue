@@ -64,6 +64,15 @@
     </div>
   </div>
 
+  <ReviewDayScheduleModal
+    :visible="isDayModalVisible"
+    :selectedDate="selectedDate"
+    :dayOfWeek="selectedDayOfWeek"
+    :bookings="selectedDayBookings"
+    @close="closeDayModal"
+    @open-detail="openBookingDetail"
+  />
+
   <ReviewBookingModal
     :visible="isDetailModalVisible"
     :booking="selectedBookingDetail"
@@ -82,6 +91,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
 import ReviewBookingModal from "@/components/review/ReviewBookingModal.vue";
+import ReviewDayScheduleModal from "@/components/review/ReviewDayScheduleModal.vue";
 import { fetchVenuesByUnit } from "@/api/venue";
 import {
   approveReviewBooking,
@@ -109,6 +119,9 @@ const pageLoading = ref(true);
 const isFetchingEvents = ref(false);
 const events = ref([]);
 const monthlyBookings = ref([]);
+const isDayModalVisible = ref(false);
+const selectedDate = ref("");
+const selectedDayOfWeek = ref("");
 
 const isDetailModalVisible = ref(false);
 const detailLoading = ref(false);
@@ -125,6 +138,40 @@ const selectedStatusLabel = computed(() => {
     ? "顯示全部狀態"
     : `目前篩選：${getBookingStatusMeta(Number(selectedStatus.value)).text}`;
 });
+
+const selectedDayBookings = computed(() => {
+  if (!selectedDate.value) return [];
+
+  return monthlyBookings.value
+    .filter((booking) => booking.bookingDate === selectedDate.value)
+    .sort((a, b) => Math.min(...(a.slots || [Infinity])) - Math.min(...(b.slots || [Infinity])))
+    .map((booking) => {
+      const parsedContact = parseContactInfo(booking.contactInfo);
+      const statusMeta = getBookingStatusMeta(booking.status);
+
+      return {
+        id: booking.id,
+        purpose: booking.purpose || "",
+        venueName: booking.venueName || selectedVenueName.value || "未提供場地",
+        contactName: parsedContact.name || "申請人",
+        participantCount: booking.pCount || 0,
+        timeRange: formatSlotGroupsAsTimeRange(booking.slots),
+        statusText: statusMeta.text,
+        statusClass: statusMeta.className,
+      };
+    });
+});
+
+const parseContactInfo = (contactInfo) => {
+  if (!contactInfo) return { name: "", phone: "", email: "" };
+
+  try {
+    return JSON.parse(contactInfo);
+  } catch (parseError) {
+    console.error("聯絡人資訊解析失敗:", parseError);
+    return { name: "", phone: "", email: "" };
+  }
+};
 
 const renderEventContent = (arg) => {
   const wrapper = document.createElement("div");
@@ -198,6 +245,10 @@ const calendarOptions = ref({
   datesSet: async (arg) => {
     if (!selectedVenueId.value) return;
     await loadEvents(arg.view);
+  },
+  dateClick: (info) => {
+    const dateStr = info.dateStr.split("T")[0];
+    openDayModal(dateStr);
   },
   eventClick: async (info) => {
     const bookingId = info.event.extendedProps.bookingId;
@@ -284,11 +335,39 @@ const reloadCurrentView = async () => {
   }
 };
 
+const openDayModal = (dateStr) => {
+  selectedDate.value = dateStr;
+
+  const targetDate = new Date(`${dateStr}T00:00:00`);
+  selectedDayOfWeek.value = targetDate.toLocaleDateString("zh-TW", {
+    weekday: "long",
+  });
+
+  isDayModalVisible.value = true;
+};
+
+const closeDayModal = () => {
+  isDayModalVisible.value = false;
+};
+
+const closeTransientUi = () => {
+  isDayModalVisible.value = false;
+  isDetailModalVisible.value = false;
+  detailLoading.value = false;
+  detailProcessing.value = false;
+  selectedBookingId.value = null;
+  selectedBookingDetail.value = null;
+  selectedDate.value = "";
+  selectedDayOfWeek.value = "";
+};
+
 const handleFilterChange = async () => {
+  closeTransientUi();
   await reloadCurrentView();
 };
 
 const openBookingDetail = async (bookingId) => {
+  isDayModalVisible.value = false;
   selectedBookingId.value = bookingId;
   selectedBookingDetail.value = null;
   detailLoading.value = true;
@@ -305,11 +384,7 @@ const openBookingDetail = async (bookingId) => {
 };
 
 const closeDetailModal = () => {
-  isDetailModalVisible.value = false;
-  detailLoading.value = false;
-  detailProcessing.value = false;
-  selectedBookingId.value = null;
-  selectedBookingDetail.value = null;
+  closeTransientUi();
 };
 
 const handleApprove = async () => {
@@ -523,6 +598,7 @@ onMounted(async () => {
     }
 
     .fc-daygrid-day {
+      cursor: pointer;
       transition: background-color 0.2s ease;
 
       &:hover {
@@ -565,6 +641,21 @@ onMounted(async () => {
     .fc-popover,
     .fc-more-popover {
       z-index: 20 !important;
+      isolation: isolate;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .fc-popover-header,
+    .fc-popover-body {
+      position: relative;
+      z-index: 1;
+      background: #ffffff;
+    }
+
+    .fc-popover .calendar-day-count,
+    .fc-more-popover .calendar-day-count {
+      display: none;
     }
 
     .fc-daygrid-day-top {
@@ -611,6 +702,7 @@ onMounted(async () => {
       font-size: 0.85rem;
       font-weight: 700;
       line-height: 1;
+      z-index: 0;
     }
 
     .calendar-event-content {
