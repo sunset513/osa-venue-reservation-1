@@ -56,7 +56,9 @@ import { fetchVenueDetail } from "@/api/venue";
 import { fetchCalendarMonth } from "@/api/booking"; // 現在只需要月曆 API
 import {
   convertSlotsToTimeRange,
+  formatSlotsAsTimeRange,
   getEventColorConfig,
+  groupContiguousSlots,
 } from "@/utils/dateHelper";
 import { useToast } from "@/utils/useToast.js";
 
@@ -101,25 +103,6 @@ const selectedDayBookings = computed(() => {
     });
 });
 
-// 將不連續的 slots 分組 (例如 [8,9,14,15] 變成 [[8,9], [14,15]])
-const groupContiguousSlots = (slots) => {
-  if (!slots || slots.length === 0) return [];
-  const sorted = [...slots].sort((a, b) => a - b);
-  const groups = [];
-  let currentGroup = [sorted[0]];
-
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i] === sorted[i - 1] + 1) {
-      currentGroup.push(sorted[i]);
-    } else {
-      groups.push(currentGroup);
-      currentGroup = [sorted[i]];
-    }
-  }
-  groups.push(currentGroup);
-  return groups;
-};
-
 const parseContactInfo = (contactInfo) => {
   if (!contactInfo) return { name: "", phone: "", email: "" };
 
@@ -129,18 +112,6 @@ const parseContactInfo = (contactInfo) => {
     console.error("聯絡人資訊解析失敗:", error);
     return { name: "", phone: "", email: "" };
   }
-};
-
-const padZero = (num) => num.toString().padStart(2, "0");
-
-const formatSlotsAsTimeRange = (slots) => {
-  if (!slots || slots.length === 0) return "";
-
-  const sortedSlots = [...slots].sort((a, b) => a - b);
-  const start = sortedSlots[0];
-  const end = sortedSlots[sortedSlots.length - 1] + 1;
-
-  return `${padZero(start)}:00 - ${padZero(end)}:00`;
 };
 
 const getStatusText = (status) => {
