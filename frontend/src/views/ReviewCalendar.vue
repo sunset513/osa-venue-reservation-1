@@ -103,10 +103,11 @@ import {
   convertSlotsToTimeRange,
   formatSlotsAsTimeRange,
   formatSlotGroupsAsTimeRange,
-  getBookingStatusMeta,
   getReviewEventColorConfig,
   groupContiguousSlots,
 } from "@/utils/dateHelper";
+import { formatDateKey, getDailyEventCount, renderMoreLinkContent } from "@/utils/calendarDisplay";
+import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
 import { useToast } from "@/utils/useToast";
 
 const { success, error } = useToast();
@@ -162,17 +163,6 @@ const selectedDayBookings = computed(() => {
     });
 });
 
-const parseContactInfo = (contactInfo) => {
-  if (!contactInfo) return { name: "", phone: "", email: "" };
-
-  try {
-    return JSON.parse(contactInfo);
-  } catch (parseError) {
-    console.error("聯絡人資訊解析失敗:", parseError);
-    return { name: "", phone: "", email: "" };
-  }
-};
-
 const renderEventContent = (arg) => {
   const wrapper = document.createElement("div");
   wrapper.className = "calendar-event-content";
@@ -192,26 +182,8 @@ const renderEventContent = (arg) => {
   };
 };
 
-const renderMoreLinkContent = (arg) => {
-  return {
-    html: `<span class="calendar-more-link-text">還有 ${arg.num} 筆</span>`,
-  };
-};
-
-const formatDateKey = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const getDailyEventCount = (date) => {
-  const dateKey = formatDateKey(date);
-  return events.value.filter((event) => event.start?.split("T")[0] === dateKey).length;
-};
-
 const renderDayCellContent = (arg) => {
-  const count = getDailyEventCount(arg.date);
+  const count = getDailyEventCount(events.value, arg.date);
 
   return {
     html: `
@@ -240,7 +212,7 @@ const calendarOptions = ref({
   },
   dayCellContent: renderDayCellContent,
   eventContent: renderEventContent,
-  moreLinkContent: renderMoreLinkContent,
+  moreLinkContent: (arg) => renderMoreLinkContent(arg, "筆"),
   events,
   datesSet: async (arg) => {
     if (!selectedVenueId.value) return;

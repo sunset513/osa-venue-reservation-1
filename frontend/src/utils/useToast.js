@@ -1,6 +1,9 @@
 import { ref, nextTick } from "vue";
 
-// 全局 toast 狀態
+/**
+ * 全域 Toast composable。
+ * 負責集中管理提示訊息清單，讓頁面、元件與 router guard 都能共用同一套通知機制。
+ */
 const toasts = ref([]);
 let nextId = 0;
 
@@ -90,7 +93,7 @@ const info = (message, duration = 3000) => {
 };
 
 /**
- * 返回 composable hook
+ * 提供元件內使用的 composable 入口。
  */
 export const useToast = () => {
   return {
@@ -105,5 +108,5 @@ export const useToast = () => {
   };
 };
 
-// 也匯出單獨的方法供非組件上下文使用
+// 也匯出單獨的方法，讓非組件上下文也能直接觸發提示訊息。
 export { showToast, removeToast, clearToasts, success, error, warning, info };

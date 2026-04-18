@@ -114,7 +114,7 @@ docker compose up -d --build backend
 * 查看後端日誌：`docker compose logs -f backend`
 * 查看前端日誌：`docker compose logs -f frontend`
 
-## ❓ 常見問題排查
+## ❓ 5. 常見問題排查
 
 ### 出現 403 Forbidden？
 

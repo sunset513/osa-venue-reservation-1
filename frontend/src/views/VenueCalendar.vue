@@ -113,6 +113,8 @@ import {
   getEventColorConfig,
   groupContiguousSlots,
 } from "@/utils/dateHelper";
+import { getDailyEventCount, renderMoreLinkContent } from "@/utils/calendarDisplay";
+import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
 import { useToast } from "@/utils/useToast.js";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -180,6 +182,7 @@ const selectedDayBookings = computed(() => {
     .sort((a, b) => Math.min(...a.slots) - Math.min(...b.slots))
     .map((booking) => {
       const parsedContact = parseContactInfo(booking.contactInfo);
+      const statusMeta = getBookingStatusMeta(booking.status);
 
       return {
         id: booking.id,
@@ -187,50 +190,13 @@ const selectedDayBookings = computed(() => {
         contactName: parsedContact.name || "預約人",
         participantCount: booking.pCount || 0,
         timeRange: formatSlotsAsTimeRange(booking.slots),
-        statusText: getStatusText(booking.status),
-        statusClass: getStatusClass(booking.status),
+        statusText: statusMeta.text,
+        statusClass: statusMeta.className,
         isEditable: booking.status === 1,
         originalData: booking,
       };
     });
 });
-
-const parseContactInfo = (contactInfo) => {
-  if (!contactInfo) return { name: "", phone: "", email: "" };
-
-  try {
-    return JSON.parse(contactInfo);
-  } catch (parseError) {
-    console.error("聯絡人資訊解析失敗:", parseError);
-    return { name: "", phone: "", email: "" };
-  }
-};
-
-const getStatusText = (status) => {
-  switch (status) {
-    case 1:
-      return "審核中";
-    case 2:
-      return "已核准";
-    case 3:
-      return "已拒絕";
-    default:
-      return "已撤回";
-  }
-};
-
-const getStatusClass = (status) => {
-  switch (status) {
-    case 1:
-      return "is-pending";
-    case 2:
-      return "is-approved";
-    case 3:
-      return "is-rejected";
-    default:
-      return "is-withdrawn";
-  }
-};
 
 const renderEventContent = (arg) => {
   const purpose = arg.event.extendedProps.originalData?.purpose?.trim();
@@ -245,24 +211,6 @@ const renderEventContent = (arg) => {
       </div>
     `,
   };
-};
-
-const renderMoreLinkContent = (arg) => {
-  return {
-    html: `<span class="calendar-more-link-text">還有 ${arg.num} 個</span>`,
-  };
-};
-
-const formatDateKey = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const getDailyEventCount = (date) => {
-  const dateKey = formatDateKey(date);
-  return events.value.filter((event) => event.start?.split("T")[0] === dateKey).length;
 };
 
 const resetVenueState = () => {
@@ -346,7 +294,7 @@ const openEditModal = (originalData) => {
 };
 
 const renderDayCellContent = (arg) => {
-  const count = getDailyEventCount(arg.date);
+  const count = getDailyEventCount(events.value, arg.date);
 
   return {
     html: `
@@ -514,7 +462,7 @@ const calendarOptions = ref({
   displayEventEnd: true,
   dayCellContent: renderDayCellContent,
   eventContent: renderEventContent,
-  moreLinkContent: renderMoreLinkContent,
+  moreLinkContent: (arg) => renderMoreLinkContent(arg, "個"),
   eventTimeFormat: {
     hour: "2-digit",
     minute: "2-digit",

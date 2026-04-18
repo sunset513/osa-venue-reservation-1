@@ -99,7 +99,8 @@
 <script setup>
 import { computed } from "vue";
 import { Check, Clock3, RotateCcw, X, XCircle } from "lucide-vue-next";
-import { formatSlotGroupsAsTimeRange, getBookingStatusMeta } from "@/utils/dateHelper";
+import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
+import { getBookingStatusMeta } from "@/utils/bookingMeta";
 
 const props = defineProps({
   visible: Boolean,
