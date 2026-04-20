@@ -6,7 +6,10 @@
           <button class="back-btn" @click="goBackToVenueList">← 返回場地列表</button>
           <div class="toolbar-title">
             <span class="toolbar-label">目前場地</span>
-            <strong>{{ venueInfo.name }}</strong>
+            <h2>{{ venueInfo.name }}</h2>
+            <div class="venue-meta">
+              <span>👥 容納人數: {{ venueInfo.capacity }} 人</span>
+            </div>
           </div>
         </div>
 
@@ -27,12 +30,9 @@
       <div v-show="!isInfoCollapsed" class="header-content">
         <div class="header-main">
           <div class="header-left">
-            <p class="header-eyebrow">Venue Booking</p>
-            <h1>{{ venueInfo.name }}</h1>
+
             <p class="header-description">用月曆查看當月借用狀況，並快速切換同單位其他場地。</p>
-            <div class="venue-meta">
-              <span>👥 容納人數: {{ venueInfo.capacity }} 人</span>
-            </div>
+   
           </div>
 
           <div class="legend-group">
@@ -42,7 +42,7 @@
             </span>
             <span class="legend-item">
               <span class="legend-dot my-pending"></span>
-              我的預約 (審核中)
+              審核中
             </span>
             <span class="legend-item">
               <span class="legend-dot others"></span>
@@ -644,7 +644,7 @@ watch(
 
   .legend-dot {
     &.my-approved {
-      background-color: var(--status-occupied);
+      background-color: var(--status-info);
     }
 
     &.my-pending {
