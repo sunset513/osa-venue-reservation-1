@@ -23,31 +23,13 @@
   text-align: center;
 
   .page-header {
-    margin-bottom: 2.5rem;
-    h1 {
-      color: #2d3436;
-      margin-bottom: 0.5rem;
-    }
-    p {
-      color: #636e72;
-    }
     .back-btn {
-      background: none;
-      border: none;
-      color: #0984e3;
-      cursor: pointer;
       margin-bottom: 1rem;
-      &:hover {
-        text-decoration: underline;
-      }
     }
   }
 
   .empty-state {
-    background: white;
     padding: 4rem 2rem;
-    border-radius: 12px;
-    border: 1px dashed #b2bec3;
 
     .icon {
       font-size: 3rem;
@@ -55,12 +37,11 @@
     }
 
     h2 {
-      color: #2d3436;
       margin-bottom: 0.5rem;
     }
 
     p {
-      color: #636e72;
+      color: var(--muted);
     }
   }
 }

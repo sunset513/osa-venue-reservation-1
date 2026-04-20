@@ -14,11 +14,10 @@ const request = axios.create({
 // Request 攔截器 (發送請求前)
 request.interceptors.request.use(
   (config) => {
-    // 配合後端 MockAuthInterceptor，帶入暫時性身分校驗 Token
-    // 未來串接 Portal 或 JWT 時，可改從 localStorage 或 Pinia Store 讀取
-    const mockToken = "mock-token-123";
-
-    if (mockToken) {
+    if (!config.headers?.Authorization) {
+      // 配合後端 MockAuthInterceptor，帶入暫時性身分校驗 Token
+      // 未來串接 Portal 或 JWT 時，可改從 localStorage 或 Pinia Store 讀取
+      const mockToken = "mock-token-123";
       config.headers["Authorization"] = mockToken;
     }
 
