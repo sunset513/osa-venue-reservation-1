@@ -11,7 +11,7 @@
 
       <div class="modal-body">
         <div v-if="bookings.length === 0" class="empty-state">
-          這一天目前沒有活動，可以直接新增預約。
+          {{ canCreate ? "這一天目前沒有活動，可以直接新增預約。" : "這一天目前沒有活動，但過去日期不可新增預約。" }}
         </div>
 
         <div v-else class="schedule-list">
@@ -56,11 +56,11 @@
           </span>
           <span>關閉</span>
         </button>
-        <button class="btn btn-primary" @click="$emit('create')">
+        <button class="btn btn-primary" :disabled="!canCreate" @click="$emit('create')">
           <span class="btn-icon">
             <Plus :size="16" />
           </span>
-          <span>新增預約</span>
+          <span>{{ canCreate ? "新增預約" : "過去日期不可預約" }}</span>
         </button>
       </footer>
     </div>
@@ -88,6 +88,10 @@ const props = defineProps({
   bookings: {
     type: Array,
     default: () => [],
+  },
+  canCreate: {
+    type: Boolean,
+    default: true,
   },
 });
 
@@ -414,6 +418,10 @@ const handleCardClick = (booking) => {
   .schedule-side {
     width: 100%;
     align-items: flex-start;
+  }
+
+  .schedule-badges {
+    align-self: flex-start;
   }
 
   .time-range {

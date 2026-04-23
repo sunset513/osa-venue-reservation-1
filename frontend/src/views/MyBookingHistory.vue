@@ -149,7 +149,18 @@
                   <div class="overview-row">
                     <div>
                       <p class="eyebrow">{{ booking.bookingDateLabel }}</p>
-                      <h3>{{ booking.venueName }}</h3>
+                      <h3>
+                        <template
+                          v-for="(segment, index) in getHighlightedSegments(booking.venueName)"
+                          :key="`${booking.id}-venue-${index}`"
+                        >
+                          <span
+                            :class="{ 'keyword-highlight': segment.isMatch }"
+                          >
+                            {{ segment.text }}
+                          </span>
+                        </template>
+                      </h3>
                     </div>
                     <span class="status-pill" :class="booking.statusClass">
                       {{ booking.statusText }}
@@ -163,7 +174,18 @@
                     </div>
                     <div class="info-item">
                       <span class="info-label">使用用途</span>
-                      <strong>{{ booking.purpose }}</strong>
+                      <strong>
+                        <template
+                          v-for="(segment, index) in getHighlightedSegments(booking.purpose)"
+                          :key="`${booking.id}-purpose-${index}`"
+                        >
+                          <span
+                            :class="{ 'keyword-highlight': segment.isMatch }"
+                          >
+                            {{ segment.text }}
+                          </span>
+                        </template>
+                      </strong>
                     </div>
                     <div class="info-item">
                       <span class="info-label">申請時間</span>
@@ -236,6 +258,30 @@ const statusTabs = [
   { value: "3", label: "已被拒絕", icon: Ban },
   { value: "0", label: "已撤回", icon: RotateCcw },
 ];
+
+const escapeRegExp = (value) => {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+const getHighlightedSegments = (value) => {
+  const keyword = keywordFilter.value.trim();
+
+  if (!keyword || !value) {
+    return [{ text: value, isMatch: false }];
+  }
+
+  const pattern = new RegExp(`(${escapeRegExp(keyword)})`, "ig");
+  const parts = value.split(pattern).filter(Boolean);
+
+  if (parts.length === 0) {
+    return [{ text: value, isMatch: false }];
+  }
+
+  return parts.map((part) => ({
+    text: part,
+    isMatch: part.toLowerCase() === keyword.toLowerCase(),
+  }));
+};
 
 const formatDateLabel = (value) => {
   if (!value) return "未提供日期";
@@ -670,6 +716,14 @@ onMounted(async () => {
     margin-top: 0.15rem;
     color: var(--ink);
   }
+}
+
+.keyword-highlight {
+  padding: 0 0.18em;
+  border-radius: 0.3em;
+  background: rgba(255, 216, 102, 0.65);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .eyebrow {
