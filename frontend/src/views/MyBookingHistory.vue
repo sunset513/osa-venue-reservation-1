@@ -163,16 +163,31 @@
                       </h3>
                     </div>
                     <span class="status-pill" :class="booking.statusClass">
+                      <component
+                        :is="booking.statusIcon"
+                        :size="15"
+                        class="status-pill-icon"
+                        aria-hidden="true"
+                      />
                       {{ booking.statusText }}
                     </span>
                   </div>
 
                   <div class="info-grid">
-                    <div class="info-item">
-                      <span class="info-label">借用時段</span>
-                      <strong>{{ booking.timeRange }}</strong>
+                    <div class="info-item is-time-focus">
+                      <div class="time-focus-header">
+                        <span class="time-focus-badge">
+                          <Clock3 :size="16" aria-hidden="true" />
+                          借用時段
+                        </span>
+                      </div>
+                      <strong class="time-range-emphasis">{{ booking.timeRange }}</strong>
+                      <div class="time-focus-meta">
+                        <span class="time-focus-meta-label">日期</span>
+                        <span class="time-focus-meta-value">{{ booking.bookingDateLabel }}</span>
+                      </div>
                     </div>
-                    <div class="info-item">
+                    <div class="info-item is-side-info">
                       <span class="info-label">使用用途</span>
                       <strong>
                         <template
@@ -187,11 +202,7 @@
                         </template>
                       </strong>
                     </div>
-                    <div class="info-item">
-                      <span class="info-label">申請時間</span>
-                      <strong>{{ booking.createdAtLabel }}</strong>
-                    </div>
-                    <div class="info-item">
+                    <div class="info-item is-side-info">
                       <span class="info-label">預估人數</span>
                       <strong>{{ booking.pCount }} 人</strong>
                     </div>
@@ -201,9 +212,15 @@
                 <button
                   type="button"
                   class="btn btn-secondary detail-toggle"
+                  :aria-label="expandedBookingId === booking.id ? '收起詳情' : '查看詳情'"
+                  :title="expandedBookingId === booking.id ? '收起詳情' : '查看詳情'"
                   @click="toggleExpanded(booking.id)"
                 >
-                  {{ expandedBookingId === booking.id ? "收起詳情" : "查看詳情" }}
+                  <component
+                    :is="expandedBookingId === booking.id ? ChevronUp : ChevronDown"
+                    :size="15"
+                    aria-hidden="true"
+                  />
                 </button>
               </div>
 
@@ -231,7 +248,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { Ban, CheckCircle2, Clock3, RotateCcw } from "lucide-vue-next";
+import { Ban, CheckCircle2, ChevronDown, ChevronUp, Clock3, RotateCcw } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import { fetchMyBookings } from "@/api/booking";
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
@@ -258,6 +275,19 @@ const statusTabs = [
   { value: "3", label: "已被拒絕", icon: Ban },
   { value: "0", label: "已撤回", icon: RotateCcw },
 ];
+
+const getStatusIcon = (status) => {
+  switch (status) {
+    case 1:
+      return Clock3;
+    case 2:
+      return CheckCircle2;
+    case 3:
+      return Ban;
+    default:
+      return RotateCcw;
+  }
+};
 
 const escapeRegExp = (value) => {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -339,6 +369,7 @@ const historyItems = computed(() => {
         createdAtLabel: formatDateTimeLabel(booking.createdAt),
         statusText: statusMeta.text,
         statusClass: statusMeta.className,
+        statusIcon: getStatusIcon(booking.status),
         contact: parseContactInfo(booking.contactInfo),
         equipments: Array.isArray(booking.equipments) ? booking.equipments : [],
       };
@@ -450,12 +481,21 @@ onMounted(async () => {
   grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
+  min-width: 0;
+}
+
+.history-layout > * {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .history-hero {
   position: sticky;
   top: calc(var(--header-height) + 2.25rem);
   padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
   background:
     linear-gradient(180deg, rgba(232, 240, 250, 0.95), rgba(255, 255, 255, 0.98)),
     radial-gradient(circle at top right, rgba(var(--blue-900-rgb), 0.1), transparent 38%);
@@ -674,6 +714,8 @@ onMounted(async () => {
 
 .history-records {
   padding: 1.4rem;
+  width: 100%;
+  max-width: 100%;
   border-radius: calc(var(--radius-lg) + 2px);
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(var(--blue-900-rgb), 0.08);
@@ -699,10 +741,12 @@ onMounted(async () => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .history-overview {
   flex: 1;
+  min-width: 0;
 }
 
 .overview-row {
@@ -738,6 +782,7 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.38rem;
   min-width: 5.4rem;
   padding: 0.45rem 0.85rem;
   border-radius: 999px;
@@ -765,10 +810,15 @@ onMounted(async () => {
   }
 }
 
+.status-pill-icon {
+  flex: 0 0 auto;
+}
+
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.7fr) minmax(220px, 1fr);
   gap: 0.85rem;
+  align-items: stretch;
 }
 
 .info-item {
@@ -784,6 +834,73 @@ onMounted(async () => {
   }
 }
 
+.info-item.is-time-focus {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem 1.1rem 1.05rem;
+  background:
+    linear-gradient(135deg, rgba(39, 94, 168, 0.14), rgba(255, 255, 255, 0.96) 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(39, 94, 168, 0.08));
+  border-color: rgba(39, 94, 168, 0.22);
+  box-shadow: 0 12px 28px rgba(39, 94, 168, 0.08);
+}
+
+.time-focus-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.time-focus-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.time-range-emphasis {
+  display: block;
+  color: var(--ink);
+  font-size: clamp(1.15rem, 1.4vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+}
+
+.time-focus-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  color: var(--muted-strong);
+  flex-wrap: wrap;
+}
+
+.time-focus-meta-label {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.time-focus-meta-value {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.info-item.is-side-info {
+  grid-column: 2;
+}
+
 .info-label,
 .detail-title {
   display: block;
@@ -794,7 +911,11 @@ onMounted(async () => {
 }
 
 .detail-toggle {
-  min-width: 8.5rem;
+  min-width: auto;
+  min-height: 2.3rem;
+  padding: 0.55rem 0.95rem;
+  font-size: var(--text-sm);
+  gap: 0.4rem;
 }
 
 .history-details {
@@ -822,6 +943,7 @@ onMounted(async () => {
   .history-layout {
     grid-template-columns: 1fr;
     gap: 1rem;
+    width: 100%;
   }
 
   .history-hero,
@@ -843,6 +965,11 @@ onMounted(async () => {
 
   .history-main {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-overview {
+    width: 100%;
   }
 
   .detail-toggle {
@@ -851,6 +978,13 @@ onMounted(async () => {
 }
 
 @media (max-width: 640px) {
+  .history-layout,
+  .history-hero,
+  .history-records {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .summary-grid,
   .info-grid,
   .history-details {
@@ -867,6 +1001,17 @@ onMounted(async () => {
 
   .filter-tabs {
     gap: 0.85rem;
+  }
+
+  .record-tabs {
+    margin: 0 0 1rem;
+    padding: 0 0 0.25rem;
+  }
+
+  .info-item.is-time-focus,
+  .info-item.is-side-info {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .filter-tab {
@@ -887,6 +1032,10 @@ onMounted(async () => {
 
   .overview-row {
     flex-direction: column;
+  }
+
+  .time-focus-header {
+    align-items: flex-start;
   }
 }
 </style>
