@@ -19,153 +19,189 @@
     </div>
 
     <template v-else>
-      <section class="history-hero card">
-        <header class="page-header history-header">
-          <button class="back-btn" @click="router.push('/')">
-            ← {{ BACK_TO_UNIT_SELECTOR_LABEL }}
-          </button>
-          <p class="hero-eyebrow">Booking Archive</p>
-          <h1>我的預約歷史紀錄</h1>
-          <p>集中查看所有預約申請、借用時段與目前審核狀態。</p>
-        </header>
+      <header class="page-header history-page-header">
+        <button class="back-btn" @click="router.push('/')">
+          ← {{ BACK_TO_UNIT_SELECTOR_LABEL }}
+        </button>
+        <p class="hero-eyebrow">Booking Archive</p>
+        <h1>我的預約歷史紀錄</h1>
+        <p>集中查看所有預約申請、借用時段與目前審核狀態。</p>
+      </header>
 
-        <section class="filter-panel">
-          <div class="filter-field">
-            <label for="booking-keyword">關鍵字搜尋</label>
-            <input
-              id="booking-keyword"
-              v-model.trim="keywordFilter"
-              type="text"
-              placeholder="搜尋場地名稱或使用用途"
-            />
-          </div>
+      <section class="history-layout">
+        <section class="history-hero card">
+          <section class="filter-panel">
+            <div class="filter-toolbar">
+              <div class="filter-field">
+                <label for="booking-keyword">關鍵字搜尋</label>
+                <input
+                  id="booking-keyword"
+                  v-model.trim="keywordFilter"
+                  type="text"
+                  placeholder="搜尋場地名稱或用途"
+                />
+              </div>
 
-          <div class="filter-field">
-            <label for="booking-status">申請狀態</label>
-            <select id="booking-status" v-model="statusFilter">
-              <option value="">全部狀態</option>
-              <option value="1">審核中</option>
-              <option value="2">已通過</option>
-              <option value="3">已拒絕</option>
-              <option value="0">已撤回</option>
-            </select>
-          </div>
+              <div class="filter-field">
+                <label for="booking-venue">場地</label>
+                <select id="booking-venue" v-model="venueFilter">
+                  <option value="">全部場地</option>
+                  <option
+                    v-for="venueName in venueOptions"
+                    :key="venueName"
+                    :value="venueName"
+                  >
+                    {{ venueName }}
+                  </option>
+                </select>
+              </div>
 
-          <div class="filter-summary">
-            <span class="summary-label">篩選結果</span>
-            <strong>{{ filteredHistoryItems.length }} 筆</strong>
+              <div class="filter-summary">
+                <span class="summary-label">篩選結果</span>
+                <strong>{{ nonTabFilteredHistoryItems.length }} 筆</strong>
+                <button
+                  v-if="hasActiveFilters"
+                  type="button"
+                  class="clear-filter-btn"
+                  @click="clearFilters"
+                >
+                  清除篩選
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="summary-grid">
+            <article class="summary-card card">
+              <span class="summary-card-label">全部申請</span>
+              <strong>{{ keywordFilteredHistoryItems.length }}</strong>
+            </article>
+            <article class="summary-card card">
+              <span class="summary-card-label">
+                <Clock3 :size="18" aria-hidden="true" />
+                審核中
+              </span>
+              <strong>{{ statusCounts.pending }}</strong>
+            </article>
+            <article class="summary-card card">
+              <span class="summary-card-label">
+                <CheckCircle2 :size="18" aria-hidden="true" />
+                已通過
+              </span>
+              <strong>{{ statusCounts.approved }}</strong>
+            </article>
+            <article class="summary-card card">
+              <span class="summary-card-label">
+                <Ban :size="18" aria-hidden="true" />
+                已被拒絕
+              </span>
+              <strong>{{ statusCounts.rejected }}</strong>
+            </article>
+            <article class="summary-card card">
+              <span class="summary-card-label">
+                <RotateCcw :size="18" aria-hidden="true" />
+                已撤回
+              </span>
+              <strong>{{ statusCounts.withdrawn }}</strong>
+            </article>
+          </section>
+        </section>
+
+        <section class="history-records">
+          <div class="filter-tabs record-tabs" role="tablist" aria-label="申請狀態篩選">
             <button
-              v-if="hasActiveFilters"
+              v-for="tab in statusTabs"
+              :key="tab.value"
               type="button"
-              class="clear-filter-btn"
-              @click="clearFilters"
+              class="filter-tab"
+              :class="{ 'is-active': statusFilter === tab.value }"
+              role="tab"
+              :aria-selected="statusFilter === tab.value"
+              @click="statusFilter = tab.value"
             >
+              <component
+                :is="tab.icon"
+                v-if="tab.icon"
+                :size="18"
+                class="filter-tab-icon"
+                aria-hidden="true"
+              />
+              {{ tab.label }}
+            </button>
+          </div>
+
+          <div v-if="filteredHistoryItems.length === 0" class="empty-state history-feedback record-empty-state">
+            <h3>目前沒有符合條件的預約紀錄</h3>
+            <p>可以調整篩選條件，或清除篩選後查看全部預約。</p>
+            <button type="button" class="btn btn-secondary retry-btn" @click="clearFilters">
               清除篩選
             </button>
           </div>
-        </section>
 
-        <section class="summary-grid">
-          <article class="summary-card card">
-            <span>全部申請</span>
-            <strong>{{ filteredHistoryItems.length }}</strong>
-          </article>
-          <article class="summary-card card">
-            <span>審核中</span>
-            <strong>{{ statusCounts.pending }}</strong>
-          </article>
-          <article class="summary-card card">
-            <span>已通過</span>
-            <strong>{{ statusCounts.approved }}</strong>
-          </article>
-          <article class="summary-card card">
-            <span>已拒絕 / 已撤回</span>
-            <strong>{{ statusCounts.closed }}</strong>
-          </article>
-        </section>
-      </section>
+          <div v-else class="history-list">
+            <article
+              v-for="booking in filteredHistoryItems"
+              :key="booking.id"
+              class="history-card card"
+            >
+              <div class="history-main">
+                <div class="history-overview">
+                  <div class="overview-row">
+                    <div>
+                      <p class="eyebrow">{{ booking.bookingDateLabel }}</p>
+                      <h3>{{ booking.venueName }}</h3>
+                    </div>
+                    <span class="status-pill" :class="booking.statusClass">
+                      {{ booking.statusText }}
+                    </span>
+                  </div>
 
-      <div v-if="filteredHistoryItems.length === 0" class="empty-state history-feedback">
-        <h3>目前沒有符合條件的預約紀錄</h3>
-        <p>可以調整篩選條件，或清除篩選後查看全部預約。</p>
-        <button type="button" class="btn btn-secondary retry-btn" @click="clearFilters">
-          清除篩選
-        </button>
-      </div>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="info-label">借用時段</span>
+                      <strong>{{ booking.timeRange }}</strong>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">使用用途</span>
+                      <strong>{{ booking.purpose }}</strong>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">申請時間</span>
+                      <strong>{{ booking.createdAtLabel }}</strong>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">預估人數</span>
+                      <strong>{{ booking.pCount }} 人</strong>
+                    </div>
+                  </div>
+                </div>
 
-      <section v-else class="history-records">
-        <header class="records-header">
-          <div>
-            <p class="records-eyebrow">Application Timeline</p>
-            <h2>申請歷史紀錄</h2>
-            <p>逐筆查看你曾送出的申請內容與目前進度。</p>
+                <button
+                  type="button"
+                  class="btn btn-secondary detail-toggle"
+                  @click="toggleExpanded(booking.id)"
+                >
+                  {{ expandedBookingId === booking.id ? "收起詳情" : "查看詳情" }}
+                </button>
+              </div>
+
+              <div v-if="expandedBookingId === booking.id" class="history-details">
+                <div class="detail-block">
+                  <span class="detail-title">聯絡人資訊</span>
+                  <p>{{ booking.contact.name || "未提供姓名" }}</p>
+                  <p>{{ booking.contact.phone || "未提供電話" }}</p>
+                  <p>{{ booking.contact.email || "未提供 Email" }}</p>
+                </div>
+
+                <div class="detail-block">
+                  <span class="detail-title">借用設備</span>
+                  <p v-if="booking.equipments.length">{{ booking.equipments.join("、") }}</p>
+                  <p v-else>未借用額外設備</p>
+                </div>
+              </div>
+            </article>
           </div>
-          <span class="records-count">{{ filteredHistoryItems.length }} 筆紀錄</span>
-        </header>
-
-        <div class="history-list">
-          <article
-            v-for="booking in filteredHistoryItems"
-            :key="booking.id"
-            class="history-card card"
-          >
-            <div class="history-main">
-              <div class="history-overview">
-                <div class="overview-row">
-                  <div>
-                    <p class="eyebrow">{{ booking.bookingDateLabel }}</p>
-                    <h3>{{ booking.venueName }}</h3>
-                  </div>
-                  <span class="status-pill" :class="booking.statusClass">
-                    {{ booking.statusText }}
-                  </span>
-                </div>
-
-                <div class="info-grid">
-                  <div class="info-item">
-                    <span class="info-label">借用時段</span>
-                    <strong>{{ booking.timeRange }}</strong>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">使用用途</span>
-                    <strong>{{ booking.purpose }}</strong>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">申請時間</span>
-                    <strong>{{ booking.createdAtLabel }}</strong>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">預估人數</span>
-                    <strong>{{ booking.pCount }} 人</strong>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="btn btn-secondary detail-toggle"
-                @click="toggleExpanded(booking.id)"
-              >
-                {{ expandedBookingId === booking.id ? "收起詳情" : "查看詳情" }}
-              </button>
-            </div>
-
-            <div v-if="expandedBookingId === booking.id" class="history-details">
-              <div class="detail-block">
-                <span class="detail-title">聯絡人資訊</span>
-                <p>{{ booking.contact.name || "未提供姓名" }}</p>
-                <p>{{ booking.contact.phone || "未提供電話" }}</p>
-                <p>{{ booking.contact.email || "未提供 Email" }}</p>
-              </div>
-
-              <div class="detail-block">
-                <span class="detail-title">借用設備</span>
-                <p v-if="booking.equipments.length">{{ booking.equipments.join("、") }}</p>
-                <p v-else>未借用額外設備</p>
-              </div>
-            </div>
-          </article>
-        </div>
+        </section>
       </section>
     </template>
   </div>
@@ -173,6 +209,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import { Ban, CheckCircle2, Clock3, RotateCcw } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import { fetchMyBookings } from "@/api/booking";
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
@@ -189,7 +226,16 @@ const loadError = ref("");
 const bookings = ref([]);
 const expandedBookingId = ref(null);
 const keywordFilter = ref("");
+const venueFilter = ref("");
 const statusFilter = ref("");
+
+const statusTabs = [
+  { value: "", label: "全部", icon: null },
+  { value: "1", label: "審核中", icon: Clock3 },
+  { value: "2", label: "已通過", icon: CheckCircle2 },
+  { value: "3", label: "已被拒絕", icon: Ban },
+  { value: "0", label: "已撤回", icon: RotateCcw },
+];
 
 const formatDateLabel = (value) => {
   if (!value) return "未提供日期";
@@ -253,35 +299,57 @@ const historyItems = computed(() => {
     });
 });
 
-const filteredHistoryItems = computed(() => {
+const venueOptions = computed(() => {
+  return [...new Set(historyItems.value.map((booking) => booking.venueName))]
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right, "zh-Hant"));
+});
+
+const keywordFilteredHistoryItems = computed(() => {
   const keyword = keywordFilter.value.trim().toLowerCase();
 
   return historyItems.value.filter((booking) => {
-    const matchesStatus =
-      statusFilter.value === "" || String(booking.status) === statusFilter.value;
+    return (
+      keyword === ""
+      || booking.venueName.toLowerCase().includes(keyword)
+      || booking.purpose.toLowerCase().includes(keyword)
+    );
+  });
+});
 
-    const matchesKeyword =
-      keyword === "" ||
-      booking.venueName.toLowerCase().includes(keyword) ||
-      booking.purpose.toLowerCase().includes(keyword);
+const nonTabFilteredHistoryItems = computed(() => {
+  return keywordFilteredHistoryItems.value.filter((booking) => {
+    return venueFilter.value === "" || booking.venueName === venueFilter.value;
+  });
+});
 
-    return matchesStatus && matchesKeyword;
+const filteredHistoryItems = computed(() => {
+  return nonTabFilteredHistoryItems.value.filter((booking) => {
+    return (
+      statusFilter.value === ""
+      || String(booking.status) === statusFilter.value
+    );
   });
 });
 
 const hasActiveFilters = computed(() => {
-  return keywordFilter.value.trim() !== "" || statusFilter.value !== "";
+  return (
+    keywordFilter.value.trim() !== ""
+    || venueFilter.value !== ""
+  );
 });
 
 const statusCounts = computed(() => {
-  return filteredHistoryItems.value.reduce(
+  return keywordFilteredHistoryItems.value.reduce(
     (counts, booking) => {
       if (booking.status === 1) {
         counts.pending += 1;
       } else if (booking.status === 2) {
         counts.approved += 1;
+      } else if (booking.status === 3) {
+        counts.rejected += 1;
       } else {
-        counts.closed += 1;
+        counts.withdrawn += 1;
       }
 
       return counts;
@@ -289,7 +357,8 @@ const statusCounts = computed(() => {
     {
       pending: 0,
       approved: 0,
-      closed: 0,
+      rejected: 0,
+      withdrawn: 0,
     },
   );
 });
@@ -301,7 +370,7 @@ const toggleExpanded = (bookingId) => {
 
 const clearFilters = () => {
   keywordFilter.value = "";
-  statusFilter.value = "";
+  venueFilter.value = "";
 };
 
 const loadBookings = async () => {
@@ -330,7 +399,16 @@ onMounted(async () => {
   gap: 1.75rem;
 }
 
+.history-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
 .history-hero {
+  position: sticky;
+  top: calc(var(--header-height) + 2.25rem);
   padding: 1.5rem;
   background:
     linear-gradient(180deg, rgba(232, 240, 250, 0.95), rgba(255, 255, 255, 0.98)),
@@ -338,12 +416,11 @@ onMounted(async () => {
   border: 1px solid rgba(var(--blue-900-rgb), 0.12);
 }
 
-.history-header {
-  margin-bottom: 1.25rem;
+.history-page-header {
+  margin-bottom: 0;
 }
 
-.hero-eyebrow,
-.records-eyebrow {
+.hero-eyebrow {
   margin: 0;
   color: var(--accent);
   font-size: var(--text-sm);
@@ -372,15 +449,86 @@ onMounted(async () => {
 }
 
 .filter-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.9fr) minmax(180px, 0.7fr);
-  gap: 1rem;
-  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
   margin-bottom: 1.1rem;
+}
+
+.filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 0 0.25rem;
+  border-bottom: 1px solid rgba(var(--blue-900-rgb), 0.1);
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.filter-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  position: relative;
+  padding: 0.6rem 0.25rem 0.9rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: clamp(1.1rem, 1.2vw, 1.35rem);
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s ease;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.26rem;
+    height: 4px;
+    border-radius: 999px;
+    background: transparent;
+    transition: background-color 0.2s ease;
+  }
+
+  &:hover {
+    color: var(--accent);
+  }
+
+  &.is-active {
+    color: var(--accent);
+  }
+
+  &.is-active::after {
+    background: var(--accent);
+  }
+}
+
+.filter-tab-icon {
+  flex: 0 0 auto;
+}
+
+.filter-toolbar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: stretch;
+  padding: 1rem 1.2rem;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(var(--blue-900-rgb), 0.08);
   backdrop-filter: blur(8px);
+}
+
+.record-tabs {
+  margin: -0.15rem -0.1rem 1.1rem;
+  padding: 0 0.1rem 0.25rem;
 }
 
 .filter-field {
@@ -408,9 +556,10 @@ onMounted(async () => {
 .filter-summary {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   gap: 0.35rem;
+  min-width: 0;
 
   strong {
     color: var(--ink);
@@ -442,7 +591,7 @@ onMounted(async () => {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -467,6 +616,16 @@ onMounted(async () => {
   }
 }
 
+.summary-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.summary-card:first-child {
+  grid-column: 1 / -1;
+}
+
 .history-records {
   padding: 1.4rem;
   border-radius: calc(var(--radius-lg) + 2px);
@@ -475,35 +634,8 @@ onMounted(async () => {
   box-shadow: var(--shadow-soft);
 }
 
-.records-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.2rem;
-
-  h2 {
-    margin: 0.2rem 0 0.35rem;
-    color: var(--ink);
-  }
-
-  p:last-child {
-    margin: 0;
-    color: var(--muted);
-  }
-}
-
-.records-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  white-space: nowrap;
+.record-empty-state {
+  margin-top: 0.25rem;
 }
 
 .history-list {
@@ -633,12 +765,21 @@ onMounted(async () => {
 }
 
 @media (max-width: 900px) {
+  .history-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
   .history-hero,
   .history-records {
     padding: 1.15rem;
   }
 
-  .filter-panel {
+  .history-hero {
+    position: static;
+  }
+
+  .filter-toolbar {
     grid-template-columns: 1fr;
   }
 
@@ -648,11 +789,6 @@ onMounted(async () => {
 
   .history-main {
     flex-direction: column;
-  }
-
-  .records-header {
-    flex-direction: column;
-    align-items: flex-start;
   }
 
   .detail-toggle {
@@ -667,7 +803,23 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 
+  .summary-card:first-child {
+    grid-column: auto;
+  }
+
   .filter-panel {
+    gap: 0.85rem;
+  }
+
+  .filter-tabs {
+    gap: 0.85rem;
+  }
+
+  .filter-tab {
+    font-size: 1rem;
+  }
+
+  .filter-toolbar {
     padding: 1rem;
   }
 
