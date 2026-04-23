@@ -1,8 +1,8 @@
 <template>
   <div class="selector-page page-enter">
     <header class="page-header">
-      <h1>選擇管理單位</h1>
-      <p>請先選擇場地所屬的行政或教學單位</p>
+      <h1>{{ UNIT_SELECTOR_TITLE }}</h1>
+      <p>{{ UNIT_SELECTOR_DESCRIPTION }}</p>
     </header>
 
     <div v-if="loading" class="loading-state">載入中...</div>
@@ -32,6 +32,10 @@ import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { Building2 } from "lucide-vue-next";
 import { fetchAllUnits } from "@/api/venue";
+import {
+  UNIT_SELECTOR_DESCRIPTION,
+  UNIT_SELECTOR_TITLE,
+} from "@/utils/navigationLabels";
 
 const router = useRouter();
 const units = ref([]);

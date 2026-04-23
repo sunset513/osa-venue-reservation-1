@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import UnitSelector from "@/views/UnitSelector.vue";
 import VenueSelector from "@/views/VenueSelector.vue";
 import VenueCalendar from "@/views/VenueCalendar.vue";
+import MyBookingHistory from "@/views/MyBookingHistory.vue";
 import ReviewCalendar from "@/views/ReviewCalendar.vue";
 import { validateRouteAccess } from "./guards";
 
@@ -30,6 +31,11 @@ const routes = [
       validateVenue: true,
       redirectOnInvalid: "/",
     },
+  },
+  {
+    path: "/my-bookings",
+    name: "MyBookingHistory",
+    component: MyBookingHistory,
   },
   {
     path: "/review",

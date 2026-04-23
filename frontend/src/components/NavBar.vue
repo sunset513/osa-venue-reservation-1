@@ -9,17 +9,95 @@
           <span>場地租借系統</span>
         </div>
       </div>
-      <div class="nav-user">
-        <div class="avatar-circle">
-          <User :size="20" stroke-width="2.5" />
-        </div>
+      <div ref="menuRef" class="nav-user">
+        <button
+          type="button"
+          class="avatar-trigger"
+          aria-label="開啟使用者選單"
+          aria-haspopup="menu"
+          :aria-expanded="isMenuOpen"
+          @click="toggleMenu"
+        >
+          <div class="avatar-circle">
+            <User :size="20" stroke-width="2.5" />
+          </div>
+          <ChevronDown :size="16" class="avatar-chevron" :class="{ 'is-open': isMenuOpen }" />
+        </button>
+
+        <transition name="menu-fade">
+          <div v-if="isMenuOpen" class="user-menu card" role="menu" aria-label="使用者選單">
+            <button
+              type="button"
+              class="menu-item"
+              :class="{ 'is-active': isHistoryPage }"
+              role="menuitem"
+              @click="goToMyBookings"
+            >
+              我的預約歷史紀錄
+            </button>
+          </div>
+        </transition>
       </div>
     </div>
   </nav>
 </template>
 
 <script setup>
-import { User } from "lucide-vue-next";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { ChevronDown, User } from "lucide-vue-next";
+import { useRoute, useRouter } from "vue-router";
+
+const route = useRoute();
+const router = useRouter();
+const menuRef = ref(null);
+const isMenuOpen = ref(false);
+
+const isHistoryPage = computed(() => route.name === "MyBookingHistory");
+
+const closeMenu = () => {
+  isMenuOpen.value = false;
+};
+
+const toggleMenu = () => {
+  isMenuOpen.value = !isMenuOpen.value;
+};
+
+const goToMyBookings = async () => {
+  closeMenu();
+
+  if (route.name === "MyBookingHistory") return;
+
+  await router.push({ name: "MyBookingHistory" });
+};
+
+const handleDocumentClick = (event) => {
+  if (!menuRef.value?.contains(event.target)) {
+    closeMenu();
+  }
+};
+
+const handleKeydown = (event) => {
+  if (event.key === "Escape") {
+    closeMenu();
+  }
+};
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeMenu();
+  },
+);
+
+onMounted(() => {
+  document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("keydown", handleKeydown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleDocumentClick);
+  document.removeEventListener("keydown", handleKeydown);
+});
 </script>
 
 <style lang="scss" scoped>
@@ -102,6 +180,72 @@ import { User } from "lucide-vue-next";
   }
 }
 
+.nav-user {
+  position: relative;
+}
+
+.avatar-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.avatar-chevron {
+  color: #32527f;
+  transition: transform 0.2s ease;
+
+  &.is-open {
+    transform: rotate(180deg);
+  }
+}
+
+.user-menu {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  min-width: 14rem;
+  padding: 0.45rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.98);
+  z-index: 30;
+}
+
+.menu-item {
+  width: 100%;
+  padding: 0.8rem 0.95rem;
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  &:hover,
+  &.is-active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+}
+
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
 @media (max-width: 640px) {
   .brand-mark {
     display: none;
@@ -109,6 +253,10 @@ import { User } from "lucide-vue-next";
 
   .brand-copy strong {
     font-size: var(--text-base);
+  }
+
+  .user-menu {
+    min-width: 12.5rem;
   }
 }
 </style>
