@@ -15,7 +15,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       # 掛載 seed SQL 檔案到初始化目錄
-      - ./venue_seed_v1.sql:/docker-entrypoint-initdb.d/01_seed.sql
+      - ./venue_seed_v2.sql:/docker-entrypoint-initdb.d/01_seed.sql
     healthcheck:
       test:
         [
