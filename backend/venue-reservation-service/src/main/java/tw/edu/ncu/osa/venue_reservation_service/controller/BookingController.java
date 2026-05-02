@@ -190,6 +190,114 @@ public class BookingController {
         }
     }
 
+    /**
+     * 多維度篩選查詢個人預約清單（支援分頁）
+     * 用戶可透過此 API 按場地、狀態、日期範圍進行篩選查詢，並支援分頁獲取結果
+     * @param queryCondition 查詢條件 DTO，包含篩選條件和分頁資訊
+     * @return 分頁查詢結果，包含預約列表和分頁資訊
+     */
+    @PostMapping("/query")
+    @Operation(
+        summary = "多維度篩選查詢個人預約清單（支援分頁）",
+        description = """
+            根據指定條件查詢當前登入用戶的預約申請，支援多維度篩選和分頁。
+            
+            **支援的篩選條件（均為可選）：**
+            - venueId：按場地 ID 篩選
+            - statusList：按預約狀態篩選（0-3，支援多選）
+            - startDate：按預約日期範圍開始篩選（ISO 8601 格式：YYYY-MM-DD）
+            - endDate：按預約日期範圍結束篩選（ISO 8601 格式：YYYY-MM-DD）
+            
+            **分頁說明：**
+            - pageNo：頁碼（最小值為 1，預設值為 1）
+            - pageSize：每頁記錄數（最小值為 1，最大值為 100，預設值為 20）
+            
+            **排序規則：**
+            - 預約申請按 created_at 倒序排列（最新優先）
+            
+            **預約狀態說明：**
+            - 0: 已撤回
+            - 1: 審核中
+            - 2: 已通過
+            - 3: 已拒絕
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "成功取得篩選後的預約列表",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    description = "成功回應，data 欄位包含分頁查詢結果",
+                    example = """
+                    {
+                      "success": true,
+                      "message": "操作成功",
+                      "data": {
+                        "total": 50,
+                        "pageNo": 1,
+                        "pageSize": 20,
+                        "totalPages": 3,
+                        "hasNext": true,
+                        "items": [
+                          {
+                            "id": 501,
+                            "venueName": "會議室 A",
+                            "bookingDate": "2026-04-10",
+                            "slots": [8, 9],
+                            "status": 1,
+                            "createdAt": "2026-04-03T10:00:00",
+                            "purpose": "專案討論",
+                            "pCount": 5,
+                            "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}",
+                            "equipments": ["麥克風", "投影機"]
+                          }
+                        ]
+                      }
+                    }
+                    """
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "參數驗證失敗",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    description = "失敗回應",
+                    example = """
+                    {
+                      "success": false,
+                      "message": "頁碼最小值為 1",
+                      "data": null
+                    }
+                    """
+                )
+            )
+        )
+    })
+    @SecurityRequirement(name = "Mock-Authorization")
+    public Result<tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO> queryMyBookings(
+            @Valid @RequestBody tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingQueryDTO queryCondition) {
+        log.info("【BookingController】收到請求：多維度篩選查詢個人預約清單");
+        log.info("【BookingController】查詢條件 - venueId={}, statusList={}, startDate={}, endDate={}, pageNo={}, pageSize={}",
+                queryCondition.getVenueId(), queryCondition.getStatusList(),
+                queryCondition.getStartDate(), queryCondition.getEndDate(),
+                queryCondition.getPageNo(), queryCondition.getPageSize());
+        try {
+            tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO result = bookingService.queryMyBookings(queryCondition);
+            log.info("【BookingController】成功查詢預約列表，共 {} 筆符合篩選條件，當前頁 {} 條",
+                    result.getTotal(), result.getItems().size());
+            log.debug("【BookingController】返回分頁結果：{}", result);
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("【BookingController】多維度篩選查詢預約清單失敗", e);
+            throw e;
+        }
+    }
+
     // ==========================================
     // 3. 修改預約
     // ==========================================
@@ -571,7 +679,7 @@ public class BookingController {
     public Result<VenueCalendarDayVO> getCalendarDay(
             @RequestParam
             @Parameter(
-                description = "場地的唯一識別碼",
+                description = "場地的唯一��別碼",
                 example = "1",
                 required = true
             )
@@ -596,3 +704,4 @@ public class BookingController {
         }
     }
 }
+

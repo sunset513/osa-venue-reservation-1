@@ -33,6 +33,17 @@ public interface BookingService {
      */
     List<BookingVO> getMyBookings();
 
+    /**
+     * 多維度篩選查詢當前登入用戶的預約列表
+     * 支援按場地 ID、預約狀態、日期範圍進行篩選，並提供分頁功能
+     * 預設按 created_at 倒序排列（最新優先）
+     * @param queryCondition 查詢條件 DTO，包含篩選條件和分頁資訊
+     * @return 分頁查詢結果 VO，包含預約列表和分頁資訊
+     */
+    tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO queryMyBookings(
+            tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingQueryDTO queryCondition
+    );
+
     // ==========================================
     // 修改預約
     // ==========================================

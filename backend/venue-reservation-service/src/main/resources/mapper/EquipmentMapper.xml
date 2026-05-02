@@ -8,11 +8,138 @@
     <!-- ========================================== -->
 
     <select id="selectEquipmentsByVenueId" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.Equipment">
-        SELECT e.id, e.name, e.created_at
+        SELECT e.id, e.name, e.created_at, e.deleted_at
         FROM equipments e
         JOIN venue_equipment_map vem ON e.id = vem.equipment_id
         WHERE vem.venue_id = #{venueId}
+        AND e.deleted_at IS NULL
         ORDER BY e.id ASC
+    </select>
+
+    <select id="selectAllEquipmentsWithoutStatus" resultType="tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentWithStatusVO">
+        SELECT
+            v.id AS venueId,
+            v.name AS venueName,
+            e.id AS equipmentId,
+            e.name AS equipmentName,
+            vem.quantity,
+            false AS isInUse
+        FROM equipments e
+        JOIN venue_equipment_map vem ON e.id = vem.equipment_id
+        JOIN venues v ON vem.venue_id = v.id
+        WHERE e.deleted_at IS NULL
+        ORDER BY v.id ASC, e.id ASC
+    </select>
+
+    <select id="countEquipmentInUseAtTime" resultType="int">
+        SELECT COUNT(*)
+        FROM booking_equipment be
+        JOIN bookings b ON be.booking_id = b.id
+        WHERE be.equipment_id = #{equipmentId}
+        AND b.status IN (1, 2)
+        AND b.booking_date = #{today}
+        AND (b.time_slots &lt;&lt; #{currentHour}) &amp; 1 = 1
+    </select>
+
+    <!-- ========================================== -->
+    <!-- 設備 CRUD 操作 -->
+    <!-- ========================================== -->
+
+    <select id="selectById" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.Equipment">
+        SELECT id, name, created_at, deleted_at
+        FROM equipments
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByName" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.Equipment">
+        SELECT id, name, created_at, deleted_at
+        FROM equipments
+        WHERE name = #{name}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO equipments (name, created_at, deleted_at)
+        VALUES (#{name}, #{createdAt}, #{deletedAt})
+    </insert>
+
+    <update id="update">
+        UPDATE equipments
+        SET name = #{name}, deleted_at = #{deletedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="softDelete">
+        UPDATE equipments
+        SET deleted_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="countActiveBookingsByEquipmentId" resultType="int">
+        SELECT COUNT(*)
+        FROM booking_equipment be
+        JOIN bookings b ON be.booking_id = b.id
+        WHERE be.equipment_id = #{equipmentId}
+        AND b.status IN (1, 2)
+    </select>
+
+    <!-- ========================================== -->
+    <!-- 場地設備關聯 (venue_equipment_map) 操作 -->
+    <!-- ========================================== -->
+
+    <insert id="insertVenueEquipmentMap">
+        INSERT INTO venue_equipment_map (venue_id, equipment_id, quantity)
+        VALUES (#{venueId}, #{equipmentId}, #{quantity})
+    </insert>
+
+    <update id="updateVenueEquipmentMapQuantity">
+        UPDATE venue_equipment_map
+        SET quantity = #{quantity}
+        WHERE venue_id = #{venueId}
+        AND equipment_id = #{equipmentId}
+    </update>
+
+    <delete id="deleteVenueEquipmentMap">
+        DELETE FROM venue_equipment_map
+        WHERE venue_id = #{venueId}
+        AND equipment_id = #{equipmentId}
+    </delete>
+
+    <delete id="deleteVenueEquipmentMapByEquipmentId">
+        DELETE FROM venue_equipment_map
+        WHERE equipment_id = #{equipmentId}
+    </delete>
+
+    <!-- ========================================== -->
+    <!-- 設備借用歷史查詢 -->
+    <!-- ========================================== -->
+
+    <select id="selectEquipmentBorrowRecordsCount" resultType="int">
+        SELECT COUNT(DISTINCT be.id)
+        FROM booking_equipment be
+        JOIN bookings b ON be.booking_id = b.id
+        JOIN equipments e ON be.equipment_id = e.id
+        JOIN venues v ON b.venue_id = v.id
+        WHERE b.status = 2
+        AND e.deleted_at IS NULL
+    </select>
+
+    <select id="selectEquipmentBorrowRecords" resultType="tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBorrowRecordVO">
+        SELECT
+            b.venue_id AS venueId,
+            v.name AS venueName,
+            e.id AS equipmentId,
+            e.name AS equipmentName,
+            b.booking_date AS borrowDate,
+            b.time_slots AS timeSlots,
+            b.purpose
+        FROM booking_equipment be
+        JOIN bookings b ON be.booking_id = b.id
+        JOIN equipments e ON be.equipment_id = e.id
+        JOIN venues v ON b.venue_id = v.id
+        WHERE b.status = 2
+        AND e.deleted_at IS NULL
+        ORDER BY b.booking_date DESC, b.id DESC
+        LIMIT #{offset}, #{pageSize}
     </select>
 
 </mapper>

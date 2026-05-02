@@ -25,6 +25,11 @@ public class Equipment {
     private String name;
     
     /**
+     * 軟刪除時間（若為 NULL 表示未被刪除）
+     */
+    private LocalDateTime deletedAt;
+
+    /**
      * 建立時間
      */
     private LocalDateTime createdAt;

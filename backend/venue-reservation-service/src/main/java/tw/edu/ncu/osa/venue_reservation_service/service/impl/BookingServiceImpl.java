@@ -140,6 +140,112 @@ public class BookingServiceImpl implements BookingService {
         return bookingVOList;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO queryMyBookings(
+            tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingQueryDTO queryCondition) {
+
+        log.info("【BookingService】[queryMyBookings] 開始查詢個人預約清單（支援篩選和分頁）");
+
+        // ==========================================
+        // 1. 參數驗證和設置預設值
+        // ==========================================
+        String userId = UserContext.getUser().getUserId();
+        log.info("【BookingService】[queryMyBookings] 當前用戶ID={}", userId);
+
+        if (queryCondition == null) {
+            log.warn("【BookingService】[queryMyBookings] 查詢條件為空，使用預設值");
+            queryCondition = new tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingQueryDTO();
+            queryCondition.setPageNo(1);
+            queryCondition.setPageSize(20);
+        }
+
+        // 驗證分頁參數
+        Integer pageNo = queryCondition.getPageNo();
+        Integer pageSize = queryCondition.getPageSize();
+
+        if (pageNo == null || pageNo < 1) {
+            pageNo = 1;
+            log.warn("【BookingService】[queryMyBookings] 頁碼無效，設為預設值 1");
+        }
+
+        if (pageSize == null || pageSize < 1) {
+            pageSize = 20;
+            log.warn("【BookingService】[queryMyBookings] 每頁記錄數無效，設為預設值 20");
+        }
+
+        if (pageSize > 100) {
+            pageSize = 100;
+            log.warn("【BookingService】[queryMyBookings] 每頁記錄數超出上限，限制為 100");
+        }
+
+        queryCondition.setPageNo(pageNo);
+        queryCondition.setPageSize(pageSize);
+
+        log.info("【BookingService】[queryMyBookings] 查詢條件：venueId={}, statuses={}, startDate={}, endDate={}, pageNo={}, pageSize={}",
+                queryCondition.getVenueId(), queryCondition.getStatusList(),
+                queryCondition.getStartDate(), queryCondition.getEndDate(),
+                pageNo, pageSize);
+
+        // ==========================================
+        // 2. 查詢符合條件的預約總數
+        // ==========================================
+        Long total = bookingMapper.countMyBookingsWithFilters(
+                userId,
+                queryCondition.getVenueId(),
+                queryCondition.getStatusList(),
+                queryCondition.getStartDate(),
+                queryCondition.getEndDate()
+        );
+        log.info("【BookingService】[queryMyBookings] 符合篩選條件的預約總數：{}", total);
+
+        // ==========================================
+        // 3. 計算分頁資訊
+        // ==========================================
+        Integer offset = queryCondition.getOffset();
+        Integer totalPages = tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO.calculateTotalPages(total, pageSize);
+        Boolean hasNext = tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO.calculateHasNext(pageNo, totalPages);
+
+        log.info("【BookingService】[queryMyBookings] 分頁資訊：total={}, totalPages={}, currentPageNo={}, offset={}, hasNext={}",
+                total, totalPages, pageNo, offset, hasNext);
+
+        // ==========================================
+        // 4. 查詢當前頁的預約數據
+        // ==========================================
+        List<tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO> bookingVOList =
+                bookingMapper.queryMyBookingsWithFilters(
+                        userId,
+                        queryCondition.getVenueId(),
+                        queryCondition.getStatusList(),
+                        queryCondition.getStartDate(),
+                        queryCondition.getEndDate(),
+                        pageSize,
+                        offset
+                );
+
+        log.info("【BookingService】[queryMyBookings] 從數據庫查詢到 {} 筆預約記錄（當前頁）", bookingVOList.size());
+        log.debug("【BookingService】[queryMyBookings] 預約詳情：{}", bookingVOList);
+
+        // ==========================================
+        // 5. 組裝分頁結果
+        // ==========================================
+        tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO result =
+                new tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO();
+
+        result.setTotal(total);
+        result.setPageNo(pageNo);
+        result.setPageSize(pageSize);
+        result.setTotalPages(totalPages);
+        result.setHasNext(hasNext);
+        result.setItems(bookingVOList);
+
+        log.info("【BookingService】[queryMyBookings] 成功組裝分頁結果，共 {} 筆記錄（當前頁 {} 條），準備返回",
+                total, bookingVOList.size());
+        log.debug("【BookingService】[queryMyBookings] 返回分頁VO：{}", result);
+
+        return result;
+    }
+
     // ==========================================
     // 3. 修改預約
     // ==========================================
@@ -217,6 +323,19 @@ public class BookingServiceImpl implements BookingService {
 
         // 執行更新操作
         bookingMapper.updateBooking(updatedBooking);
+
+        // === 新增以下設備更新邏輯 ===
+        // 刪除舊的設備關聯
+        bookingMapper.deleteBookingEquipmentByBookingId(bookingId);
+        // 2. 如果請求中有新的設備清單，則重新寫入
+        if (request.getEquipmentIds() != null && !request.getEquipmentIds().isEmpty()) {
+            log.info("【BookingService】[updateBooking] 開始更新關聯設備，共 {} 個設備", request.getEquipmentIds().size());
+            for (Long equipId : request.getEquipmentIds()) {
+                bookingMapper.insertBookingEquipment(bookingId, equipId);
+            }
+        }
+// =============================
+
         log.info("【BookingService】[updateBooking] 用戶 {} 成功修改預約申請 ID：{}", userId, bookingId);
     }
 

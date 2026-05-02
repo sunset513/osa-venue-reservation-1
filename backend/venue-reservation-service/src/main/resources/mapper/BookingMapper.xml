@@ -78,6 +78,10 @@
         WHERE id = #{id}
     </update>
 
+    <delete id="deleteBookingEquipmentByBookingId">
+        DELETE FROM booking_equipment WHERE booking_id = #{bookingId}
+    </delete>
+
     <!-- ========================================== -->
     <!-- 關聯操作 -->
     <!-- ========================================== -->
@@ -145,4 +149,69 @@
         AND id != #{excludeBookingId}
     </select>
 
+    <!-- ==========================================
+         高級查詢：多維度篩選和分頁
+         ========================================== -->
+
+    <!-- 多維度篩選查詢：支援場地、狀態、日期範圍篩選 + 分頁 -->
+    <select id="queryMyBookingsWithFilters" resultMap="bookingVOResultMap">
+        SELECT
+            b.id,
+            v.name AS venue_name,
+            b.booking_date,
+            b.time_slots AS slots,
+            b.status,
+            b.created_at,
+            b.purpose,
+            b.p_count,
+            b.contact_info,
+            GROUP_CONCAT(DISTINCT e.name SEPARATOR ',') AS equipments
+        FROM bookings b
+        INNER JOIN venues v ON b.venue_id = v.id
+        LEFT JOIN booking_equipment be ON b.id = be.booking_id
+        LEFT JOIN equipments e ON be.equipment_id = e.id
+        WHERE b.user_id = #{userId}
+        <if test="venueId != null">
+            AND b.venue_id = #{venueId}
+        </if>
+        <if test="statusList != null and statusList.size() > 0">
+            AND b.status IN
+            <foreach item="status" collection="statusList" open="(" separator="," close=")">
+                #{status}
+            </foreach>
+        </if>
+        <if test="startDate != null">
+            AND b.booking_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND b.booking_date &lt;= #{endDate}
+        </if>
+        GROUP BY b.id, v.name, b.booking_date, b.time_slots, b.status, b.created_at, b.purpose, b.p_count, b.contact_info
+        ORDER BY b.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 計算符合篩選條件的預約總數 -->
+    <select id="countMyBookingsWithFilters" resultType="long">
+        SELECT COUNT(DISTINCT b.id)
+        FROM bookings b
+        WHERE b.user_id = #{userId}
+        <if test="venueId != null">
+            AND b.venue_id = #{venueId}
+        </if>
+        <if test="statusList != null and statusList.size() > 0">
+            AND b.status IN
+            <foreach item="status" collection="statusList" open="(" separator="," close=")">
+                #{status}
+            </foreach>
+        </if>
+        <if test="startDate != null">
+            AND b.booking_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND b.booking_date &lt;= #{endDate}
+        </if>
+    </select>
+
 </mapper>
+

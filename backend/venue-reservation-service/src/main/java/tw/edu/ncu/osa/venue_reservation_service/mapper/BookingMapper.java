@@ -80,6 +80,13 @@ public interface BookingMapper {
      */
     int updateBooking(Booking booking);
 
+    /**
+     * 刪除預約的所有設備關聯
+     * @param bookingId 預約案 ID
+     * @return 受影響行數
+     */
+    int deleteBookingEquipmentByBookingId(@Param("bookingId") Long bookingId);
+
     // ==========================================
     // 關聯操作
     // ==========================================
@@ -151,6 +158,50 @@ public interface BookingMapper {
      */
     List<tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO> selectBookingsByDateRangeForCalendar(
             @Param("venueId") Long venueId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    // ==========================================
+    // 高級查詢：多維度篩選和分頁
+    // ==========================================
+
+    /**
+     * 查詢當前用戶的預約列表，支援多維度篩選和分頁
+     * 支援按場地 ID、預約狀態、日期範圍進行篩選
+     * 預設按 created_at 倒序（最新優先）
+     * @param userId 用戶 ID
+     * @param venueId 場地 ID（可選，為 null 表示查詢所有場地）
+     * @param statusList 預約狀態列表（可選，為 null 表示查詢所有狀態）
+     * @param startDate 預約日期範圍開始（可選，為 null 表示無下限）
+     * @param endDate 預約日期範圍結束（可選，為 null 表示無上限）
+     * @param limit 分頁：每頁記錄數
+     * @param offset 分頁：位移量（OFFSET）
+     * @return BookingVO 列表，包含場地名稱和設備名稱，按 created_at 倒序排列
+     */
+    List<tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO> queryMyBookingsWithFilters(
+            @Param("userId") String userId,
+            @Param("venueId") Long venueId,
+            @Param("statusList") List<Integer> statusList,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("limit") Integer limit,
+            @Param("offset") Integer offset
+    );
+
+    /**
+     * 計算符合篩選條件的預約總數
+     * @param userId 用戶 ID
+     * @param venueId 場地 ID（可選）
+     * @param statusList 預約狀態列表（可選）
+     * @param startDate 預約日期範圍開始（可選）
+     * @param endDate 預約日期範圍結束（可選）
+     * @return 符合條件的預約總數
+     */
+    Long countMyBookingsWithFilters(
+            @Param("userId") String userId,
+            @Param("venueId") Long venueId,
+            @Param("statusList") List<Integer> statusList,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
