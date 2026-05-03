@@ -38,7 +38,7 @@
         WHERE be.equipment_id = #{equipmentId}
         AND b.status IN (1, 2)
         AND b.booking_date = #{today}
-        AND (b.time_slots &lt;&lt; #{currentHour}) &amp; 1 = 1
+        AND ((b.time_slots >> #{currentHour}) &amp; 1) = 1
     </select>
 
     <!-- ========================================== -->
