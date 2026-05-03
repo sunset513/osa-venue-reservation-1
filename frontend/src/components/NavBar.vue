@@ -35,6 +35,24 @@
             >
               我的預約歷史紀錄
             </button>
+            <button
+              type="button"
+              class="menu-item"
+              :class="{ 'is-active': isEquipmentStatusPage }"
+              role="menuitem"
+              @click="goToEquipmentStatus"
+            >
+              設備狀態管理
+            </button>
+            <button
+              type="button"
+              class="menu-item"
+              :class="{ 'is-active': isEquipmentHistoryPage }"
+              role="menuitem"
+              @click="goToEquipmentHistory"
+            >
+              設備借用記錄
+            </button>
           </div>
         </transition>
       </div>
@@ -53,6 +71,8 @@ const menuRef = ref(null);
 const isMenuOpen = ref(false);
 
 const isHistoryPage = computed(() => route.name === "MyBookingHistory");
+const isEquipmentStatusPage = computed(() => route.name === "EquipmentStatus");
+const isEquipmentHistoryPage = computed(() => route.name === "EquipmentBorrowHistory");
 
 const closeMenu = () => {
   isMenuOpen.value = false;
@@ -68,6 +88,22 @@ const goToMyBookings = async () => {
   if (route.name === "MyBookingHistory") return;
 
   await router.push({ name: "MyBookingHistory" });
+};
+
+const goToEquipmentStatus = async () => {
+  closeMenu();
+
+  if (route.name === "EquipmentStatus") return;
+
+  await router.push({ name: "EquipmentStatus" });
+};
+
+const goToEquipmentHistory = async () => {
+  closeMenu();
+
+  if (route.name === "EquipmentBorrowHistory") return;
+
+  await router.push({ name: "EquipmentBorrowHistory" });
 };
 
 const handleDocumentClick = (event) => {
