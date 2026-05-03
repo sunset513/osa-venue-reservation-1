@@ -11,7 +11,7 @@
 
     <section class="history-toolbar">
       <div>
-        <span class="toolbar-label">總筆數</span>
+        <span class="toolbar-label">{{ activeFilterLabel }}</span>
         <strong>{{ borrowPage.totalCount }}</strong>
       </div>
       <label class="page-size-control">
@@ -22,6 +22,20 @@
           <option :value="50">50 筆</option>
         </select>
       </label>
+    </section>
+
+    <section v-if="hasActiveFilters" class="active-filter-bar">
+      <div class="filter-chips">
+        <span v-if="activeFilters.venueName" class="filter-chip">
+          場地：{{ activeFilters.venueName }}
+        </span>
+        <span v-if="activeFilters.equipmentName" class="filter-chip">
+          設備：{{ activeFilters.equipmentName }}
+        </span>
+      </div>
+      <button type="button" class="page-btn filter-clear-btn" @click="clearFilters">
+        全部記錄
+      </button>
     </section>
 
     <div v-if="loading" class="loading-state">載入設備借用記錄中...</div>
@@ -94,11 +108,14 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { fetchEquipmentBorrowHistory } from "@/api/equipment";
 import { normalizeEquipmentBorrowPage } from "@/utils/equipment";
 
+const route = useRoute();
 const router = useRouter();
+
+const FILTER_FETCH_PAGE_SIZE = 100;
 
 const loading = ref(true);
 const loadError = ref("");
@@ -107,6 +124,27 @@ const pageSize = ref(10);
 const borrowPage = ref(normalizeEquipmentBorrowPage());
 
 const displayTotalPages = computed(() => Math.max(borrowPage.value.totalPages, 1));
+
+const firstQueryValue = (value) => {
+  if (Array.isArray(value)) return value[0];
+  return value;
+};
+
+const toQueryNumber = (value) => {
+  const numberValue = Number(firstQueryValue(value));
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : undefined;
+};
+
+const activeFilters = computed(() => ({
+  equipmentId: toQueryNumber(route.query.equipmentId),
+  venueId: toQueryNumber(route.query.venueId),
+  equipmentName: firstQueryValue(route.query.equipmentName) || "",
+  venueName: firstQueryValue(route.query.venueName) || "",
+}));
+
+const hasActiveFilters = computed(() => Boolean(activeFilters.value.equipmentId || activeFilters.value.venueId));
+
+const activeFilterLabel = computed(() => (hasActiveFilters.value ? "篩選筆數" : "總筆數"));
 
 const formatDateLabel = (value) => {
   if (!value) return "未提供日期";
@@ -132,11 +170,70 @@ const recordKey = (record) => {
   ].join("-");
 };
 
+const recordMatchesFilters = (record) => {
+  const { equipmentId, venueId } = activeFilters.value;
+  const matchesEquipment = !equipmentId || Number(record.equipmentId) === equipmentId;
+  const matchesVenue = !venueId || Number(record.venueId) === venueId;
+
+  return matchesEquipment && matchesVenue;
+};
+
+const buildLocalPage = (records) => {
+  const totalCount = records.length;
+  const totalPages = Math.ceil(totalCount / pageSize.value);
+  const currentPage = Math.min(pageNum.value, Math.max(totalPages, 1));
+  const startIndex = (currentPage - 1) * pageSize.value;
+
+  pageNum.value = currentPage;
+
+  return {
+    totalCount,
+    totalPages,
+    currentPage,
+    pageSize: pageSize.value,
+    data: records.slice(startIndex, startIndex + pageSize.value),
+  };
+};
+
+const loadFilteredBorrowHistory = async () => {
+  const firstPage = normalizeEquipmentBorrowPage(
+    await fetchEquipmentBorrowHistory({
+      pageNum: 1,
+      pageSize: FILTER_FETCH_PAGE_SIZE,
+    }),
+  );
+
+  const remainingPageNumbers = Array.from(
+    { length: Math.max(firstPage.totalPages - 1, 0) },
+    (_, index) => index + 2,
+  );
+
+  const remainingPages = await Promise.all(
+    remainingPageNumbers.map((targetPage) =>
+      fetchEquipmentBorrowHistory({
+        pageNum: targetPage,
+        pageSize: FILTER_FETCH_PAGE_SIZE,
+      }).then(normalizeEquipmentBorrowPage),
+    ),
+  );
+
+  const records = [firstPage, ...remainingPages]
+    .flatMap((page) => page.data)
+    .filter(recordMatchesFilters);
+
+  borrowPage.value = buildLocalPage(records);
+};
+
 const loadBorrowHistory = async () => {
   loading.value = true;
   loadError.value = "";
 
   try {
+    if (hasActiveFilters.value) {
+      await loadFilteredBorrowHistory();
+      return;
+    }
+
     const result = await fetchEquipmentBorrowHistory({
       pageNum: pageNum.value,
       pageSize: pageSize.value,
@@ -150,6 +247,11 @@ const loadBorrowHistory = async () => {
   }
 };
 
+const clearFilters = async () => {
+  pageNum.value = 1;
+  await router.replace({ name: "EquipmentBorrowHistory" });
+};
+
 const goToPage = async (targetPage) => {
   pageNum.value = Math.min(Math.max(targetPage, 1), displayTotalPages.value);
   await loadBorrowHistory();
@@ -159,6 +261,14 @@ watch(pageSize, async () => {
   pageNum.value = 1;
   await loadBorrowHistory();
 });
+
+watch(
+  () => route.query,
+  async () => {
+    pageNum.value = 1;
+    await loadBorrowHistory();
+  },
+);
 
 onMounted(() => {
   loadBorrowHistory();
@@ -185,7 +295,8 @@ onMounted(() => {
 }
 
 .history-toolbar,
-.pagination-bar {
+.pagination-bar,
+.active-filter-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -207,6 +318,29 @@ onMounted(() => {
 .history-toolbar strong {
   color: var(--ink);
   font-size: var(--text-2xl);
+}
+
+.filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.filter-clear-btn {
+  white-space: nowrap;
 }
 
 .page-size-control {
@@ -309,7 +443,8 @@ onMounted(() => {
 
 @media (max-width: 720px) {
   .history-toolbar,
-  .pagination-bar {
+  .pagination-bar,
+  .active-filter-bar {
     align-items: stretch;
     flex-direction: column;
   }
