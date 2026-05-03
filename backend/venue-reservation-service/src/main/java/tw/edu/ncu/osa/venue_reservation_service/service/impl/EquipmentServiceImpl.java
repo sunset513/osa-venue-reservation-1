@@ -49,13 +49,13 @@ public class EquipmentServiceImpl implements EquipmentService {
         // 2. 計算當前時間與小時
         LocalDate today = LocalDate.now();
         int currentHour = LocalTime.now().getHour();
-        log.debug("【EquipmentService】[queryAllEquipmentsWithStatus] 當前日期={}, 小時={}", today, currentHour);
+        log.info("【EquipmentService】[queryAllEquipmentsWithStatus] 當前日期={}, 小時={}", today, currentHour);
 
         // 3. 為每個設備判定使用狀態
         for (EquipmentWithStatusVO equipment : equipmentList) {
             boolean isInUse = isEquipmentInUse(equipment.getEquipmentId(), today, currentHour);
             equipment.setIsInUse(isInUse);
-            log.debug("【EquipmentService】[queryAllEquipmentsWithStatus] 設備 ID={}, 名稱={}, 使用狀態={}",
+            log.info("【EquipmentService】[queryAllEquipmentsWithStatus] 設備 ID={}, 名稱={}, 使用狀態={}",
                     equipment.getEquipmentId(), equipment.getEquipmentName(), isInUse);
         }
 
@@ -291,7 +291,7 @@ public class EquipmentServiceImpl implements EquipmentService {
     private boolean isEquipmentInUse(Long equipmentId, LocalDate today, Integer currentHour) {
         int count = equipmentMapper.countEquipmentInUseAtTime(equipmentId, today, currentHour);
         boolean inUse = count > 0;
-        log.debug("【EquipmentService】[isEquipmentInUse] 設備ID={}, 日期={}, 小時={}, 查詢結果={}",
+        log.info("【EquipmentService】[isEquipmentInUse] 設備ID={}, 日期={}, 小時={}, 查詢結果={}",
                 equipmentId, today, currentHour, inUse ? "使用中" : "閒置");
         return inUse;
     }
