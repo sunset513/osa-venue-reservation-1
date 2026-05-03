@@ -1,6 +1,7 @@
 package tw.edu.ncu.osa.venue_reservation_service.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -16,7 +17,6 @@ import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizati
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
-import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.util.LinkedMultiValueMap;
@@ -32,15 +32,21 @@ import java.nio.charset.StandardCharsets;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, ClientRegistrationRepository clientRegistrationRepository) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider
+    ) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/test/**").authenticated()
                         .anyRequest().permitAll()
-                )
-                .oauth2Login(oauth2 -> oauth2
+                );
+
+        ClientRegistrationRepository clientRegistrationRepository = clientRegistrationRepositoryProvider.getIfAvailable();
+        if (clientRegistrationRepository != null) {
+            http.oauth2Login(oauth2 -> oauth2
                         // [關鍵修正 1] 強制自定義請求解析器以關閉 PKCE
                         .authorizationEndpoint(auth -> auth
                                 .authorizationRequestResolver(authorizationRequestResolver(clientRegistrationRepository))
@@ -48,6 +54,9 @@ public class SecurityConfig {
                         // [關鍵修正 2] 處理 Token 交換階段的 Header
                         .tokenEndpoint(token -> token.accessTokenResponseClient(accessTokenResponseClient()))
                 );
+        } else {
+            log.warn("OAuth2 client registration is not configured; OAuth2 login endpoints are disabled.");
+        }
 
         return http.build();
     }
