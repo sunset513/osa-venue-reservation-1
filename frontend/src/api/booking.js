@@ -23,6 +23,15 @@ export const fetchMyBookings = () => {
 };
 
 /**
+ * 2.2.1 多維度篩選查詢個人預約清單
+ * @param {Object} query - 查詢條件與分頁資訊
+ * @returns {Promise<Object>} 分頁後的個人預約申請清單
+ */
+export const queryMyBookings = (query) => {
+  return request.post("/bookings/query", query);
+};
+
+/**
  * 2.3 修改預約申請
  * @param {number|string} id - 預約案 ID
  * @param {Object} bookingData - 修改後的預約數據

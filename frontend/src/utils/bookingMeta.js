@@ -32,7 +32,7 @@ export const getBookingStatusMeta = (status) => {
     case 2:
       return { text: "已通過", className: "is-approved" };
     case 3:
-      return { text: "已拒絕", className: "is-rejected" };
+      return { text: "已被拒絕", className: "is-rejected" };
     default:
       return { text: "已撤回", className: "is-withdrawn" };
   }

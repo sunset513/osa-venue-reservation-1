@@ -48,7 +48,7 @@ describe("getBookingStatusMeta", () => {
 
   it("maps rejected status", () => {
     expect(getBookingStatusMeta(3)).toEqual({
-      text: "已拒絕",
+      text: "已被拒絕",
       className: "is-rejected",
     });
   });

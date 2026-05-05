@@ -97,44 +97,91 @@
 
       <footer class="modal-footer">
         <button
-          class="btn btn-secondary"
-          @click="closeModal"
+          v-if="mode === 'edit'"
+          class="btn btn-danger"
+          type="button"
+          @click="handleWithdraw"
           :disabled="isSubmitting"
         >
           <span class="btn-icon">
-            <X :size="16" />
+            <Undo2 :size="16" />
           </span>
-          <span>取消</span>
+          <span>撤回申請</span>
         </button>
-        <button
-          class="btn btn-primary"
-          @click="handleSubmit"
-          :disabled="isSubmitting"
-        >
-          <template v-if="!isSubmitting">
+
+        <div class="modal-footer-actions">
+          <button
+            class="btn btn-secondary"
+            type="button"
+            @click="closeModal"
+            :disabled="isSubmitting"
+          >
             <span class="btn-icon">
-              <Plus v-if="mode === 'create'" :size="16" />
-              <Save v-if="mode === 'edit'" :size="16" />
+              <X :size="16" />
             </span>
-          </template>
-          <span>
-            {{
-              isSubmitting
-                ? "送出中..."
-                : mode === "create"
-                  ? "送出申請"
-                  : "儲存修改"
-            }}
-          </span>
-        </button>
+            <span>取消</span>
+          </button>
+          <button
+            class="btn btn-primary"
+            type="button"
+            @click="handleSubmit"
+            :disabled="isSubmitting"
+          >
+            <template v-if="!isSubmitting">
+              <span class="btn-icon">
+                <Plus v-if="mode === 'create'" :size="16" />
+                <Save v-if="mode === 'edit'" :size="16" />
+              </span>
+            </template>
+            <span>
+              {{
+                isSubmitting
+                  ? "送出中..."
+                  : mode === "create"
+                    ? "送出申請"
+                    : "儲存修改"
+              }}
+            </span>
+          </button>
+        </div>
       </footer>
+
+      <div
+        v-if="isWithdrawConfirmVisible"
+        class="confirm-overlay"
+        @click.self="closeWithdrawConfirm"
+      >
+        <div class="confirm-dialog">
+          <h3>確認撤回申請？</h3>
+          <p>撤回後這筆預約會改成已撤回，目前頁面會先以前端狀態更新，尚未串接 API。</p>
+          <div class="confirm-actions">
+            <button
+              class="btn btn-secondary"
+              type="button"
+              @click="closeWithdrawConfirm"
+            >
+              取消
+            </button>
+            <button
+              class="btn btn-danger"
+              type="button"
+              @click="confirmWithdraw"
+            >
+              <span class="btn-icon">
+                <Undo2 :size="16" />
+              </span>
+              確認撤回
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, watch } from "vue";
-import { Plus, Save, X } from "lucide-vue-next";
+import { Plus, Save, Undo2, X } from "lucide-vue-next";
 import { createBooking, updateBooking } from "@/api/booking";
 import { useToast } from "@/utils/useToast.js";
 
@@ -147,9 +194,10 @@ const props = defineProps({
   venueInfo: Object,
 });
 
-const emit = defineEmits(["update:visible", "success"]);
+const emit = defineEmits(["update:visible", "success", "withdraw-booking"]);
 
 const isSubmitting = ref(false);
+const isWithdrawConfirmVisible = ref(false);
 const formErrors = reactive({ slots: false });
 
 const formData = reactive({
@@ -170,6 +218,8 @@ const formData = reactive({
 watch(
   () => props.visible,
   (newVal) => {
+    isWithdrawConfirmVisible.value = false;
+
     if (newVal && props.initialData) {
       Object.assign(formData, {
         venueId: props.venueInfo?.id,
@@ -197,7 +247,27 @@ const padZero = (num) => num.toString().padStart(2, "0");
 
 const closeModal = () => {
   if (isSubmitting.value) return;
+  if (isWithdrawConfirmVisible.value) {
+    isWithdrawConfirmVisible.value = false;
+    return;
+  }
   emit("update:visible", false);
+};
+
+const handleWithdraw = () => {
+  if (isSubmitting.value || props.mode !== "edit" || !props.initialData?.id) return;
+  isWithdrawConfirmVisible.value = true;
+};
+
+const closeWithdrawConfirm = () => {
+  if (isSubmitting.value) return;
+  isWithdrawConfirmVisible.value = false;
+};
+
+const confirmWithdraw = () => {
+  if (isSubmitting.value || props.mode !== "edit" || !props.initialData?.id) return;
+  isWithdrawConfirmVisible.value = false;
+  emit("withdraw-booking", props.initialData.id);
 };
 
 const handleSubmit = async () => {
@@ -252,6 +322,7 @@ const handleSubmit = async () => {
   padding: 1rem;
 }
 .modal-container {
+  position: relative;
   background: var(--card);
   width: 100%;
   max-width: 500px;
@@ -291,6 +362,12 @@ const handleSubmit = async () => {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--line);
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.modal-footer-actions {
+  display: flex;
   justify-content: flex-end;
   gap: 1rem;
 }
@@ -300,6 +377,54 @@ const handleSubmit = async () => {
   justify-content: center;
   width: 1rem;
   height: 1rem;
+}
+.btn-danger {
+  border-color: rgba(185, 28, 28, 0.18);
+  background: #fff5f5;
+  color: #b91c1c;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  color: #ffffff;
+}
+.confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.confirm-dialog {
+  width: min(100%, 360px);
+  background: #ffffff;
+  border: 1px solid rgba(var(--blue-900-rgb), 0.08);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+
+  h3 {
+    margin: 0 0 0.6rem;
+    color: var(--ink);
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted-strong);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
 }
 .form-group {
   margin-bottom: 1.25rem;
@@ -389,6 +514,19 @@ input[type="email"] {
   }
 
   .modal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .modal-footer-actions {
+    display: contents;
+  }
+
+  .confirm-overlay {
+    padding: 1rem;
+  }
+
+  .confirm-actions {
     flex-direction: column-reverse;
   }
 }

@@ -15,7 +15,7 @@
         class="select-card venue-card"
         @click="selectVenue(venue.id)"
       >
-        <h3>{{ venue.name }}</h3>
+        <h3>{{ normalizeVenueDisplayName(venue.name) }}</h3>
         <div class="venue-info">
           <span>👥 容納人數: {{ venue.capacity }}</span>
         </div>
@@ -30,6 +30,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { fetchVenuesByUnit } from "@/api/venue";
+import { normalizeVenueDisplayName } from "@/utils/venueLabels";
 
 const props = defineProps(["unitId"]);
 const router = useRouter();

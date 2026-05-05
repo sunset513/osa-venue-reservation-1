@@ -88,6 +88,7 @@
     :dayOfWeek="selectedDayOfWeek"
     :venueName="venueInfo?.name || ''"
     :bookings="selectedDayBookings"
+    :canCreate="!isSelectedDatePast"
     @close="closeDayModal"
     @create="openCreateModalFromDay"
     @edit-booking="openEditModal"
@@ -99,6 +100,7 @@
     :initialData="modalInitialData"
     :venueInfo="venueInfo"
     @success="handleModalSuccess"
+    @withdraw-booking="handleWithdrawBooking"
   />
 </template>
 
@@ -123,7 +125,7 @@ import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { computed, nextTick, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-const { error, warning } = useToast();
+const { error, success, warning } = useToast();
 
 const route = useRoute();
 const router = useRouter();
@@ -178,7 +180,7 @@ const selectedDayBookings = computed(() => {
   if (!selectedDate.value) return [];
 
   return monthlyBookings.value
-    .filter((booking) => booking.bookingDate === selectedDate.value && booking.status !== 0)
+    .filter((booking) => booking.bookingDate === selectedDate.value)
     .sort((a, b) => Math.min(...a.slots) - Math.min(...b.slots))
     .map((booking) => {
       const parsedContact = parseContactInfo(booking.contactInfo);
@@ -197,6 +199,21 @@ const selectedDayBookings = computed(() => {
       };
     });
 });
+
+const todayDateKey = computed(() => new Date().toLocaleDateString("sv-SE"));
+
+const isPastDate = (dateInput) => {
+  if (!dateInput) return false;
+
+  const dateKey =
+    typeof dateInput === "string"
+      ? dateInput.split("T")[0]
+      : new Date(dateInput).toLocaleDateString("sv-SE");
+
+  return dateKey < todayDateKey.value;
+};
+
+const isSelectedDatePast = computed(() => isPastDate(selectedDate.value));
 
 const renderEventContent = (arg) => {
   const purpose = arg.event.extendedProps.originalData?.purpose?.trim();
@@ -259,6 +276,11 @@ const closeDayModal = () => {
 };
 
 const openCreateModal = (dateStr) => {
+  if (isPastDate(dateStr)) {
+    warning("過去日期不可預約，請選擇今天之後的日期。");
+    return;
+  }
+
   modalMode.value = "create";
   modalInitialData.value = { dateStr };
   isModalVisible.value = true;
@@ -293,6 +315,59 @@ const openEditModal = (originalData) => {
   isModalVisible.value = true;
 };
 
+const rebuildEventsFromBookings = (bookings) => {
+  const rebuiltEvents = [];
+
+  bookings.forEach((booking) => {
+    if (booking.status !== 1 && booking.status !== 2) return;
+
+    const isMine = booking.status === 1;
+    const groups = groupContiguousSlots(booking.slots);
+
+    groups.forEach((group) => {
+      const timeRange = convertSlotsToTimeRange(booking.bookingDate, group);
+
+      if (!timeRange) return;
+
+      rebuiltEvents.push({
+        title: isMine ? "審核中" : "已佔用",
+        start: timeRange.start,
+        end: timeRange.end,
+        display: "block",
+        extendedProps: {
+          isMine,
+          originalData: booking,
+        },
+        ...getEventColorConfig(booking.status, isMine),
+      });
+    });
+  });
+
+  events.value = rebuiltEvents;
+};
+
+const handleWithdrawBooking = async (bookingId) => {
+  if (!bookingId) return;
+
+  const targetBooking = monthlyBookings.value.find((booking) => booking.id === bookingId);
+
+  if (!targetBooking) return;
+
+  if (targetBooking.status !== 1) {
+    warning("目前只有審核中的預約可以撤回。");
+    return;
+  }
+
+  monthlyBookings.value = monthlyBookings.value.map((booking) => {
+    if (booking.id !== bookingId) return booking;
+    return { ...booking, status: 0 };
+  });
+
+  isModalVisible.value = false;
+  rebuildEventsFromBookings(monthlyBookings.value);
+  success("已撤回預約申請，尚未串接 API。");
+};
+
 const renderDayCellContent = (arg) => {
   const count = getDailyEventCount(events.value, arg.date);
 
@@ -323,38 +398,11 @@ const loadEvents = async (view, targetVenueId = venueInfo.value?.id) => {
 
     if (requestToken !== eventsRequestToken) return;
 
-    const newEvents = [];
-
     if (apiData?.bookings) {
       monthlyBookings.value = apiData.bookings;
-
-      apiData.bookings.forEach((booking) => {
-        if (booking.status !== 1 && booking.status !== 2) return;
-
-        const isMine = booking.status === 1;
-        const groups = groupContiguousSlots(booking.slots);
-
-        groups.forEach((group) => {
-          const timeRange = convertSlotsToTimeRange(booking.bookingDate, group);
-
-          if (!timeRange) return;
-
-          newEvents.push({
-            title: isMine ? "審核中" : "已佔用",
-            start: timeRange.start,
-            end: timeRange.end,
-            display: "block",
-            extendedProps: {
-              isMine,
-              originalData: booking,
-            },
-            ...getEventColorConfig(booking.status, isMine),
-          });
-        });
-      });
     }
 
-    events.value = newEvents;
+    rebuildEventsFromBookings(monthlyBookings.value);
   } catch (loadError) {
     if (requestToken !== eventsRequestToken) return;
 
@@ -463,6 +511,7 @@ const calendarOptions = ref({
   dayCellContent: renderDayCellContent,
   eventContent: renderEventContent,
   moreLinkContent: (arg) => renderMoreLinkContent(arg, "個"),
+  moreLinkClick: () => {},
   eventTimeFormat: {
     hour: "2-digit",
     minute: "2-digit",
@@ -771,6 +820,18 @@ watch(
       &:hover {
         background-color: rgba(var(--blue-900-rgb), 0.03);
       }
+
+      &.fc-day-past {
+        background: linear-gradient(180deg, rgba(148, 163, 184, 0.2) 0%, rgba(148, 163, 184, 0.12) 100%);
+
+        .calendar-day-number {
+          color: var(--muted);
+        }
+
+        &:hover {
+          background: linear-gradient(180deg, rgba(148, 163, 184, 0.24) 0%, rgba(148, 163, 184, 0.16) 100%);
+        }
+      }
     }
 
     .fc-event {
@@ -795,12 +856,14 @@ watch(
       align-items: center;
       margin-top: 0.35rem;
       color: var(--ink);
+      cursor: default;
       font-size: 1.05rem;
       font-weight: 700;
       text-decoration: none;
+      pointer-events: none;
 
       &:hover {
-        color: var(--accent);
+        color: var(--ink);
         text-decoration: none;
       }
     }
@@ -808,26 +871,6 @@ watch(
     .calendar-more-link-text {
       display: inline-block;
       line-height: 1.2;
-    }
-
-    .fc-popover,
-    .fc-more-popover {
-      z-index: 20 !important;
-      isolation: isolate;
-      overflow: hidden;
-      background: #ffffff;
-    }
-
-    .fc-popover-header,
-    .fc-popover-body {
-      position: relative;
-      z-index: 1;
-      background: #ffffff;
-    }
-
-    .fc-popover .calendar-day-count,
-    .fc-more-popover .calendar-day-count {
-      display: none;
     }
 
     .fc-daygrid-day-top {

@@ -2,7 +2,10 @@ import { createRouter, createWebHistory } from "vue-router";
 import UnitSelector from "@/views/UnitSelector.vue";
 import VenueSelector from "@/views/VenueSelector.vue";
 import VenueCalendar from "@/views/VenueCalendar.vue";
+import MyBookingHistory from "@/views/MyBookingHistory.vue";
 import ReviewCalendar from "@/views/ReviewCalendar.vue";
+import EquipmentStatus from "@/views/EquipmentStatus.vue";
+import EquipmentBorrowHistory from "@/views/EquipmentBorrowHistory.vue";
 import { validateRouteAccess } from "./guards";
 
 const routes = [
@@ -30,6 +33,21 @@ const routes = [
       validateVenue: true,
       redirectOnInvalid: "/",
     },
+  },
+  {
+    path: "/my-bookings",
+    name: "MyBookingHistory",
+    component: MyBookingHistory,
+  },
+  {
+    path: "/equipment-status",
+    name: "EquipmentStatus",
+    component: EquipmentStatus,
+  },
+  {
+    path: "/equipment-history",
+    name: "EquipmentBorrowHistory",
+    component: EquipmentBorrowHistory,
   },
   {
     path: "/review",

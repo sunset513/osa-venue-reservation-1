@@ -213,6 +213,7 @@ const calendarOptions = ref({
   dayCellContent: renderDayCellContent,
   eventContent: renderEventContent,
   moreLinkContent: (arg) => renderMoreLinkContent(arg, "筆"),
+  moreLinkClick: () => {},
   events,
   datesSet: async (arg) => {
     if (!selectedVenueId.value) return;
@@ -600,34 +601,16 @@ onMounted(async () => {
       align-items: center;
       margin-top: 0.35rem;
       color: var(--ink);
+      cursor: default;
       font-size: 1rem;
       font-weight: 700;
       text-decoration: none;
+      pointer-events: none;
 
       &:hover {
-        color: var(--accent);
+        color: var(--ink);
         text-decoration: none;
       }
-    }
-
-    .fc-popover,
-    .fc-more-popover {
-      z-index: 20 !important;
-      isolation: isolate;
-      overflow: hidden;
-      background: #ffffff;
-    }
-
-    .fc-popover-header,
-    .fc-popover-body {
-      position: relative;
-      z-index: 1;
-      background: #ffffff;
-    }
-
-    .fc-popover .calendar-day-count,
-    .fc-more-popover .calendar-day-count {
-      display: none;
     }
 
     .fc-daygrid-day-top {
