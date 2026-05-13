@@ -6,6 +6,7 @@ import MyBookingHistory from "@/views/MyBookingHistory.vue";
 import ReviewCalendar from "@/views/ReviewCalendar.vue";
 import EquipmentStatus from "@/views/EquipmentStatus.vue";
 import EquipmentBorrowHistory from "@/views/EquipmentBorrowHistory.vue";
+import ConsentAgreement from "@/views/ConsentAgreement.vue";
 import { validateRouteAccess } from "./guards";
 
 const routes = [
@@ -53,6 +54,14 @@ const routes = [
     path: "/review",
     name: "ReviewCalendar",
     component: ReviewCalendar,
+  },
+  {
+    path: "/consent-agreement",
+    name: "ConsentAgreement",
+    component: ConsentAgreement,
+    meta: {
+      skipConsentGate: true,
+    },
   },
 ];
 
