@@ -56,9 +56,120 @@
                 </select>
               </div>
 
+              <div ref="dateRangePickerRef" class="date-range-picker">
+                <button
+                  type="button"
+                  class="date-range-trigger"
+                  :class="{ 'is-open': datePickerOpen }"
+                  :aria-expanded="datePickerOpen"
+                  aria-controls="booking-date-range-calendar"
+                  @click="toggleDatePicker"
+                >
+                  <span class="date-range-segment" :class="{ 'has-value': startDateFilter }">
+                    <span class="date-range-label">借用日期起</span>
+                    <strong>{{ formatDatePickerLabel(startDateFilter) }}</strong>
+                  </span>
+                  <span class="date-range-segment" :class="{ 'has-value': endDateFilter }">
+                    <span class="date-range-label">借用日期迄</span>
+                    <strong>{{ formatDatePickerLabel(endDateFilter) }}</strong>
+                  </span>
+                  <ChevronDown :size="20" class="date-range-chevron" aria-hidden="true" />
+                </button>
+
+                <button
+                  v-if="startDateFilter || endDateFilter"
+                  type="button"
+                  class="date-range-clear"
+                  aria-label="清除借用日期篩選"
+                  title="清除借用日期篩選"
+                  @click.stop="clearDateRange"
+                >
+                  清除
+                </button>
+
+                <Teleport to="body">
+                  <div
+                    v-if="datePickerOpen"
+                    id="booking-date-range-calendar"
+                    ref="dateRangePopoverRef"
+                    class="date-range-popover"
+                  >
+                    <div class="calendar-toolbar">
+                      <button
+                        type="button"
+                        class="calendar-nav-btn"
+                        aria-label="上一個月"
+                        title="上一個月"
+                        @click="shiftCalendarMonths(-1)"
+                      >
+                        <ChevronLeft :size="22" aria-hidden="true" />
+                      </button>
+                      <p>{{ calendarRangeTitle }}</p>
+                      <button
+                        type="button"
+                        class="calendar-nav-btn"
+                        aria-label="下一個月"
+                        title="下一個月"
+                        @click="shiftCalendarMonths(1)"
+                      >
+                        <ChevronRight :size="22" aria-hidden="true" />
+                      </button>
+                    </div>
+
+                    <div class="calendar-months" @mouseleave="clearHoveredCalendarDate">
+                      <section
+                        v-for="month in calendarMonths"
+                        :key="month.key"
+                        class="calendar-month"
+                      >
+                        <h3>{{ month.label }}</h3>
+                        <div class="calendar-weekdays" aria-hidden="true">
+                          <span
+                            v-for="weekday in WEEKDAY_LABELS"
+                            :key="weekday"
+                          >
+                            {{ weekday }}
+                          </span>
+                        </div>
+                        <div class="calendar-grid">
+                          <template
+                            v-for="day in month.days"
+                            :key="day.key"
+                          >
+                            <span
+                              v-if="day.isBlank"
+                              class="calendar-day-placeholder"
+                              aria-hidden="true"
+                            />
+                            <button
+                              v-else
+                              type="button"
+                              class="calendar-day"
+                              :class="{
+                                'is-start': isRangeStart(day.dateString),
+                                'is-end': isRangeEnd(day.dateString),
+                                'is-between': isDateInRange(day.dateString),
+                                'is-preview': isDateInPreviewRange(day.dateString),
+                                'is-preview-end': isPreviewEnd(day.dateString),
+                                'is-today': day.isToday,
+                              }"
+                              @mouseenter="setHoveredCalendarDate(day.dateString)"
+                              @focus="setHoveredCalendarDate(day.dateString)"
+                              @click="selectCalendarDate(day.dateString)"
+                            >
+                              {{ day.dayNumber }}
+                            </button>
+                          </template>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </Teleport>
+              </div>
+
               <div class="filter-summary">
                 <span class="summary-label">篩選結果</span>
-                <strong>{{ nonTabFilteredHistoryItems.length }} 筆</strong>
+                <strong>{{ nonStatusFilteredHistoryItems.length }} 筆</strong>
                 <button
                   v-if="hasActiveFilters"
                   type="button"
@@ -140,7 +251,7 @@
 
           <div v-else class="history-list">
             <article
-              v-for="booking in filteredHistoryItems"
+              v-for="booking in paginatedHistoryItems"
               :key="booking.id"
               class="history-card card"
             >
@@ -240,6 +351,49 @@
               </div>
             </article>
           </div>
+
+          <nav
+            v-if="paginationTotalPages > 1"
+            class="pagination-bar"
+            aria-label="預約紀錄分頁"
+          >
+            <p class="pagination-summary">
+              第 {{ paginationStartIndex }} - {{ paginationEndIndex }} 筆，共 {{ filteredHistoryItems.length }} 筆
+            </p>
+            <div class="pagination-controls">
+              <button
+                type="button"
+                class="pagination-btn"
+                :disabled="!canGoPreviousPage"
+                aria-label="上一頁"
+                title="上一頁"
+                @click="goToPreviousPage"
+              >
+                <ChevronLeft :size="17" aria-hidden="true" />
+              </button>
+              <button
+                v-for="pageNo in visiblePageNumbers"
+                :key="pageNo"
+                type="button"
+                class="pagination-page"
+                :class="{ 'is-active': currentPage === pageNo }"
+                :aria-current="currentPage === pageNo ? 'page' : undefined"
+                @click="setCurrentPage(pageNo)"
+              >
+                {{ pageNo }}
+              </button>
+              <button
+                type="button"
+                class="pagination-btn"
+                :disabled="!canGoNextPage"
+                aria-label="下一頁"
+                title="下一頁"
+                @click="goToNextPage"
+              >
+                <ChevronRight :size="17" aria-hidden="true" />
+              </button>
+            </div>
+          </nav>
         </section>
       </section>
     </template>
@@ -247,11 +401,21 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
-import { Ban, CheckCircle2, ChevronDown, ChevronUp, Clock3, RotateCcw } from "lucide-vue-next";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+  Ban,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Clock3,
+  RotateCcw,
+} from "lucide-vue-next";
 import { useRouter } from "vue-router";
-import { fetchMyBookings } from "@/api/booking";
+import { queryMyBookings } from "@/api/booking";
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
+import { buildBookingQueryPayload, normalizeBookingPage } from "@/utils/bookingQuery";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
 import {
   BACK_TO_UNIT_SELECTOR_LABEL,
@@ -267,6 +431,18 @@ const expandedBookingId = ref(null);
 const keywordFilter = ref("");
 const venueFilter = ref("");
 const statusFilter = ref("");
+const startDateFilter = ref("");
+const endDateFilter = ref("");
+const currentPage = ref(1);
+const datePickerOpen = ref(false);
+const dateRangePickerRef = ref(null);
+const dateRangePopoverRef = ref(null);
+const visibleMonthDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+const hoveredCalendarDate = ref("");
+
+const BOOKING_PAGE_SIZE = 10;
+const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
+const DISPLAYED_MONTH_COUNT = 2;
 
 const statusTabs = [
   { value: "", label: "全部", icon: null },
@@ -349,6 +525,203 @@ const formatDateTimeLabel = (value) => {
   }).format(date);
 };
 
+const padDatePart = (value) => String(value).padStart(2, "0");
+
+const toDateString = (date) => {
+  return [
+    date.getFullYear(),
+    padDatePart(date.getMonth() + 1),
+    padDatePart(date.getDate()),
+  ].join("-");
+};
+
+const parseDateString = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null;
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year
+    || date.getMonth() !== month - 1
+    || date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+};
+
+const addMonths = (date, monthOffset) => {
+  return new Date(date.getFullYear(), date.getMonth() + monthOffset, 1);
+};
+
+const formatMonthLabel = (date) => {
+  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月`;
+};
+
+const formatDatePickerLabel = (value) => {
+  const date = parseDateString(value);
+
+  if (!date) return "選擇日期";
+
+  const dateLabel = new Intl.DateTimeFormat("zh-TW", {
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+  const weekdayLabel = WEEKDAY_LABELS[date.getDay()];
+
+  return `${dateLabel}（${weekdayLabel}）`;
+};
+
+const buildCalendarMonth = (monthDate) => {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayString = toDateString(new Date());
+  const days = [];
+
+  for (let index = 0; index < firstDay.getDay(); index += 1) {
+    days.push({
+      key: `${year}-${month}-blank-${index}`,
+      isBlank: true,
+    });
+  }
+
+  for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber += 1) {
+    const dateString = toDateString(new Date(year, month, dayNumber));
+    days.push({
+      key: dateString,
+      isBlank: false,
+      dateString,
+      dayNumber,
+      isToday: dateString === todayString,
+    });
+  }
+
+  return {
+    key: `${year}-${month}`,
+    label: formatMonthLabel(monthDate),
+    days,
+  };
+};
+
+const calendarMonths = computed(() => {
+  return Array.from({ length: DISPLAYED_MONTH_COUNT }, (_, index) =>
+    buildCalendarMonth(addMonths(visibleMonthDate.value, index)),
+  );
+});
+
+const calendarRangeTitle = computed(() => {
+  const firstMonth = visibleMonthDate.value;
+  const lastMonth = addMonths(firstMonth, DISPLAYED_MONTH_COUNT - 1);
+
+  if (firstMonth.getFullYear() === lastMonth.getFullYear()) {
+    return `${firstMonth.getFullYear()} 年 ${firstMonth.getMonth() + 1} - ${lastMonth.getMonth() + 1} 月`;
+  }
+
+  return `${formatMonthLabel(firstMonth)} - ${formatMonthLabel(lastMonth)}`;
+});
+
+const isRangeStart = (dateString) => dateString === startDateFilter.value;
+const isRangeEnd = (dateString) => dateString === endDateFilter.value;
+
+const isSelectingRangeEnd = computed(() => {
+  return startDateFilter.value !== "" && endDateFilter.value === "";
+});
+
+const isDateInRange = (dateString) => {
+  return (
+    startDateFilter.value !== ""
+    && endDateFilter.value !== ""
+    && dateString > startDateFilter.value
+    && dateString < endDateFilter.value
+  );
+};
+
+const setHoveredCalendarDate = (dateString) => {
+  hoveredCalendarDate.value = isSelectingRangeEnd.value ? dateString : "";
+};
+
+const clearHoveredCalendarDate = () => {
+  hoveredCalendarDate.value = "";
+};
+
+const isDateInPreviewRange = (dateString) => {
+  return (
+    isSelectingRangeEnd.value
+    && hoveredCalendarDate.value > startDateFilter.value
+    && dateString > startDateFilter.value
+    && dateString < hoveredCalendarDate.value
+  );
+};
+
+const isPreviewEnd = (dateString) => {
+  return (
+    isSelectingRangeEnd.value
+    && hoveredCalendarDate.value > startDateFilter.value
+    && dateString === hoveredCalendarDate.value
+  );
+};
+
+const openDatePicker = () => {
+  const selectedDate = parseDateString(startDateFilter.value || endDateFilter.value);
+  visibleMonthDate.value = selectedDate
+    ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
+    : visibleMonthDate.value;
+  datePickerOpen.value = true;
+};
+
+const toggleDatePicker = () => {
+  if (datePickerOpen.value) {
+    clearHoveredCalendarDate();
+    datePickerOpen.value = false;
+    return;
+  }
+
+  openDatePicker();
+};
+
+const shiftCalendarMonths = (monthOffset) => {
+  visibleMonthDate.value = addMonths(visibleMonthDate.value, monthOffset);
+};
+
+const selectCalendarDate = (dateString) => {
+  if (
+    startDateFilter.value === ""
+    || endDateFilter.value !== ""
+    || dateString < startDateFilter.value
+  ) {
+    startDateFilter.value = dateString;
+    endDateFilter.value = "";
+    clearHoveredCalendarDate();
+    return;
+  }
+
+  endDateFilter.value = dateString;
+  clearHoveredCalendarDate();
+  datePickerOpen.value = false;
+};
+
+const clearDateRange = () => {
+  startDateFilter.value = "";
+  endDateFilter.value = "";
+  clearHoveredCalendarDate();
+};
+
+const handleDocumentClick = (event) => {
+  if (!datePickerOpen.value || !dateRangePickerRef.value) return;
+
+  const clickedTrigger = dateRangePickerRef.value.contains(event.target);
+  const clickedPopover = dateRangePopoverRef.value?.contains(event.target);
+
+  if (!clickedTrigger && !clickedPopover) {
+    clearHoveredCalendarDate();
+    datePickerOpen.value = false;
+  }
+};
+
 const historyItems = computed(() => {
   return [...bookings.value]
     .sort((left, right) => {
@@ -400,8 +773,20 @@ const nonTabFilteredHistoryItems = computed(() => {
   });
 });
 
-const filteredHistoryItems = computed(() => {
+const nonStatusFilteredHistoryItems = computed(() => {
   return nonTabFilteredHistoryItems.value.filter((booking) => {
+    const bookingDate = booking.bookingDate || "";
+    const matchesStartDate =
+      startDateFilter.value === "" || bookingDate >= startDateFilter.value;
+    const matchesEndDate =
+      endDateFilter.value === "" || bookingDate <= endDateFilter.value;
+
+    return matchesStartDate && matchesEndDate;
+  });
+});
+
+const filteredHistoryItems = computed(() => {
+  return nonStatusFilteredHistoryItems.value.filter((booking) => {
     return (
       statusFilter.value === ""
       || String(booking.status) === statusFilter.value
@@ -409,15 +794,56 @@ const filteredHistoryItems = computed(() => {
   });
 });
 
+const paginationTotalPages = computed(() => {
+  return Math.ceil(filteredHistoryItems.value.length / BOOKING_PAGE_SIZE);
+});
+
+const paginatedHistoryItems = computed(() => {
+  const startIndex = (currentPage.value - 1) * BOOKING_PAGE_SIZE;
+  return filteredHistoryItems.value.slice(startIndex, startIndex + BOOKING_PAGE_SIZE);
+});
+
+const paginationStartIndex = computed(() => {
+  if (filteredHistoryItems.value.length === 0) return 0;
+  return (currentPage.value - 1) * BOOKING_PAGE_SIZE + 1;
+});
+
+const paginationEndIndex = computed(() => {
+  return Math.min(currentPage.value * BOOKING_PAGE_SIZE, filteredHistoryItems.value.length);
+});
+
+const canGoPreviousPage = computed(() => currentPage.value > 1);
+const canGoNextPage = computed(() => currentPage.value < paginationTotalPages.value);
+
+const visiblePageNumbers = computed(() => {
+  const totalPages = paginationTotalPages.value;
+  const maxVisiblePages = 5;
+  const visibleCount = Math.min(totalPages, maxVisiblePages);
+  let startPage = currentPage.value - Math.floor(visibleCount / 2);
+
+  if (startPage < 1) {
+    startPage = 1;
+  }
+
+  if (startPage + visibleCount - 1 > totalPages) {
+    startPage = totalPages - visibleCount + 1;
+  }
+
+  return Array.from({ length: visibleCount }, (_, index) => startPage + index);
+});
+
 const hasActiveFilters = computed(() => {
   return (
     keywordFilter.value.trim() !== ""
     || venueFilter.value !== ""
+    || startDateFilter.value !== ""
+    || endDateFilter.value !== ""
+    || statusFilter.value !== ""
   );
 });
 
 const statusCounts = computed(() => {
-  return keywordFilteredHistoryItems.value.reduce(
+  return nonStatusFilteredHistoryItems.value.reduce(
     (counts, booking) => {
       if (booking.status === 1) {
         counts.pending += 1;
@@ -445,9 +871,45 @@ const toggleExpanded = (bookingId) => {
     expandedBookingId.value === bookingId ? null : bookingId;
 };
 
+const setCurrentPage = (pageNo) => {
+  currentPage.value = Math.min(
+    Math.max(pageNo, 1),
+    Math.max(paginationTotalPages.value, 1),
+  );
+  expandedBookingId.value = null;
+};
+
+const goToPreviousPage = () => {
+  setCurrentPage(currentPage.value - 1);
+};
+
+const goToNextPage = () => {
+  setCurrentPage(currentPage.value + 1);
+};
+
 const clearFilters = () => {
   keywordFilter.value = "";
   venueFilter.value = "";
+  statusFilter.value = "";
+  clearDateRange();
+  datePickerOpen.value = false;
+};
+
+const fetchAllBookings = async () => {
+  const pageSize = 100;
+  const firstPage = normalizeBookingPage(
+    await queryMyBookings(buildBookingQueryPayload({ pageNo: 1, pageSize })),
+  );
+  const allBookings = [...firstPage.items];
+
+  for (let pageNo = 2; pageNo <= firstPage.totalPages; pageNo += 1) {
+    const nextPage = normalizeBookingPage(
+      await queryMyBookings(buildBookingQueryPayload({ pageNo, pageSize })),
+    );
+    allBookings.push(...nextPage.items);
+  }
+
+  return allBookings;
 };
 
 const loadBookings = async () => {
@@ -455,7 +917,7 @@ const loadBookings = async () => {
   loadError.value = "";
 
   try {
-    bookings.value = await fetchMyBookings();
+    bookings.value = await fetchAllBookings();
   } catch (error) {
     console.error("載入個人預約清單失敗:", error);
     loadError.value = error.message || "請稍後再試一次。";
@@ -465,7 +927,16 @@ const loadBookings = async () => {
 };
 
 onMounted(async () => {
+  document.addEventListener("click", handleDocumentClick);
   await loadBookings();
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleDocumentClick);
+});
+
+watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter], () => {
+  setCurrentPage(1);
 });
 </script>
 
@@ -639,6 +1110,242 @@ onMounted(async () => {
   }
 }
 
+.date-range-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.date-range-trigger {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: stretch;
+  width: 100%;
+  min-height: 4.35rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover,
+  &.is-open {
+    border-color: rgba(var(--blue-900-rgb), 0.28);
+    box-shadow: 0 10px 24px rgba(39, 94, 168, 0.08);
+  }
+}
+
+.date-range-segment {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+
+  & + & {
+    border-left: 1px solid rgba(var(--blue-900-rgb), 0.1);
+  }
+
+  strong {
+    margin-top: 0.3rem;
+    color: var(--muted-strong);
+    font-size: var(--text-base);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.has-value strong {
+    color: var(--ink);
+  }
+}
+
+.date-range-label {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+.date-range-chevron {
+  align-self: center;
+  margin-right: 0.85rem;
+  color: var(--accent);
+  pointer-events: none;
+}
+
+.date-range-clear {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+  }
+}
+
+.date-range-popover {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 80;
+  width: min(720px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 1.2rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(var(--blue-900-rgb), 0.12);
+  border-radius: var(--radius);
+  background: #ffffff;
+  box-shadow: 0 22px 55px rgba(20, 35, 58, 0.16);
+  transform: translate(-50%, -50%);
+}
+
+.calendar-toolbar {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr 2.4rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  p {
+    margin: 0;
+    color: var(--ink);
+    font-size: var(--text-lg);
+    font-weight: 900;
+    text-align: center;
+  }
+}
+
+.calendar-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+
+  &:hover {
+    background: rgba(var(--blue-900-rgb), 0.06);
+    color: var(--accent);
+  }
+}
+
+.calendar-months {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.calendar-month {
+  min-width: 0;
+
+  h3 {
+    margin: 0 0 0.9rem;
+    color: var(--ink);
+    font-size: var(--text-lg);
+    font-weight: 900;
+    text-align: center;
+  }
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.calendar-weekdays {
+  margin-bottom: 0.4rem;
+
+  span {
+    color: var(--accent);
+    font-size: var(--text-xs);
+    font-weight: 800;
+    text-align: center;
+  }
+}
+
+.calendar-day-placeholder,
+.calendar-day {
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.calendar-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.7rem;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    background: rgba(var(--blue-900-rgb), 0.08);
+    color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  &.is-today {
+    box-shadow: inset 0 0 0 1px rgba(var(--blue-900-rgb), 0.22);
+  }
+
+  &.is-between {
+    border-radius: 0.35rem;
+    background: rgba(70, 99, 242, 0.12);
+    color: var(--accent);
+  }
+
+  &.is-preview {
+    border-radius: 0.35rem;
+    background: rgba(70, 99, 242, 0.1);
+    color: var(--accent);
+  }
+
+  &.is-preview-end {
+    background: rgba(70, 99, 242, 0.2);
+    color: var(--accent);
+    box-shadow: inset 0 -3px 0 rgba(70, 99, 242, 0.28);
+  }
+
+  &.is-start,
+  &.is-end {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: 0 10px 20px rgba(70, 99, 242, 0.22);
+  }
+}
+
 .filter-summary {
   display: flex;
   flex-direction: column;
@@ -730,6 +1437,74 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(var(--blue-900-rgb), 0.08);
+}
+
+.pagination-summary {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.pagination-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pagination-btn,
+.pagination-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid rgba(var(--blue-900-rgb), 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink);
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover:not(:disabled):not(.is-active) {
+    border-color: rgba(var(--blue-900-rgb), 0.22);
+    background: rgba(var(--blue-900-rgb), 0.06);
+    color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    color: var(--muted);
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+}
+
+.pagination-page {
+  padding: 0 0.75rem;
+  font-size: var(--text-sm);
+
+  &.is-active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #ffffff;
+    cursor: default;
+  }
 }
 
 .history-card {
@@ -975,6 +1750,15 @@ onMounted(async () => {
   .detail-toggle {
     width: 100%;
   }
+
+  .pagination-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .date-range-popover {
+    width: min(100%, calc(100vw - 2rem));
+  }
 }
 
 @media (max-width: 640px) {
@@ -1022,6 +1806,42 @@ onMounted(async () => {
     padding: 1rem;
   }
 
+  .date-range-trigger {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .date-range-chevron {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    margin-right: 0.65rem;
+    transform: translateY(-50%);
+  }
+
+  .date-range-segment {
+    padding-right: 1.8rem;
+  }
+
+  .date-range-popover {
+    top: calc(var(--header-height) + 18px + max(0.75rem, env(safe-area-inset-top)));
+    bottom: 0.75rem;
+    left: 50%;
+    width: calc(100vw - 1rem);
+    max-height: calc(100dvh - var(--header-height) - 18px - 1.5rem);
+    padding: 1rem;
+    transform: translateX(-50%);
+  }
+
+  .calendar-months {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-toolbar {
+    p {
+      font-size: var(--text-base);
+    }
+  }
+
   .history-records {
     padding: 1rem;
   }
@@ -1036,6 +1856,18 @@ onMounted(async () => {
 
   .time-focus-header {
     align-items: flex-start;
+  }
+
+  .pagination-controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.35rem;
+  }
+
+  .pagination-btn,
+  .pagination-page {
+    min-width: 2rem;
+    height: 2rem;
   }
 }
 </style>
