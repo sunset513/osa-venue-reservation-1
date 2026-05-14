@@ -147,6 +147,8 @@ const modalInitialData = ref({});
 const selectedDate = ref("");
 const selectedDayOfWeek = ref("");
 const suppressDatesSetLoad = ref(false);
+const routeCreateModalActive = ref(false);
+const handledCreateQueryKey = ref("");
 
 let venueSyncToken = 0;
 let eventsRequestToken = 0;
@@ -211,6 +213,32 @@ const isPastDate = (dateInput) => {
       : new Date(dateInput).toLocaleDateString("sv-SE");
 
   return dateKey < todayDateKey.value;
+};
+
+const getStringQueryValue = (value) => {
+  return Array.isArray(value) ? value[0] : value;
+};
+
+const getCreateQueryDate = () => {
+  const queryDate = getStringQueryValue(route.query.date);
+
+  if (typeof queryDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(queryDate)) {
+    return queryDate;
+  }
+
+  return todayDateKey.value;
+};
+
+const clearCreateQuery = async () => {
+  if (route.query.create === undefined && route.query.date === undefined) return;
+
+  const { create, date, ...remainingQuery } = route.query;
+
+  await router.replace({
+    name: "VenueCalendar",
+    params: route.params,
+    query: remainingQuery,
+  });
 };
 
 const isSelectedDatePast = computed(() => isPastDate(selectedDate.value));
@@ -289,6 +317,31 @@ const openCreateModal = (dateStr) => {
 const openCreateModalFromDay = () => {
   closeDayModal();
   openCreateModal(selectedDate.value);
+};
+
+const handleCreateQuery = () => {
+  const queryCreate = getStringQueryValue(route.query.create);
+
+  if (queryCreate !== "1") {
+    handledCreateQueryKey.value = "";
+    return;
+  }
+
+  if (!venueInfo.value?.id || loading.value) return;
+
+  const queryDate = getCreateQueryDate();
+  const queryKey = `${venueInfo.value.id}:${queryDate}`;
+
+  if (handledCreateQueryKey.value === queryKey) return;
+
+  handledCreateQueryKey.value = queryKey;
+  routeCreateModalActive.value = true;
+  openCreateModal(queryDate);
+
+  if (!isModalVisible.value) {
+    routeCreateModalActive.value = false;
+    void clearCreateQuery();
+  }
 };
 
 const openEditModal = (originalData) => {
@@ -549,6 +602,21 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => [route.query.create, route.query.date, venueInfo.value?.id, loading.value],
+  () => {
+    handleCreateQuery();
+  },
+  { immediate: true },
+);
+
+watch(isModalVisible, (visible) => {
+  if (visible || !routeCreateModalActive.value) return;
+
+  routeCreateModalActive.value = false;
+  void clearCreateQuery();
+});
 </script>
 
 <style lang="scss" scoped>
