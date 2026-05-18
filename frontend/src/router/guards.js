@@ -1,4 +1,5 @@
 import { fetchAllUnits, fetchVenueDetail } from "@/api/venue";
+import { hasAcceptedConsent } from "@/utils/consentGate";
 import { warning } from "@/utils/useToast";
 
 let cachedUnitIds = null;
@@ -41,6 +42,14 @@ const notifyInvalidRoute = (message) => {
 };
 
 export const validateRouteAccess = async (to) => {
+  if (!to.meta.skipConsentGate && !hasAcceptedConsent()) {
+    return {
+      name: "ConsentAgreement",
+      query: { redirect: to.fullPath },
+      replace: true,
+    };
+  }
+
   if (to.meta.validateUnit) {
     const unitId = String(to.params.unitId ?? "");
 

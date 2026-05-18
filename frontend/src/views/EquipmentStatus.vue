@@ -22,20 +22,32 @@
     <div v-else class="equipment-content">
       <section class="summary-grid" aria-label="設備總覽">
         <article class="summary-card">
-          <span>總設備數</span>
-          <strong>{{ equipmentSummary.total }}</strong>
+          <div>
+            <span>總設備數</span>
+            <strong>{{ equipmentSummary.total }}</strong>
+          </div>
+          <PackageCheck :size="26" aria-hidden="true" class="summary-icon" />
         </article>
         <article class="summary-card">
-          <span>使用中</span>
-          <strong>{{ equipmentSummary.inUse }}</strong>
+          <div>
+            <span>使用中</span>
+            <strong>{{ equipmentSummary.inUse }}</strong>
+          </div>
+          <Activity :size="26" aria-hidden="true" class="summary-icon" />
         </article>
         <article class="summary-card">
-          <span>閒置</span>
-          <strong>{{ equipmentSummary.idle }}</strong>
+          <div>
+            <span>閒置</span>
+            <strong>{{ equipmentSummary.idle }}</strong>
+          </div>
+          <CircleOff :size="26" aria-hidden="true" class="summary-icon" />
         </article>
         <article class="summary-card">
-          <span>場地數</span>
-          <strong>{{ equipmentSummary.venues }}</strong>
+          <div>
+            <span>場地數</span>
+            <strong>{{ equipmentSummary.venues }}</strong>
+          </div>
+          <Building2 :size="26" aria-hidden="true" class="summary-icon" />
         </article>
       </section>
 
@@ -139,41 +151,45 @@
                       </button>
                     </template>
                     <template v-else>
-                      <RouterLink
-                        class="history-url-link"
-                        :to="borrowHistoryRoute(equipment)"
-                        title="前往此設備的借用紀錄"
-                      >
-                        <History :size="14" aria-hidden="true" />
-                        <span>查看借用紀錄</span>
-                      </RouterLink>
-                      <div class="more-menu-wrap">
-                        <button
-                          type="button"
-                          class="icon-action"
-                          :aria-expanded="openActionMenuKey === getEquipmentActionKey(group, equipment)"
-                          aria-label="更多操作"
-                          @click="toggleActionMenu(group, equipment)"
+                      <div class="history-action-slot">
+                        <RouterLink
+                          class="history-url-link"
+                          :to="borrowHistoryRoute(equipment)"
+                          title="前往此設備的借用紀錄"
                         >
-                          <MoreHorizontal :size="18" aria-hidden="true" />
-                        </button>
-                        <div
-                          v-if="openActionMenuKey === getEquipmentActionKey(group, equipment)"
-                          class="more-menu"
-                        >
-                          <button type="button" class="menu-item" @click="startEdit(equipment)">
-                            <Pencil :size="15" aria-hidden="true" />
-                            編輯
-                          </button>
+                          <History :size="14" aria-hidden="true" />
+                          <span>查看借用紀錄</span>
+                        </RouterLink>
+                      </div>
+                      <div class="more-action-slot">
+                        <div class="more-menu-wrap">
                           <button
                             type="button"
-                            class="menu-item is-danger"
-                            :disabled="savingId === equipment.equipmentId"
-                            @click="requestDeleteEquipment(equipment)"
+                            class="icon-action"
+                            :aria-expanded="openActionMenuKey === getEquipmentActionKey(group, equipment)"
+                            aria-label="更多操作"
+                            @click="toggleActionMenu(group, equipment)"
                           >
-                            <Trash2 :size="15" aria-hidden="true" />
-                            刪除
+                            <MoreHorizontal :size="18" aria-hidden="true" />
                           </button>
+                          <div
+                            v-if="openActionMenuKey === getEquipmentActionKey(group, equipment)"
+                            class="more-menu"
+                          >
+                            <button type="button" class="menu-item" @click="startEdit(equipment)">
+                              <Pencil :size="15" aria-hidden="true" />
+                              編輯
+                            </button>
+                            <button
+                              type="button"
+                              class="menu-item is-danger"
+                              :disabled="savingId === equipment.equipmentId"
+                              @click="requestDeleteEquipment(equipment)"
+                            >
+                              <Trash2 :size="15" aria-hidden="true" />
+                              刪除
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </template>
@@ -238,41 +254,45 @@
                 </button>
               </template>
               <template v-else>
-                <RouterLink
-                  class="history-url-link"
-                  :to="borrowHistoryRoute(equipment)"
-                  title="前往此設備的借用紀錄"
-                >
-                  <History :size="14" aria-hidden="true" />
-                  <span>查看借用紀錄</span>
-                </RouterLink>
-                <div class="more-menu-wrap">
-                  <button
-                    type="button"
-                    class="icon-action"
-                    :aria-expanded="openActionMenuKey === getEquipmentActionKey(group, equipment)"
-                    aria-label="更多操作"
-                    @click="toggleActionMenu(group, equipment)"
+                <div class="history-action-slot">
+                  <RouterLink
+                    class="history-url-link"
+                    :to="borrowHistoryRoute(equipment)"
+                    title="前往此設備的借用紀錄"
                   >
-                    <MoreHorizontal :size="18" aria-hidden="true" />
-                  </button>
-                  <div
-                    v-if="openActionMenuKey === getEquipmentActionKey(group, equipment)"
-                    class="more-menu"
-                  >
-                    <button type="button" class="menu-item" @click="startEdit(equipment)">
-                      <Pencil :size="15" aria-hidden="true" />
-                      編輯
-                    </button>
+                    <History :size="14" aria-hidden="true" />
+                    <span>查看借用紀錄</span>
+                  </RouterLink>
+                </div>
+                <div class="more-action-slot">
+                  <div class="more-menu-wrap">
                     <button
                       type="button"
-                      class="menu-item is-danger"
-                      :disabled="savingId === equipment.equipmentId"
-                      @click="requestDeleteEquipment(equipment)"
+                      class="icon-action"
+                      :aria-expanded="openActionMenuKey === getEquipmentActionKey(group, equipment)"
+                      aria-label="更多操作"
+                      @click="toggleActionMenu(group, equipment)"
                     >
-                      <Trash2 :size="15" aria-hidden="true" />
-                      刪除
+                      <MoreHorizontal :size="18" aria-hidden="true" />
                     </button>
+                    <div
+                      v-if="openActionMenuKey === getEquipmentActionKey(group, equipment)"
+                      class="more-menu"
+                    >
+                      <button type="button" class="menu-item" @click="startEdit(equipment)">
+                        <Pencil :size="15" aria-hidden="true" />
+                        編輯
+                      </button>
+                      <button
+                        type="button"
+                        class="menu-item is-danger"
+                        :disabled="savingId === equipment.equipmentId"
+                        @click="requestDeleteEquipment(equipment)"
+                      >
+                        <Trash2 :size="15" aria-hidden="true" />
+                        刪除
+                      </button>
+                    </div>
                   </div>
                 </div>
               </template>
@@ -375,7 +395,18 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { ChevronDown, History, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-vue-next";
+import {
+  Activity,
+  Building2,
+  ChevronDown,
+  CircleOff,
+  History,
+  MoreHorizontal,
+  PackageCheck,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import {
   createEquipment,
@@ -710,14 +741,20 @@ onMounted(() => {
 .summary-card {
   display: flex;
   min-height: 6rem;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.35rem;
   padding: 1rem 1.1rem;
   border: 1px solid rgba(var(--blue-900-rgb), 0.1);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow-soft);
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
 
   span {
     color: var(--muted);
@@ -730,6 +767,12 @@ onMounted(() => {
     font-size: var(--text-2xl);
     line-height: 1;
   }
+}
+
+.summary-icon {
+  flex: 0 0 auto;
+  color: var(--accent);
+  opacity: 0.82;
 }
 
 .equipment-sections {
@@ -893,6 +936,12 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+.equipment-table .action-group {
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .history-url-link {
   display: inline-flex;
   align-items: center;
@@ -915,6 +964,18 @@ onMounted(() => {
   &:hover {
     color: var(--ink);
   }
+}
+
+.history-action-slot,
+.more-action-slot {
+  display: inline-flex;
+  align-items: center;
+}
+
+.more-action-slot {
+  margin-left: auto;
+  padding-left: 1rem;
+  border-left: 1px solid var(--line);
 }
 
 .delete-modal-overlay {
@@ -1030,10 +1091,6 @@ onMounted(() => {
 .more-menu-wrap {
   position: relative;
   display: inline-flex;
-}
-
-.history-url-link + .more-menu-wrap {
-  margin-left: 0.45rem;
 }
 
 .icon-action {
@@ -1162,7 +1219,7 @@ onMounted(() => {
   text-align: center;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 820px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1238,13 +1295,18 @@ onMounted(() => {
       flex: 1 1 5rem;
     }
 
+    .history-action-slot {
+      flex: 1 1 calc(100% - 4rem);
+      min-width: 0;
+    }
+
     .history-url-link {
-      flex: 1 1 calc(100% - 3rem);
       max-width: 100%;
     }
 
-    .more-menu-wrap {
+    .more-action-slot {
       margin-left: auto;
+      padding-left: 0.8rem;
     }
   }
 

@@ -15,15 +15,15 @@
       <div v-if="loading" class="loading-panel">載入申請資訊中...</div>
 
       <div v-else-if="booking" class="modal-body">
-        <section class="summary-grid">
-          <article class="summary-card status-card">
-            <span class="summary-label">目前狀態</span>
-            <span class="status-pill" :class="statusMeta.className">
-              {{ statusMeta.text }}
-            </span>
-            <span class="summary-subtle">申請編號 #{{ booking.id }}</span>
-          </article>
+        <section class="status-strip" aria-label="目前申請狀態">
+          <span class="status-strip-label">目前狀態</span>
+          <span class="status-pill" :class="statusMeta.className">
+            {{ statusMeta.text }}
+          </span>
+          <span class="status-strip-id">申請編號 #{{ booking.id }}</span>
+        </section>
 
+        <section class="summary-grid">
           <article class="summary-card">
             <span class="summary-label">使用日期</span>
             <strong>{{ formatDateDisplay(booking.bookingDate) }}</strong>
@@ -33,7 +33,7 @@
           <article class="summary-card">
             <span class="summary-label">場地</span>
             <strong>{{ booking.venueName || "未提供" }}</strong>
-            <span class="summary-subtle">申請時間 {{ formatDateTime(booking.createdAt) }}</span>
+            <span class="summary-subtle">送件時間 {{ formatDateTime(booking.createdAt) }}</span>
           </article>
         </section>
 
@@ -44,7 +44,7 @@
           </article>
 
           <article class="detail-card">
-            <span class="detail-label">申請時段</span>
+            <span class="detail-label">使用時段</span>
             <p>{{ formatSlotGroupsAsTimeRange(booking.slots) || "未提供" }}</p>
           </article>
 
@@ -54,7 +54,7 @@
           </article>
 
           <article class="detail-card">
-            <span class="detail-label">聯絡人</span>
+            <span class="detail-label">申請人</span>
             <p>{{ contactInfo.name || "未提供" }}</p>
             <p class="detail-subtle">{{ contactInfo.phone || "未提供電話" }}</p>
             <p class="detail-subtle">{{ contactInfo.email || "未提供信箱" }}</p>
@@ -197,21 +197,23 @@ const emitAction = (action) => {
   z-index: 1200;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: rgba(15, 23, 42, 0.45);
+  justify-content: flex-end;
+  padding: 0;
+  background: rgba(15, 23, 42, 0.38);
 }
 
 .modal-container {
-  width: min(100%, 960px);
-  max-height: min(92vh, 920px);
+  width: min(100%, 540px);
+  height: 100vh;
+  max-height: 100vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border: 1px solid rgba(var(--blue-900-rgb), 0.1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  border-left: 1px solid #d7dde5;
+  border-radius: 18px 0 0 18px;
+  box-shadow: -16px 0 32px rgba(15, 23, 42, 0.14);
+  animation: drawerEnter 0.2s ease-out;
 }
 
 .modal-header,
@@ -224,7 +226,8 @@ const emitAction = (action) => {
 }
 
 .modal-header {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid #d7dde5;
+  background: #f7f8fa;
 }
 
 .modal-title-group {
@@ -239,20 +242,20 @@ const emitAction = (action) => {
 }
 
 .eyebrow {
-  color: var(--muted);
+  color: #5f6b7a;
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .modal-title-icon {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 16px;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f4d37b 0%, #efd28a 100%);
-  color: #684b00;
+  background: #202936;
+  color: #ffffff;
   font-size: 1.15rem;
   font-weight: 800;
 }
@@ -268,6 +271,7 @@ const emitAction = (action) => {
 }
 
 .loading-panel {
+  flex: 1;
   min-height: 320px;
   display: flex;
   align-items: center;
@@ -279,10 +283,9 @@ const emitAction = (action) => {
 
 .modal-body {
   padding: 1.75rem;
+  flex: 1;
   overflow-y: auto;
-  background:
-    radial-gradient(circle at top right, rgba(244, 211, 123, 0.22), transparent 30%),
-    #fbfcfe;
+  background: #f5f6f8;
 }
 
 .summary-grid,
@@ -292,28 +295,45 @@ const emitAction = (action) => {
 }
 
 .summary-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   margin-bottom: 1rem;
 }
 
 .detail-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .summary-card,
 .detail-card {
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 12px;
   background: #ffffff;
   padding: 1.1rem 1.2rem;
 }
 
-.status-card {
-  background: linear-gradient(180deg, #fff9e8 0%, #ffffff 100%);
+.detail-card-wide {
+  grid-column: auto;
 }
 
-.detail-card-wide {
-  grid-column: span 2;
+.status-strip {
+  margin-bottom: 1rem;
+  padding: 0 0 1rem;
+  border-bottom: 1px solid #d7dde5;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.status-strip-label,
+.status-strip-id {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.status-strip-id {
+  justify-self: end;
 }
 
 .summary-card,
@@ -377,8 +397,9 @@ const emitAction = (action) => {
 }
 
 .modal-footer {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid #d7dde5;
   justify-content: flex-end;
+  flex-wrap: wrap;
   background: #ffffff;
 }
 
@@ -408,7 +429,13 @@ const emitAction = (action) => {
 
 @media (max-width: 768px) {
   .modal-overlay {
-    padding: 0.5rem;
+    align-items: stretch;
+  }
+
+  .modal-container {
+    width: 100%;
+    border-left: 0;
+    border-radius: 0;
   }
 
   .modal-header,
@@ -427,12 +454,33 @@ const emitAction = (action) => {
     grid-column: span 1;
   }
 
+  .status-strip {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .status-strip-id {
+    justify-self: start;
+  }
+
   .modal-footer {
     flex-direction: column-reverse;
   }
 
   .btn {
     width: 100%;
+  }
+}
+
+@keyframes drawerEnter {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 </style>

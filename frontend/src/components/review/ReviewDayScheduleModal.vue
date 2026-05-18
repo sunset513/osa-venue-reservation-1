@@ -45,6 +45,12 @@
       </div>
 
       <footer class="modal-footer">
+        <button class="btn btn-primary" type="button" @click="emit('create-booking')">
+          <span class="btn-icon-plain">
+            <ArrowRight :size="18" aria-hidden="true" />
+          </span>
+          <span>前往預約此日</span>
+        </button>
         <button class="btn btn-secondary" type="button" @click="closeModal">
           <span class="btn-icon">×</span>
           <span>關閉</span>
@@ -56,6 +62,7 @@
 
 <script setup>
 import { computed } from "vue";
+import { ArrowRight } from "lucide-vue-next";
 
 const props = defineProps({
   visible: Boolean,
@@ -73,7 +80,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["close", "open-detail"]);
+const emit = defineEmits(["close", "open-detail", "create-booking"]);
 
 const formattedTitle = computed(() => {
   if (!props.selectedDate) return "申請活動詳情";
@@ -326,6 +333,14 @@ const closeModal = () => {
   font-size: 0.9rem;
   line-height: 1;
   font-weight: 700;
+}
+
+.btn-icon-plain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 @media (max-width: 768px) {
