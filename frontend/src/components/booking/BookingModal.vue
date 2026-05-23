@@ -8,6 +8,8 @@
 
       <div class="modal-body">
         <form @submit.prevent="handleSubmit" class="booking-form">
+          <div class="booking-form-layout">
+            <section class="booking-form-panel booking-form-panel-times">
           <div class="form-group">
             <label>預約日期</label>
             <input
@@ -20,21 +22,39 @@
 
           <div class="form-group">
             <label>選擇時段 (可複選) <span class="required">*</span></label>
-            <div class="slots-grid">
-              <label v-for="hour in 24" :key="hour" class="slot-checkbox">
+            <div class="slots-grid" role="group">
+              <label
+                v-for="slot in slotOptions"
+                :key="slot.value"
+                class="slot-checkbox"
+                :class="{ 'is-selected': formData.slots.includes(slot.value) }"
+                role="checkbox"
+                tabindex="0"
+                :aria-checked="formData.slots.includes(slot.value)"
+                @click.prevent="handleSlotClick(slot.value)"
+                @keydown.enter.prevent="handleSlotClick(slot.value)"
+                @keydown.space.prevent="handleSlotClick(slot.value)"
+              >
                 <input
+                  class="slot-input"
                   type="checkbox"
-                  :value="hour - 1"
-                  v-model="formData.slots"
+                  :value="slot.value"
+                  :checked="formData.slots.includes(slot.value)"
+                  tabindex="-1"
+                  aria-hidden="true"
                 />
-                <span>{{ padZero(hour - 1) }}:00 - {{ padZero(hour) }}:00</span>
+                <span class="slot-index">{{ slot.label }}</span>
+                <span class="slot-time">{{ slot.timeRange }}</span>
               </label>
             </div>
             <small class="error-text" v-if="formErrors.slots"
               >請至少選擇一個時段</small
             >
           </div>
+            </section>
 
+            <section class="booking-form-panel booking-form-panel-details">
+          <div class="form-section-title">借用說明</div>
           <div class="form-row">
             <div class="form-group">
               <label>使用用途 <span class="required">*</span></label>
@@ -76,7 +96,7 @@
             class="form-group"
             v-if="venueInfo && venueInfo.equipments?.length > 0"
           >
-            <label>需借用設備</label>
+            <div class="form-section-title">需借用設備</div>
             <div class="equipments-flex">
               <label
                 v-for="eq in venueInfo.equipments"
@@ -91,6 +111,8 @@
                 {{ eq.name }}
               </label>
             </div>
+          </div>
+            </section>
           </div>
         </form>
       </div>
@@ -198,6 +220,7 @@ const emit = defineEmits(["update:visible", "success", "withdraw-booking"]);
 
 const isSubmitting = ref(false);
 const isWithdrawConfirmVisible = ref(false);
+const slotRangeAnchor = ref(null);
 const formErrors = reactive({ slots: false });
 
 const formData = reactive({
@@ -221,10 +244,13 @@ watch(
     isWithdrawConfirmVisible.value = false;
 
     if (newVal && props.initialData) {
+      const initialSlots = props.initialData.slots ? [...props.initialData.slots] : [];
+      const sortedInitialSlots = [...new Set(initialSlots)].sort((a, b) => a - b);
+
       Object.assign(formData, {
         venueId: props.venueInfo?.id,
         bookingDate: props.initialData.dateStr || "",
-        slots: props.initialData.slots ? [...props.initialData.slots] : [],
+        slots: sortedInitialSlots,
         purpose: props.initialData.purpose || "",
         participantCount: props.initialData.participantCount || 1,
         contactInfo: props.initialData.contactInfo?.name
@@ -238,12 +264,53 @@ watch(
           ? [...props.initialData.equipmentIds]
           : [], // ✨ 設備 ID 回顯
       });
+      slotRangeAnchor.value = sortedInitialSlots[0] ?? null;
       formErrors.slots = false;
     }
   },
 );
 
 const padZero = (num) => num.toString().padStart(2, "0");
+
+const slotOptions = Array.from({ length: 24 }, (_, index) => ({
+  value: index,
+  label: String(index),
+  timeRange: `${padZero(index)}:00 - ${padZero(index + 1)}:00`,
+}));
+
+const buildSlotRange = (start, end) => {
+  const minSlot = Math.min(start, end);
+  const maxSlot = Math.max(start, end);
+  return Array.from({ length: maxSlot - minSlot + 1 }, (_, index) => minSlot + index);
+};
+
+const handleSlotClick = (slot) => {
+  const selectedSlots = [...new Set(formData.slots)].sort((a, b) => a - b);
+
+  if (selectedSlots.length === 0) {
+    slotRangeAnchor.value = slot;
+    formData.slots = [slot];
+    formErrors.slots = false;
+    return;
+  }
+
+  const currentStart = selectedSlots[0];
+  const currentEnd = selectedSlots[selectedSlots.length - 1];
+
+  if (slot < currentStart) {
+    slotRangeAnchor.value = currentEnd;
+    formData.slots = buildSlotRange(slot, currentEnd);
+  } else if (slot > currentEnd) {
+    slotRangeAnchor.value = currentStart;
+    formData.slots = buildSlotRange(currentStart, slot);
+  } else {
+    const anchor = slotRangeAnchor.value ?? currentStart;
+    formData.slots = buildSlotRange(anchor, slot);
+    slotRangeAnchor.value = anchor;
+  }
+
+  formErrors.slots = false;
+};
 
 const closeModal = () => {
   if (isSubmitting.value) return;
@@ -325,7 +392,7 @@ const handleSubmit = async () => {
   position: relative;
   background: var(--card);
   width: 100%;
-  max-width: 500px;
+  max-width: 1040px;
   border-radius: var(--radius-lg);
   border: 1px solid rgba(var(--blue-900-rgb), 0.08);
   box-shadow: var(--shadow);
@@ -354,7 +421,7 @@ const handleSubmit = async () => {
   }
 }
 .modal-body {
-  padding: 1.5rem;
+  padding: 1.5rem 1.75rem;
   overflow-y: auto;
   background: #fbfcfe;
 }
@@ -426,6 +493,23 @@ const handleSubmit = async () => {
   gap: 0.75rem;
   margin-top: 1rem;
 }
+
+.booking-form-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr);
+  gap: 1.75rem;
+  align-items: start;
+}
+
+.booking-form-panel {
+  min-width: 0;
+}
+
+.booking-form-panel-details {
+  padding-left: 1.75rem;
+  border-left: 1px solid var(--line);
+}
+
 .form-group {
   margin-bottom: 1.25rem;
 }
@@ -473,17 +557,107 @@ input[type="email"] {
   cursor: not-allowed;
 }
 .slots-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-  max-height: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  max-height: min(58vh, 540px);
   overflow-y: auto;
-  padding: 0.5rem;
+  padding: 0.42rem;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: #ffffff;
+  border-radius: 8px;
+  background: #f3f7fb;
 }
-.slot-checkbox,
+
+.slot-checkbox {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(2.55rem, 0.28fr) minmax(0, 1fr);
+  align-items: center;
+  min-height: 2.55rem;
+  padding: 0 0.7rem;
+  margin: 0;
+  border: 1px solid rgba(var(--blue-900-rgb), 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+  transform 0.2s ease;
+}
+
+.slot-checkbox::before {
+  content: "";
+  position: absolute;
+  top: 0.4rem;
+  bottom: 0.4rem;
+  left: 0.35rem;
+  width: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    width 0.2s ease;
+}
+
+.slot-checkbox:hover,
+.slot-checkbox:focus-within {
+  border-color: rgba(var(--blue-900-rgb), 0.42);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(var(--blue-900-rgb), 0.12);
+  transform: translateY(-1px);
+}
+
+.slot-checkbox.is-selected {
+  border-color: rgba(var(--blue-900-rgb), 0.36);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  box-shadow: 0 6px 16px rgba(var(--blue-900-rgb), 0.1);
+}
+
+.slot-checkbox.is-selected::before {
+  width: 4px;
+  opacity: 1;
+}
+
+.slot-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slot-index,
+.slot-time {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.slot-index {
+  text-align: center;
+  color: var(--accent);
+  font-size: clamp(0.9rem, 1.05vw, 1.1rem);
+}
+
+.slot-time {
+  text-align: center;
+  font-size: clamp(0.9rem, 1.05vw, 1.1rem);
+}
+
+.slot-checkbox.is-selected .slot-index,
+.slot-checkbox.is-selected .slot-time {
+  color: var(--accent-hover);
+}
+
 .eq-checkbox {
   display: flex;
   align-items: center;
@@ -503,9 +677,36 @@ input[type="email"] {
   margin-top: 0.25rem;
   display: block;
 }
+
+@media (max-width: 900px) {
+  .modal-container {
+    max-width: min(100%, 680px);
+  }
+
+  .booking-form-layout {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .booking-form-panel-details {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-top: 1.25rem;
+  }
+
+  .slots-grid {
+    max-height: 42vh;
+  }
+}
+
 @media (max-width: 640px) {
   .modal-overlay {
     padding: 0.5rem;
+  }
+
+  .modal-body {
+    padding: 1rem;
   }
 
   .form-row {
@@ -528,6 +729,26 @@ input[type="email"] {
 
   .confirm-actions {
     flex-direction: column-reverse;
+  }
+
+  .slots-grid {
+    gap: 0.28rem;
+    max-height: 40vh;
+    padding: 0.35rem;
+  }
+
+  .slot-checkbox {
+    grid-template-columns: minmax(2rem, 0.25fr) minmax(0, 1fr);
+    min-height: 2.35rem;
+    padding: 0 0.55rem;
+  }
+
+  .slot-index {
+    font-size: 0.88rem;
+  }
+
+  .slot-time {
+    font-size: 0.88rem;
   }
 }
 </style>

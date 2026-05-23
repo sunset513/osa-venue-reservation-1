@@ -432,6 +432,39 @@ const renderDayCellContent = (arg) => {
   };
 };
 
+const getVisibleMonthQueries = (view) => {
+  const activeStart = view.activeStart || view.currentStart;
+  const activeEnd = view.activeEnd || view.currentEnd;
+
+  if (!activeStart || !activeEnd) {
+    const currentStart = view.currentStart;
+    const startObj = new Date(currentStart);
+    startObj.setDate(startObj.getDate() + 15);
+
+    return [{
+      year: startObj.getFullYear(),
+      month: startObj.getMonth() + 1,
+    }];
+  }
+
+  const endInclusive = new Date(activeEnd);
+  endInclusive.setDate(endInclusive.getDate() - 1);
+
+  const cursor = new Date(activeStart.getFullYear(), activeStart.getMonth(), 1);
+  const endMonth = new Date(endInclusive.getFullYear(), endInclusive.getMonth(), 1);
+  const monthQueries = [];
+
+  while (cursor <= endMonth) {
+    monthQueries.push({
+      year: cursor.getFullYear(),
+      month: cursor.getMonth() + 1,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return monthQueries;
+};
+
 const loadEvents = async (view, targetVenueId = venueInfo.value?.id) => {
   if (!view || !targetVenueId) return;
 
@@ -441,19 +474,14 @@ const loadEvents = async (view, targetVenueId = venueInfo.value?.id) => {
   monthlyBookings.value = [];
 
   try {
-    const currentStart = view.currentStart;
-    const startObj = new Date(currentStart);
-    startObj.setDate(startObj.getDate() + 15);
-    const year = startObj.getFullYear();
-    const month = startObj.getMonth() + 1;
-
-    const apiData = await fetchCalendarMonth(targetVenueId, year, month);
+    const monthQueries = getVisibleMonthQueries(view);
+    const monthResponses = await Promise.all(
+      monthQueries.map(({ year, month }) => fetchCalendarMonth(targetVenueId, year, month)),
+    );
 
     if (requestToken !== eventsRequestToken) return;
 
-    if (apiData?.bookings) {
-      monthlyBookings.value = apiData.bookings;
-    }
+    monthlyBookings.value = monthResponses.flatMap((apiData) => apiData?.bookings || []);
 
     rebuildEventsFromBookings(monthlyBookings.value);
   } catch (loadError) {
