@@ -14,11 +14,11 @@
       <button
         class="btn btn-secondary route-booking-btn"
         type="button"
-        :disabled="!selectedVenueId"
+        :disabled="!canNavigateToVenueBooking"
         @click="navigateToVenueBooking()"
       >
         <ArrowRight :size="17" aria-hidden="true" />
-        <span>前往一般預約流程</span>
+        <span>{{ bookingRouteLabel }}</span>
       </button>
     </header>
 
@@ -28,7 +28,8 @@
       <aside class="control-panel card">
         <section class="panel-section">
           <label for="review-venue">審核場地</label>
-          <select id="review-venue" v-model.number="selectedVenueId" @change="handleFilterChange">
+          <select id="review-venue" v-model="selectedVenueId" @change="handleFilterChange">
+            <option :value="ALL_VENUES_VALUE">全部場地</option>
             <option v-for="venue in venues" :key="venue.id" :value="venue.id">
               {{ venue.name }}
             </option>
@@ -102,7 +103,28 @@
           </div>
         </div>
 
-        <div v-show="activeViewMode === 'calendar'" class="calendar-shell" :class="{ 'is-loading': isFetchingEvents }">
+        <div
+          v-show="activeViewMode === 'calendar'"
+          class="calendar-shell"
+          :class="{ 'is-loading': isFetchingEvents }"
+          @keydown.esc="closeMonthPicker"
+        >
+          <div v-if="isMonthPickerOpen" class="month-picker-popover" role="dialog" aria-label="選擇月份">
+            <label for="review-month-picker">選擇月份</label>
+            <input
+              id="review-month-picker"
+              ref="monthPickerRef"
+              v-model="monthPickerValue"
+              type="month"
+              @keyup.enter="goToSelectedMonth"
+            />
+            <button class="month-picker-action is-primary" type="button" @click="goToSelectedMonth">
+              套用
+            </button>
+            <button class="month-picker-action" type="button" @click="closeMonthPicker">
+              取消
+            </button>
+          </div>
           <FullCalendar ref="calendarRef" :options="calendarOptions" />
         </div>
 
@@ -126,6 +148,7 @@
                 </div>
                 <div class="case-meta">
                   <span>申請編號 #{{ booking.id }}</span>
+                  <span>{{ booking.venueName }}</span>
                   <span>{{ booking.contactName }}</span>
                   <span>{{ booking.participantCount }} 人</span>
                 </div>
@@ -147,6 +170,7 @@
     :selectedDate="selectedDate"
     :dayOfWeek="selectedDayOfWeek"
     :bookings="selectedDayBookings"
+    :can-create-booking="canNavigateToVenueBooking"
     @close="closeDayModal"
     @open-detail="openBookingDetail"
     @create-booking="navigateToVenueBooking(selectedDate)"
@@ -164,7 +188,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -202,6 +226,8 @@ import { useToast } from "@/utils/useToast";
 
 const { success, error } = useToast();
 const router = useRouter();
+const ALL_VENUES_VALUE = "all";
+const REVIEW_UNIT_ID = "1";
 
 const calendarRef = ref(null);
 const venues = ref([]);
@@ -210,6 +236,9 @@ const selectedStatus = ref("");
 const pageLoading = ref(true);
 const isFetchingEvents = ref(false);
 const activeViewMode = ref("calendar");
+const isMonthPickerOpen = ref(false);
+const monthPickerValue = ref("");
+const monthPickerRef = ref(null);
 const events = ref([]);
 const monthlyBookings = ref([]);
 const allMonthlyBookings = ref([]);
@@ -223,9 +252,111 @@ const detailProcessing = ref(false);
 const selectedBookingId = ref(null);
 const selectedBookingDetail = ref(null);
 
-const selectedVenueName = computed(() => {
-  return venues.value.find((venue) => venue.id === selectedVenueId.value)?.name || "未選擇場地";
+const isAllVenuesSelected = computed(() => selectedVenueId.value === ALL_VENUES_VALUE);
+const canNavigateToVenueBooking = computed(() => {
+  if (isAllVenuesSelected.value) return venues.value.length > 0;
+
+  return Boolean(selectedVenueId.value);
 });
+
+const selectedVenueName = computed(() => {
+  if (isAllVenuesSelected.value) return "全部場地";
+
+  return (
+    venues.value.find((venue) => String(venue.id) === String(selectedVenueId.value))?.name ||
+    "未選擇場地"
+  );
+});
+
+const bookingRouteLabel = computed(() => {
+  if (isAllVenuesSelected.value) return "前往場地選擇頁";
+
+  return `前往「${selectedVenueName.value}」預約`;
+});
+
+let calendarTitleElement = null;
+
+const formatMonthPickerValue = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`;
+};
+
+const getCalendarMonthPickerValue = () => {
+  const currentStart = calendarRef.value?.getApi()?.view?.currentStart;
+
+  return formatMonthPickerValue(currentStart ? new Date(currentStart) : new Date());
+};
+
+const closeMonthPicker = () => {
+  isMonthPickerOpen.value = false;
+};
+
+const handleMonthPickerOutsideClick = (event) => {
+  if (!isMonthPickerOpen.value) return;
+
+  const target = event.target;
+  const pickerElement = monthPickerRef.value?.closest(".month-picker-popover");
+
+  if (pickerElement?.contains(target) || calendarTitleElement?.contains(target)) return;
+
+  closeMonthPicker();
+};
+
+const openMonthPicker = async () => {
+  monthPickerValue.value = getCalendarMonthPickerValue();
+  isMonthPickerOpen.value = true;
+
+  await nextTick();
+  monthPickerRef.value?.focus();
+};
+
+const goToSelectedMonth = () => {
+  if (!monthPickerValue.value) return;
+
+  const targetDate = new Date(`${monthPickerValue.value}-01T00:00:00`);
+
+  if (Number.isNaN(targetDate.getTime())) return;
+
+  closeTransientUi();
+  calendarRef.value?.getApi()?.gotoDate(targetDate);
+  closeMonthPicker();
+};
+
+const clearCalendarTitleInteraction = () => {
+  if (!calendarTitleElement) return;
+
+  calendarTitleElement.onclick = null;
+  calendarTitleElement.onkeydown = null;
+  calendarTitleElement = null;
+};
+
+const enhanceCalendarTitleInteraction = async () => {
+  await nextTick();
+
+  const titleElement = calendarRef.value?.$el?.querySelector(".fc-toolbar-title");
+
+  if (!titleElement || titleElement === calendarTitleElement) return;
+
+  clearCalendarTitleInteraction();
+
+  titleElement.setAttribute("role", "button");
+  titleElement.setAttribute("tabindex", "0");
+  titleElement.setAttribute("title", "選擇月份");
+  titleElement.classList.add("is-month-picker-trigger");
+  titleElement.onclick = openMonthPicker;
+  titleElement.onkeydown = (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    void openMonthPicker();
+  };
+
+  calendarTitleElement = titleElement;
+};
 
 const selectedStatusLabel = computed(() => {
   return selectedStatus.value === ""
@@ -252,7 +383,7 @@ const statusFilterOptions = computed(() => [
   {
     key: "all",
     label: "全部申請",
-    helper: "目前月份所有申請",
+    helper: "目前畫面所有申請",
     value: statusCounts.value.all,
     className: "is-all",
     icon: ClipboardList,
@@ -326,6 +457,7 @@ const reviewListBookings = computed(() => {
       return {
         id: booking.id,
         bookingDate: booking.bookingDate,
+        venueName: booking.venueName || selectedVenueName.value || "未提供場地",
         purpose: booking.purpose || "",
         contactName: parsedContact.name || "申請人",
         participantCount: booking.pCount || 0,
@@ -409,20 +541,31 @@ const calendarOptions = ref({
 const refreshCalendarLayout = async () => {
   await nextTick();
   calendarRef.value?.getApi()?.updateSize();
+  await enhanceCalendarTitleInteraction();
 };
 
-const getMonthRangeFromView = (view) => {
-  const anchor = new Date(view.currentStart);
-  anchor.setDate(anchor.getDate() + 15);
+const getVisibleDateRangeFromView = (view) => {
+  const startDate = view.activeStart || view.currentStart;
+  const endDate = view.activeEnd || view.currentEnd;
 
-  const year = anchor.getFullYear();
-  const month = anchor.getMonth();
-  const startDate = new Date(year, month, 1);
-  const endDate = new Date(year, month + 1, 0);
+  if (!startDate || !endDate) {
+    const fallbackStart = new Date(view.currentStart);
+    const fallbackEnd = new Date(fallbackStart);
+    fallbackEnd.setMonth(fallbackEnd.getMonth() + 1);
+    fallbackEnd.setDate(fallbackEnd.getDate() - 1);
+
+    return {
+      startDate: formatDateKey(fallbackStart),
+      endDate: formatDateKey(fallbackEnd),
+    };
+  }
+
+  const endInclusive = new Date(endDate);
+  endInclusive.setDate(endInclusive.getDate() - 1);
 
   return {
     startDate: formatDateKey(startDate),
-    endDate: formatDateKey(endDate),
+    endDate: formatDateKey(endInclusive),
   };
 };
 
@@ -432,6 +575,10 @@ const mapBookingsToEvents = (bookings) => {
   bookings.forEach((booking) => {
     const slotGroups = groupContiguousSlots(booking.slots);
     const statusMeta = getBookingStatusMeta(booking.status);
+    const purposeLabel = booking.purpose?.trim() || "未填寫用途";
+    const displayPurpose = isAllVenuesSelected.value
+      ? `${booking.venueName || "未提供場地"}｜${purposeLabel}`
+      : purposeLabel;
 
     slotGroups.forEach((group) => {
       const timeRange = convertSlotsToTimeRange(booking.bookingDate, group);
@@ -449,7 +596,7 @@ const mapBookingsToEvents = (bookings) => {
           statusLabel: statusMeta.text,
           statusClass: statusMeta.className,
           timeLabel: formatSlotsAsTimeRange(group),
-          purposeLabel: booking.purpose?.trim() || "未填寫用途",
+          purposeLabel: displayPurpose,
           fullTimeLabel: formatSlotGroupsAsTimeRange(booking.slots),
         },
         ...getReviewEventColorConfig(booking.status),
@@ -460,22 +607,46 @@ const mapBookingsToEvents = (bookings) => {
   return mappedEvents;
 };
 
+const fetchReviewsForVenue = (venueId, query) => {
+  return fetchPendingReviews({
+    ...query,
+    venueId,
+  });
+};
+
+const fetchReviewsForSelectedVenue = async (query) => {
+  if (!isAllVenuesSelected.value) {
+    return fetchReviewsForVenue(selectedVenueId.value, query);
+  }
+
+  const bookingsByVenue = await Promise.all(
+    venues.value.map((venue) => fetchReviewsForVenue(venue.id, query)),
+  );
+  const seenBookingIds = new Set();
+
+  return bookingsByVenue.flat().filter((booking) => {
+    if (seenBookingIds.has(booking.id)) return false;
+
+    seenBookingIds.add(booking.id);
+    return true;
+  });
+};
+
 const loadEvents = async (view) => {
   isFetchingEvents.value = true;
 
   try {
-    const monthRange = getMonthRangeFromView(view);
+    const visibleDateRange = getVisibleDateRangeFromView(view);
     const baseQuery = {
-      venueId: selectedVenueId.value,
-      startDate: monthRange.startDate,
-      endDate: monthRange.endDate,
+      startDate: visibleDateRange.startDate,
+      endDate: visibleDateRange.endDate,
     };
 
-    const allBookings = await fetchPendingReviews(baseQuery);
+    const allBookings = await fetchReviewsForSelectedVenue(baseQuery);
     const filteredBookings =
       selectedStatus.value === ""
         ? allBookings
-        : await fetchPendingReviews({ ...baseQuery, status: Number(selectedStatus.value) });
+        : allBookings.filter((booking) => booking.status === Number(selectedStatus.value));
 
     allMonthlyBookings.value = allBookings;
     monthlyBookings.value = filteredBookings;
@@ -544,11 +715,21 @@ const selectStatusFilter = async (statusValue) => {
 watch(activeViewMode, (nextMode) => {
   if (nextMode === "calendar") {
     void refreshCalendarLayout();
+  } else {
+    closeMonthPicker();
   }
 });
 
 const navigateToVenueBooking = (dateStr) => {
-  if (!selectedVenueId.value) return;
+  if (!canNavigateToVenueBooking.value) return;
+
+  if (isAllVenuesSelected.value) {
+    router.push({
+      name: "VenueSelector",
+      params: { unitId: REVIEW_UNIT_ID },
+    });
+    return;
+  }
 
   const query = dateStr
     ? {
@@ -620,6 +801,8 @@ const handleStatusUpdate = async (status) => {
 };
 
 onMounted(async () => {
+  document.addEventListener("click", handleMonthPickerOutsideClick);
+
   try {
     const fetchedVenues = await fetchVenuesByUnit(1);
     venues.value = fetchedVenues;
@@ -637,6 +820,11 @@ onMounted(async () => {
     error(venueError.message || "取得場地清單失敗");
     pageLoading.value = false;
   }
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleMonthPickerOutsideClick);
+  clearCalendarTitleInteraction();
 });
 </script>
 
@@ -998,8 +1186,74 @@ onMounted(async () => {
     }
   }
 
+  .calendar-shell {
+    position: relative;
+  }
+
   .list-shell {
     overflow: hidden;
+  }
+
+  .month-picker-popover {
+    position: absolute;
+    top: 4.1rem;
+    left: 50%;
+    z-index: 20;
+    transform: translateX(-50%);
+    padding: 0.65rem;
+    border: 1px solid var(--review-line);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: #ffffff;
+    box-shadow: var(--shadow);
+
+    label {
+      color: var(--review-muted);
+      font-size: var(--text-sm);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    input {
+      width: 9.75rem;
+      min-height: 2.35rem;
+      padding: 0.35rem 0.55rem;
+      border: 1px solid var(--review-line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--review-ink);
+      font-weight: 800;
+    }
+  }
+
+  .month-picker-action {
+    min-height: 2.35rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--review-line);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--review-ink);
+    font-size: var(--text-sm);
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface-muted);
+    }
+
+    &.is-primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #ffffff;
+
+      &:hover {
+        border-color: var(--accent-hover);
+        background: var(--accent-hover);
+      }
+    }
   }
 
   .list-empty-state {
@@ -1147,6 +1401,22 @@ onMounted(async () => {
       color: var(--review-ink);
       font-size: 1.35rem;
       font-weight: 800;
+
+      &.is-month-picker-trigger {
+        padding: 0.25rem 0.55rem;
+        border-radius: 999px;
+        cursor: pointer;
+        transition:
+          background-color 0.2s ease,
+          box-shadow 0.2s ease;
+
+        &:hover,
+        &:focus-visible {
+          background: #eef1f5;
+          box-shadow: inset 0 0 0 1px var(--review-line);
+          outline: none;
+        }
+      }
     }
 
     .fc-button-primary {
@@ -1250,7 +1520,7 @@ onMounted(async () => {
       height: 1.55rem;
       padding: 0 0.45rem;
       border-radius: 999px;
-      background-color: #202936;
+      background-color: var(--accent);
       color: #ffffff;
       display: inline-flex;
       align-items: center;
@@ -1356,4 +1626,5 @@ onMounted(async () => {
     }
   }
 }
+
 </style>

@@ -45,7 +45,12 @@
       </div>
 
       <footer class="modal-footer">
-        <button class="btn btn-primary" type="button" @click="emit('create-booking')">
+        <button
+          class="btn btn-primary"
+          type="button"
+          :disabled="!canCreateBooking"
+          @click="emit('create-booking')"
+        >
           <span class="btn-icon-plain">
             <ArrowRight :size="18" aria-hidden="true" />
           </span>
@@ -77,6 +82,10 @@ const props = defineProps({
   bookings: {
     type: Array,
     default: () => [],
+  },
+  canCreateBooking: {
+    type: Boolean,
+    default: true,
   },
 });
 
