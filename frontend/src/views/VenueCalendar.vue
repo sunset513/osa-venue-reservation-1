@@ -99,6 +99,7 @@
     :mode="modalMode"
     :initialData="modalInitialData"
     :venueInfo="venueInfo"
+    :is-withdrawing="isWithdrawing"
     @success="handleModalSuccess"
     @withdraw-booking="handleWithdrawBooking"
   />
@@ -107,7 +108,7 @@
 <script setup>
 import BookingModal from "@/components/booking/BookingModal.vue";
 import DayScheduleModal from "@/components/booking/DayScheduleModal.vue";
-import { fetchCalendarMonth } from "@/api/booking";
+import { fetchCalendarMonth, queryMyBookings, withdrawBooking } from "@/api/booking";
 import { fetchVenueDetail, fetchVenuesByUnit } from "@/api/venue";
 import {
   convertSlotsToTimeRange,
@@ -117,6 +118,7 @@ import {
 } from "@/utils/dateHelper";
 import { getDailyEventCount, renderMoreLinkContent } from "@/utils/calendarDisplay";
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
+import { buildBookingQueryPayload, normalizeBookingPage } from "@/utils/bookingQuery";
 import { useToast } from "@/utils/useToast.js";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -142,6 +144,7 @@ const events = ref([]);
 const monthlyBookings = ref([]);
 const isModalVisible = ref(false);
 const isDayModalVisible = ref(false);
+const isWithdrawing = ref(false);
 const modalMode = ref("create");
 const modalInitialData = ref({});
 const selectedDate = ref("");
@@ -196,7 +199,7 @@ const selectedDayBookings = computed(() => {
         timeRange: formatSlotsAsTimeRange(booking.slots),
         statusText: statusMeta.text,
         statusClass: statusMeta.className,
-        isEditable: booking.status === 1,
+        isEditable: booking.canWithdraw === true,
         originalData: booking,
       };
     });
@@ -362,6 +365,7 @@ const openEditModal = (originalData) => {
     participantCount: originalData.pCount || 1,
     contactInfo: parseContactInfo(originalData.contactInfo),
     equipmentIds: mappedEquipmentIds,
+    canWithdraw: originalData.canWithdraw === true,
   };
 
   isDayModalVisible.value = false;
@@ -374,7 +378,8 @@ const rebuildEventsFromBookings = (bookings) => {
   bookings.forEach((booking) => {
     if (booking.status !== 1 && booking.status !== 2) return;
 
-    const isMine = booking.status === 1;
+    const isMine = booking.isMine === true;
+    const canWithdraw = booking.canWithdraw === true;
     const groups = groupContiguousSlots(booking.slots);
 
     groups.forEach((group) => {
@@ -389,6 +394,7 @@ const rebuildEventsFromBookings = (bookings) => {
         display: "block",
         extendedProps: {
           isMine,
+          canWithdraw,
           originalData: booking,
         },
         ...getEventColorConfig(booking.status, isMine),
@@ -406,19 +412,29 @@ const handleWithdrawBooking = async (bookingId) => {
 
   if (!targetBooking) return;
 
-  if (targetBooking.status !== 1) {
-    warning("目前只有審核中的預約可以撤回。");
+  if (targetBooking.canWithdraw !== true) {
+    warning("只能撤回自己的審核中申請。");
     return;
   }
 
-  monthlyBookings.value = monthlyBookings.value.map((booking) => {
-    if (booking.id !== bookingId) return booking;
-    return { ...booking, status: 0 };
-  });
+  isWithdrawing.value = true;
 
-  isModalVisible.value = false;
-  rebuildEventsFromBookings(monthlyBookings.value);
-  success("已撤回預約申請，尚未串接 API。");
+  try {
+    await withdrawBooking(bookingId);
+
+    monthlyBookings.value = monthlyBookings.value.map((booking) => {
+      if (booking.id !== bookingId) return booking;
+      return { ...booking, status: 0, canWithdraw: false, isMine: false };
+    });
+
+    isModalVisible.value = false;
+    rebuildEventsFromBookings(monthlyBookings.value);
+    success("已撤回預約申請。");
+  } catch (withdrawError) {
+    error(withdrawError.message || "撤回預約申請失敗");
+  } finally {
+    isWithdrawing.value = false;
+  }
 };
 
 const renderDayCellContent = (arg) => {
@@ -465,6 +481,56 @@ const getVisibleMonthQueries = (view) => {
   return monthQueries;
 };
 
+const getVisibleDateRange = (view) => {
+  const activeStart = view.activeStart || view.currentStart;
+  const activeEnd = view.activeEnd || view.currentEnd;
+
+  if (!activeStart) {
+    return { startDate: null, endDate: null };
+  }
+
+  const endInclusive = activeEnd
+    ? new Date(activeEnd)
+    : new Date(activeStart.getFullYear(), activeStart.getMonth() + 1, 1);
+
+  endInclusive.setDate(endInclusive.getDate() - 1);
+
+  return {
+    startDate: activeStart.toLocaleDateString("sv-SE"),
+    endDate: endInclusive.toLocaleDateString("sv-SE"),
+  };
+};
+
+const fetchMyPendingBookingIds = async (targetVenueId, view) => {
+  const { startDate, endDate } = getVisibleDateRange(view);
+
+  if (!targetVenueId || !startDate || !endDate) {
+    return new Set();
+  }
+
+  const pageSize = 100;
+  const filters = {
+    venueId: targetVenueId,
+    statusList: [1],
+    startDate,
+    endDate,
+    pageSize,
+  };
+  const firstPage = normalizeBookingPage(
+    await queryMyBookings(buildBookingQueryPayload({ ...filters, pageNo: 1 })),
+  );
+  const bookingIds = new Set(firstPage.items.map((booking) => Number(booking.id)));
+
+  for (let pageNo = 2; pageNo <= firstPage.totalPages; pageNo += 1) {
+    const nextPage = normalizeBookingPage(
+      await queryMyBookings(buildBookingQueryPayload({ ...filters, pageNo })),
+    );
+    nextPage.items.forEach((booking) => bookingIds.add(Number(booking.id)));
+  }
+
+  return bookingIds;
+};
+
 const loadEvents = async (view, targetVenueId = venueInfo.value?.id) => {
   if (!view || !targetVenueId) return;
 
@@ -475,13 +541,25 @@ const loadEvents = async (view, targetVenueId = venueInfo.value?.id) => {
 
   try {
     const monthQueries = getVisibleMonthQueries(view);
-    const monthResponses = await Promise.all(
-      monthQueries.map(({ year, month }) => fetchCalendarMonth(targetVenueId, year, month)),
-    );
+    const [monthResponses, myPendingBookingIds] = await Promise.all([
+      Promise.all(
+        monthQueries.map(({ year, month }) => fetchCalendarMonth(targetVenueId, year, month)),
+      ),
+      fetchMyPendingBookingIds(targetVenueId, view),
+    ]);
 
     if (requestToken !== eventsRequestToken) return;
 
-    monthlyBookings.value = monthResponses.flatMap((apiData) => apiData?.bookings || []);
+    monthlyBookings.value = monthResponses.flatMap((apiData) => apiData?.bookings || [])
+      .map((booking) => {
+        const isMine = myPendingBookingIds.has(Number(booking.id));
+
+        return {
+          ...booking,
+          isMine,
+          canWithdraw: isMine && booking.status === 1,
+        };
+      });
 
     rebuildEventsFromBookings(monthlyBookings.value);
   } catch (loadError) {
@@ -608,13 +686,13 @@ const calendarOptions = ref({
     openDayModal(dateStr);
   },
   eventClick: (info) => {
-    const isMine = info.event.extendedProps.isMine;
+    const canWithdraw = info.event.extendedProps.canWithdraw;
     const originalData = info.event.extendedProps.originalData;
 
-    if (isMine && originalData) {
+    if (canWithdraw && originalData) {
       openEditModal(originalData);
-    } else if (!isMine) {
-      warning("該時段已被其他人預約，請選擇其他時段。");
+    } else {
+      warning("只能撤回自己的審核中申請。");
     }
   },
 });

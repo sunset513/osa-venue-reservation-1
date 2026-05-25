@@ -119,11 +119,11 @@
 
       <footer class="modal-footer">
         <button
-          v-if="mode === 'edit'"
+          v-if="canWithdraw"
           class="btn btn-danger"
           type="button"
           @click="handleWithdraw"
-          :disabled="isSubmitting"
+          :disabled="isBusy"
         >
           <span class="btn-icon">
             <Undo2 :size="16" />
@@ -136,7 +136,7 @@
             class="btn btn-secondary"
             type="button"
             @click="closeModal"
-            :disabled="isSubmitting"
+            :disabled="isBusy"
           >
             <span class="btn-icon">
               <X :size="16" />
@@ -147,9 +147,9 @@
             class="btn btn-primary"
             type="button"
             @click="handleSubmit"
-            :disabled="isSubmitting"
+            :disabled="isBusy"
           >
-            <template v-if="!isSubmitting">
+            <template v-if="!isBusy">
               <span class="btn-icon">
                 <Plus v-if="mode === 'create'" :size="16" />
                 <Save v-if="mode === 'edit'" :size="16" />
@@ -157,8 +157,8 @@
             </template>
             <span>
               {{
-                isSubmitting
-                  ? "送出中..."
+                isBusy
+                  ? (isWithdrawing ? "撤回中..." : "送出中...")
                   : mode === "create"
                     ? "送出申請"
                     : "儲存修改"
@@ -175,12 +175,13 @@
       >
         <div class="confirm-dialog">
           <h3>確認撤回申請？</h3>
-          <p>撤回後這筆預約會改成已撤回，目前頁面會先以前端狀態更新，尚未串接 API。</p>
+          <p>撤回後這筆預約會改成已撤回，且無法再編輯或重新啟用。</p>
           <div class="confirm-actions">
             <button
               class="btn btn-secondary"
               type="button"
               @click="closeWithdrawConfirm"
+              :disabled="isBusy"
             >
               取消
             </button>
@@ -188,6 +189,7 @@
               class="btn btn-danger"
               type="button"
               @click="confirmWithdraw"
+              :disabled="isBusy"
             >
               <span class="btn-icon">
                 <Undo2 :size="16" />
@@ -202,7 +204,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from "vue";
+import { computed, ref, reactive, watch } from "vue";
 import { Plus, Save, Undo2, X } from "lucide-vue-next";
 import { createBooking, updateBooking } from "@/api/booking";
 import { useToast } from "@/utils/useToast.js";
@@ -214,11 +216,14 @@ const props = defineProps({
   mode: { type: String, default: "create" },
   initialData: Object,
   venueInfo: Object,
+  isWithdrawing: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:visible", "success", "withdraw-booking"]);
 
 const isSubmitting = ref(false);
+const isBusy = computed(() => isSubmitting.value || props.isWithdrawing);
+const canWithdraw = computed(() => props.mode === "edit" && props.initialData?.canWithdraw === true);
 const isWithdrawConfirmVisible = ref(false);
 const slotRangeAnchor = ref(null);
 const formErrors = reactive({ slots: false });
@@ -313,7 +318,7 @@ const handleSlotClick = (slot) => {
 };
 
 const closeModal = () => {
-  if (isSubmitting.value) return;
+  if (isBusy.value) return;
   if (isWithdrawConfirmVisible.value) {
     isWithdrawConfirmVisible.value = false;
     return;
@@ -322,22 +327,24 @@ const closeModal = () => {
 };
 
 const handleWithdraw = () => {
-  if (isSubmitting.value || props.mode !== "edit" || !props.initialData?.id) return;
+  if (isBusy.value || !canWithdraw.value || !props.initialData?.id) return;
   isWithdrawConfirmVisible.value = true;
 };
 
 const closeWithdrawConfirm = () => {
-  if (isSubmitting.value) return;
+  if (isBusy.value) return;
   isWithdrawConfirmVisible.value = false;
 };
 
 const confirmWithdraw = () => {
-  if (isSubmitting.value || props.mode !== "edit" || !props.initialData?.id) return;
+  if (isBusy.value || !canWithdraw.value || !props.initialData?.id) return;
   isWithdrawConfirmVisible.value = false;
   emit("withdraw-booking", props.initialData.id);
 };
 
 const handleSubmit = async () => {
+  if (isBusy.value) return;
+
   if (formData.slots.length === 0) {
     formErrors.slots = true;
     return;
