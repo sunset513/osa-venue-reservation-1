@@ -205,4 +205,21 @@ public interface BookingMapper {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    // ==========================================
+    // 公開查詢：指定日期兩場地已通過預約
+    // ==========================================
+
+    /**
+     * 查詢指定日期與兩個場地的已通過預約
+     * @param venueIdA 第一個場地 ID
+     * @param venueIdB 第二個場地 ID
+     * @param date 查詢日期
+     * @return 已通過預約清單（含場地名稱與時段遮罩）
+     */
+    List<tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingQueryVO> selectApprovedBookingsForTwoVenues(
+            @Param("venueIdA") Long venueIdA,
+            @Param("venueIdB") Long venueIdB,
+            @Param("date") LocalDate date
+    );
 }
