@@ -151,7 +151,7 @@
           >
             <template v-if="!isBusy">
               <span class="btn-icon">
-                <Plus v-if="mode === 'create'" :size="16" />
+                <Send v-if="mode === 'create'" :size="16" />
                 <Save v-if="mode === 'edit'" :size="16" />
               </span>
             </template>
@@ -205,7 +205,7 @@
 
 <script setup>
 import { computed, ref, reactive, watch } from "vue";
-import { Plus, Save, Undo2, X } from "lucide-vue-next";
+import { Save, Send, Undo2, X } from "lucide-vue-next";
 import { createBooking, updateBooking } from "@/api/booking";
 import { useToast } from "@/utils/useToast.js";
 
@@ -443,6 +443,7 @@ const handleSubmit = async () => {
 .modal-footer-actions {
   display: flex;
   justify-content: flex-end;
+  margin-left: auto;
   gap: 1rem;
 }
 .btn-icon {

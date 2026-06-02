@@ -72,20 +72,6 @@
               <MapPin :size="17" />
               {{ booking.venueName }}
             </span>
-            <span v-if="booking.unitName">
-              <Building2 :size="17" />
-              {{ booking.unitName }}
-            </span>
-            <span v-if="booking.participantCount">
-              <Users :size="17" />
-              {{ booking.participantCount }} 人
-            </span>
-          </div>
-
-          <div v-if="booking.equipments.length" class="equipment-row">
-            <span v-for="equipment in booking.equipments" :key="`${booking.key}-${equipment}`">
-              {{ equipment }}
-            </span>
           </div>
         </div>
       </article>
@@ -99,19 +85,18 @@ import { useRouter } from "vue-router";
 import {
   AlertCircle,
   ArrowLeft,
-  Building2,
   CalendarClock,
   MapPin,
   RefreshCw,
-  Users,
 } from "lucide-vue-next";
-import { fetchCalendarMonth } from "@/api/booking";
-import { fetchAllUnits, fetchVenuesByUnit } from "@/api/venue";
+import { fetchApprovedBookingsForTwoVenues } from "@/api/booking";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
 import { normalizeVenueDisplayName } from "@/utils/venueLabels";
 
 const REFRESH_INTERVAL_MS = 60_000;
 const CLOCK_INTERVAL_MS = 1_000;
+const DASHBOARD_VENUE_ID_A = 1;
+const DASHBOARD_VENUE_ID_B = 2;
 
 const router = useRouter();
 const now = ref(new Date());
@@ -173,9 +158,7 @@ const activeBookings = computed(() => {
         slots,
         venueName: venueName || "未提供場地",
         purpose: booking.purpose || "未填寫用途",
-        participantCount: Number(booking.pCount) || 0,
         timeRange: formatSlotGroupsAsTimeRange(slots) || "未提供時段",
-        equipments: Array.isArray(booking.equipments) ? booking.equipments.filter(Boolean) : [],
       };
     })
     .sort((left, right) => {
@@ -188,23 +171,27 @@ const activeBookings = computed(() => {
     });
 });
 
-const collectVenueBookings = async ({ venue, unit, year, month }) => {
-  const monthData = await fetchCalendarMonth(venue.id, year, month);
-  const bookings = monthData?.bookings || [];
+const flattenApprovedBookings = (venueGroups, bookingDate) => {
+  if (!Array.isArray(venueGroups)) return [];
 
-  return bookings.map((booking) => ({
-    ...booking,
-    venueId: venue.id,
-    unitName: unit.name,
-    fallbackVenueName: venue.name,
-  }));
+  return venueGroups.flatMap((group) => {
+    const items = Array.isArray(group.items) ? group.items : [];
+
+    return items.map((item) => ({
+      id: item.bookingId,
+      venueId: group.venueId,
+      venueName: group.venueName,
+      bookingDate,
+      status: 2,
+      slots: Array.isArray(item.slots) ? item.slots : [],
+      purpose: item.purpose,
+    }));
+  });
 };
 
 const loadDashboardData = async () => {
   const token = ++requestToken;
-  const queryDate = new Date();
-  const year = queryDate.getFullYear();
-  const month = queryDate.getMonth() + 1;
+  const queryDate = toDateKey(new Date());
 
   loadError.value = "";
 
@@ -215,26 +202,16 @@ const loadDashboardData = async () => {
   }
 
   try {
-    const unitsResponse = await fetchAllUnits();
-    const units = Array.isArray(unitsResponse) ? unitsResponse : [];
-    const venueGroups = await Promise.all(
-      units.map(async (unit) => {
-        const venuesResponse = await fetchVenuesByUnit(unit.id);
-        const venues = Array.isArray(venuesResponse) ? venuesResponse : [];
-
-        return venues.map((venue) => ({ venue, unit }));
-      }),
-    );
-
-    const venueEntries = venueGroups.flat();
-    const bookingGroups = await Promise.all(
-      venueEntries.map(({ venue, unit }) => collectVenueBookings({ venue, unit, year, month })),
+    const venueGroups = await fetchApprovedBookingsForTwoVenues(
+      DASHBOARD_VENUE_ID_A,
+      DASHBOARD_VENUE_ID_B,
+      queryDate,
     );
 
     if (token !== requestToken) return;
 
     const seenKeys = new Set();
-    rawBookings.value = bookingGroups.flat().filter((booking) => {
+    rawBookings.value = flattenApprovedBookings(venueGroups, queryDate).filter((booking) => {
       const key = booking.id || `${booking.venueId}-${booking.bookingDate}-${booking.purpose}`;
 
       if (seenKeys.has(key)) return false;
@@ -342,13 +319,13 @@ onBeforeUnmount(() => {
 
 .live-activity-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.8rem;
 }
 
 .activity-card {
   position: relative;
-  min-height: 18rem;
+  min-height: 11.5rem;
   overflow: hidden;
   border: 1px solid rgba(46, 139, 87, 0.22);
   border-radius: var(--radius);
@@ -367,10 +344,10 @@ onBeforeUnmount(() => {
 
 .activity-card-body {
   display: flex;
-  min-height: 18rem;
+  min-height: 11.5rem;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.35rem 1.35rem 1.25rem 1.7rem;
+  gap: 0.75rem;
+  padding: 1rem 1.05rem 0.95rem 1.45rem;
 }
 
 .activity-card-top {
@@ -382,13 +359,13 @@ onBeforeUnmount(() => {
 
 .time-range {
   color: var(--muted-strong);
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
   font-weight: 800;
 }
 
 .status-badge {
   flex: 0 0 auto;
-  padding: 0.25rem 0.65rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
   background: rgba(46, 139, 87, 0.13);
   color: #247047;
@@ -398,14 +375,14 @@ onBeforeUnmount(() => {
 
 .activity-card h2 {
   color: var(--ink);
-  font-size: var(--text-2xl);
-  line-height: 1.35;
+  font-size: var(--text-xl);
+  line-height: 1.3;
 }
 
 .activity-meta {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.4rem;
   color: var(--muted-strong);
   font-weight: 700;
 
