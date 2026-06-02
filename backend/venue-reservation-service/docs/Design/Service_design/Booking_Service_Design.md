@@ -44,6 +44,21 @@
 * **異常處理**：
     * 若狀態不符（如已被拒絕），拋出 `RuntimeException` 說明原因。
 
+### 4. 公開查詢兩場地已通過預約 (`getApprovedBookingsForTwoVenues`)
+
+* **功能描述**：在指定日期下，查詢兩個場地已通過（status=2）的預約，並依場地分組回傳。
+* **參數**：`venueIdA`、`venueIdB`、`date`。
+* **回傳**：`List<ApprovedBookingsByVenueVO>`。
+* **詳細邏輯流程**：
+    1. 驗證參數：場地 ID 不可為空、兩場地不可相同、日期不可為空。
+    2. 查詢場地資訊以取得場地名稱。
+    3. 由 Mapper 取得指定日期與兩場地的已通過預約清單。
+    4. 依場地分組，並使用 `BookingUtils.parseMaskToList` 轉換時段遮罩。
+* **異常處理**：
+    * 場地 ID 或日期為空：拋出 `IllegalArgumentException`。
+    * 兩場地相同：拋出 `IllegalArgumentException`。
+    * 場地不存在：拋出 `RuntimeException("場地不存在")`。
+
 ## 三、 異常處理與事務策略
 
 ### 1. 事務管理 (Transaction)
@@ -61,4 +76,3 @@
 1.  **樂觀鎖應用**：在 `createBooking` 初始化時 `version` 設為 1，後續所有更新操作必須帶上版本號進行比對，防止高併發下的 Race Condition。
 2.  **延遲序列化**：聯絡資訊使用 JSON 存儲能提供良好的擴展性（例如未來增加 Line ID 等欄位），無需修改資料庫 Schema。
 3.  **大對象處理**：若 `equipmentIds` 列表過大，考慮改為批次寫入（Batch Insert）以提升效能。
-

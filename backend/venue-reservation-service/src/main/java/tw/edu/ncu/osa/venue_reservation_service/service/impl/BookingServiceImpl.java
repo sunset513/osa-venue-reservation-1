@@ -7,14 +7,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tw.edu.ncu.osa.venue_reservation_service.mapper.BookingMapper;
+import tw.edu.ncu.osa.venue_reservation_service.mapper.VenueMapper;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingRequestDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Booking;
+import tw.edu.ncu.osa.venue_reservation_service.model.entity.Venue;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingQueryVO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingSimpleVO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingsByVenueVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.BookingService;
 import tw.edu.ncu.osa.venue_reservation_service.util.BookingUtils;
 import tw.edu.ncu.osa.venue_reservation_service.util.UserContext;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 預約服務實現類
@@ -26,6 +33,7 @@ import java.util.List;
 public class BookingServiceImpl implements BookingService {
 
     private final BookingMapper bookingMapper;
+    private final VenueMapper venueMapper;
     private final ObjectMapper objectMapper;
 
     // ==========================================
@@ -713,16 +721,104 @@ public class BookingServiceImpl implements BookingService {
     }
 
     // ==========================================
-    // 輔助方法
+    // 6. 公開查詢：指定日期兩場地已通過預約
     // ==========================================
 
     /**
-     * 將 LocalDate 轉換為中文星期幾
+     * 查詢指定日期與兩個場地的已通過預約（公開 API）
+     * @param venueIdA 第一個場地 ID
+     * @param venueIdB 第二個場地 ID
+     * @param date 查詢日期
+     * @return 依場地分組的已通過預約清單
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<ApprovedBookingsByVenueVO> getApprovedBookingsForTwoVenues(
+            Long venueIdA,
+            Long venueIdB,
+            java.time.LocalDate date) {
+
+        log.info("【BookingService】[getApprovedBookingsForTwoVenues] 開始查詢已通過預約，venueIdA={}, venueIdB={}, date={}",
+                venueIdA, venueIdB, date);
+
+        if (venueIdA == null || venueIdB == null) {
+            throw new IllegalArgumentException("場地 ID 不可為空");
+        }
+        if (date == null) {
+            throw new IllegalArgumentException("日期不可為空");
+        }
+        if (venueIdA.equals(venueIdB)) {
+            throw new IllegalArgumentException("兩個場地不可相同");
+        }
+
+        Venue venueA = venueMapper.selectVenueById(venueIdA);
+        Venue venueB = venueMapper.selectVenueById(venueIdB);
+
+        if (venueA == null || venueB == null) {
+            throw new RuntimeException("場地不存在");
+        }
+
+        ApprovedBookingsByVenueVO groupA = new ApprovedBookingsByVenueVO();
+        groupA.setVenueId(venueIdA);
+        groupA.setVenueName(venueA.getName());
+        groupA.setItems(new ArrayList<>());
+
+        ApprovedBookingsByVenueVO groupB = new ApprovedBookingsByVenueVO();
+        groupB.setVenueId(venueIdB);
+        groupB.setVenueName(venueB.getName());
+        groupB.setItems(new ArrayList<>());
+
+        Map<Long, ApprovedBookingsByVenueVO> groupMap = new HashMap<>();
+        groupMap.put(venueIdA, groupA);
+        groupMap.put(venueIdB, groupB);
+
+        List<ApprovedBookingQueryVO> records = bookingMapper.selectApprovedBookingsForTwoVenues(
+                venueIdA, venueIdB, date);
+        log.info("【BookingService】[getApprovedBookingsForTwoVenues] 查詢到 {} 筆已通過預約", records.size());
+
+        for (ApprovedBookingQueryVO record : records) {
+            ApprovedBookingsByVenueVO group = groupMap.get(record.getVenueId());
+            if (group == null) {
+                log.warn("【BookingService】[getApprovedBookingsForTwoVenues] 取得未知場地的預約資料，venueId={}",
+                        record.getVenueId());
+                continue;
+            }
+
+            ApprovedBookingSimpleVO item = new ApprovedBookingSimpleVO();
+            item.setBookingId(record.getBookingId());
+            item.setPurpose(record.getPurpose());
+
+            if (record.getTimeSlots() == null) {
+                item.setSlots(new ArrayList<>());
+            } else {
+                item.setSlots(BookingUtils.parseMaskToList(record.getTimeSlots()));
+            }
+
+            group.getItems().add(item);
+        }
+
+        List<ApprovedBookingsByVenueVO> result = new ArrayList<>();
+        result.add(groupA);
+        result.add(groupB);
+
+        log.info("【BookingService】[getApprovedBookingsForTwoVenues] 組裝完成，venueAItems={}, venueBItems={}",
+                groupA.getItems().size(), groupB.getItems().size());
+
+        return result;
+    }
+
+    // ==========================================
+    // 7. 內部工具
+    // ==========================================
+
+    /**
+     * 取得日期對應的星期中文名稱
      * @param date 日期
-     * @return 中文星期幾，例如「星期一」
+     * @return 中文星期名稱
      */
     private String getDayOfWeekChinese(java.time.LocalDate date) {
-        switch (date.getDayOfWeek()) {
+        java.time.DayOfWeek dayOfWeek = date.getDayOfWeek();
+        switch (dayOfWeek) {
             case MONDAY:
                 return "星期一";
             case TUESDAY:
@@ -738,7 +834,7 @@ public class BookingServiceImpl implements BookingService {
             case SUNDAY:
                 return "星期日";
             default:
-                return "未知";
+                return "";
         }
     }
 }

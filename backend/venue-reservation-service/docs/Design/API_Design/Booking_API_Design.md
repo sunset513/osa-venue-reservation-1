@@ -36,6 +36,20 @@
 | `status` | Integer | 狀態 (0:撤回, 1:審核中, 2:通過, 3:拒絕) |
 | `createdAt` | LocalDateTime | 申請時間 |
 
+### 4. ApprovedBookingsByVenueVO (已通過預約分組)
+| 欄位名稱 | 類型 | 說明 |
+| :--- | :--- | :--- |
+| `venueId` | Long | 場地 ID |
+| `venueName` | String | 場地名稱 |
+| `items` | List<ApprovedBookingSimpleVO> | 已通過預約清單 |
+
+### 5. ApprovedBookingSimpleVO (已通過預約簡化資訊)
+| 欄位名稱 | 類型 | 說明 |
+| :--- | :--- | :--- |
+| `bookingId` | Long | 預約 ID |
+| `slots` | List<Integer> | 已通過時段清單（0-23） |
+| `purpose` | String | 使用用途 |
+
 ---
 
 ## 二、 API 終端點 (Endpoints)
@@ -116,6 +130,41 @@
     - **成功 (200 OK)：**
       ```json
       { "success": true, "message": "操作成功", "data": null }
+      ```
+
+### 5. 查詢指定日期兩場地已通過預約
+- **方法：** `GET`
+- **路徑：** `/bookings/approved/two-venues`
+- **功能：** 取得指定日期兩個場地的已通過預約（status=2），依場地分組回傳。
+- **請求參數（Query）：**
+  - `venueIdA` (Long，必填)
+  - `venueIdB` (Long，必填，且不可與 venueIdA 相同)
+  - `date` (LocalDate，必填，YYYY-MM-DD)
+- **響應格式 (`Result<List<ApprovedBookingsByVenueVO>>`)：**
+    - **成功 (200 OK)：**
+      ```json
+      {
+        "success": true,
+        "message": "操作成功",
+        "data": [
+          {
+            "venueId": 1,
+            "venueName": "會議室 A",
+            "items": [
+              { "bookingId": 501, "slots": [8, 9], "purpose": "專案討論" }
+            ]
+          },
+          {
+            "venueId": 2,
+            "venueName": "會議室 B",
+            "items": []
+          }
+        ]
+      }
+      ```
+    - **業務錯誤 (200 OK)：**
+      ```json
+      { "success": false, "message": "兩個場地不可相同", "data": null }
       ```
 
 ---

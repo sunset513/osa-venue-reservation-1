@@ -15,11 +15,13 @@ import org.springframework.web.bind.annotation.*;
 import tw.edu.ncu.osa.venue_reservation_service.common.result.Result;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingRequestDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingsByVenueVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.VenueCalendarDayVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.VenueCalendarMonthVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.VenueCalendarWeekVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.BookingService;
 import java.util.List;
+import java.time.LocalDate;
 
 /**
  * 預約管理 API 控制器
@@ -700,6 +702,82 @@ public class BookingController {
             return Result.success(result);
         } catch (Exception e) {
             log.error("【BookingController】獲取日曆視圖失敗，venueId={}, date={}", venueId, date, e);
+            throw e;
+        }
+    }
+
+    // ==========================================
+    // 6. 公開查詢：指定日期兩場地已通過預約
+    // ==========================================
+
+    /**
+     * 查詢指定日期與兩個場地的已通過預約（公開 API）
+     * @param venueIdA 第一個場地 ID
+     * @param venueIdB 第二個場地 ID
+     * @param date 查詢日期
+     * @return 依場地分組的已通過預約清單
+     */
+    @GetMapping("/approved/two-venues")
+    @Operation(
+        summary = "查詢指定日期兩場地已通過預約",
+        description = """
+            取得指定日期內兩個場地的已通過預約清單（status=2）。
+            
+            **回傳資料：**
+            - 依場地分組回傳
+            - 僅包含最小必要欄位（bookingId、slots、purpose）
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "成功取得已通過預約清單",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    description = "成功回應，data 欄位為場地分組的已通過預約清單"
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "200",
+            description = "參數驗證失敗",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    description = "失敗回應",
+                    example = """
+                    {
+                      "success": false,
+                      "message": "兩個場地不可相同",
+                      "data": null
+                    }
+                    """
+                )
+            )
+        )
+    })
+    public Result<List<ApprovedBookingsByVenueVO>> getApprovedBookingsForTwoVenues(
+            @RequestParam
+            @Parameter(description = "第一個場地 ID", example = "1", required = true)
+            Long venueIdA,
+            @RequestParam
+            @Parameter(description = "第二個場地 ID", example = "2", required = true)
+            Long venueIdB,
+            @RequestParam
+            @Parameter(description = "查詢日期（YYYY-MM-DD）", example = "2026-06-01", required = true)
+            LocalDate date) {
+        log.info("【BookingController】收到請求：查詢兩場地已通過預約，venueIdA={}, venueIdB={}, date={}",
+                venueIdA, venueIdB, date);
+        try {
+            List<ApprovedBookingsByVenueVO> result =
+                    bookingService.getApprovedBookingsForTwoVenues(venueIdA, venueIdB, date);
+            log.info("【BookingController】成功查詢兩場地已通過預約，venueIdA={}, venueIdB={}，回傳 {} 組",
+                    venueIdA, venueIdB, result.size());
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("【BookingController】查詢兩場地已通過預約失敗，venueIdA={}, venueIdB={}, date={}",
+                    venueIdA, venueIdB, date, e);
             throw e;
         }
     }

@@ -42,7 +42,10 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(mockAuthInterceptor)
                 .addPathPatterns("/api/**")         // 攔截所有 API 請求
-                .excludePathPatterns("/api/public/**"); // 排除公開 API
+                .excludePathPatterns(
+                        "/api/public/**",
+                        "/api/bookings/approved/two-venues"
+                ); // 排除公開 API 與免驗證查詢接口
     }
 
     /**
