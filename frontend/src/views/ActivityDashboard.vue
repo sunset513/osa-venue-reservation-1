@@ -7,7 +7,8 @@
       </button>
 
       <div class="dashboard-title-row">
-        <div>
+        <div class="dashboard-title-content">
+          <h1 class="dashboard-title-visible">即時場地使用狀態</h1>
           <p class="eyebrow">即時場地使用狀態</p>
           <h1>活動資訊</h1>
         </div>
@@ -29,7 +30,7 @@
         </div>
         <div class="time-block">
           <span class="time-label">使用中場地</span>
-          <strong>{{ activeBookings.length }}</strong>
+          <strong>{{ activeVenueCount }}</strong>
         </div>
         <div class="time-block">
           <span class="time-label">最近更新</span>
@@ -57,12 +58,17 @@
     </section>
 
     <section v-else class="live-activity-grid" aria-label="目前進行中的活動">
-      <article v-for="booking in activeBookings" :key="booking.key" class="activity-card">
+      <article
+        v-for="booking in activeBookings"
+        :key="booking.key"
+        class="activity-card"
+        :class="booking.statusClass"
+      >
         <div class="card-accent" aria-hidden="true"></div>
         <div class="activity-card-body">
           <div class="activity-card-top">
             <span class="time-range">{{ booking.timeRange }}</span>
-            <span class="status-badge">進行中</span>
+            <span class="status-badge" :class="booking.statusClass">{{ booking.statusLabel }}</span>
           </div>
 
           <h2>{{ booking.purpose }}</h2>
@@ -131,6 +137,24 @@ const currentSlot = computed(() => now.value.getHours());
 const currentTimeLabel = computed(() => formatDateTime(now.value));
 const lastUpdatedLabel = computed(() => formatDateTime(lastUpdatedAt.value));
 
+const activeVenueCount = computed(() => {
+  const activeVenueKeys = new Set();
+
+  rawBookings.value.forEach((booking) => {
+    const slots = Array.isArray(booking.slots) ? booking.slots.map(Number) : [];
+
+    if (
+      Number(booking.status) === 2 &&
+      booking.bookingDate === currentDateKey.value &&
+      slots.includes(currentSlot.value)
+    ) {
+      activeVenueKeys.add(booking.venueId || booking.venueName || booking.id);
+    }
+  });
+
+  return activeVenueKeys.size;
+});
+
 const activeBookings = computed(() => {
   return rawBookings.value
     .filter((booking) => {
@@ -139,11 +163,12 @@ const activeBookings = computed(() => {
       return (
         Number(booking.status) === 2 &&
         booking.bookingDate === currentDateKey.value &&
-        slots.includes(currentSlot.value)
+        slots.some((slot) => Number.isFinite(slot) && slot >= currentSlot.value)
       );
     })
     .map((booking) => {
       const slots = Array.isArray(booking.slots) ? booking.slots.map(Number) : [];
+      const validSlots = slots.filter((slot) => Number.isFinite(slot));
       const venueName = normalizeVenueDisplayName(booking.venueName || booking.fallbackVenueName);
       const fallbackKey = [
         booking.venueId,
@@ -156,14 +181,17 @@ const activeBookings = computed(() => {
         ...booking,
         key: booking.id || fallbackKey,
         slots,
+        startSlot: validSlots.length ? Math.min(...validSlots) : Number.MAX_SAFE_INTEGER,
+        statusClass: validSlots.includes(currentSlot.value) ? "is-active" : "is-upcoming",
+        statusLabel: validSlots.includes(currentSlot.value) ? "進行中" : "即將開始",
         venueName: venueName || "未提供場地",
         purpose: booking.purpose || "未填寫用途",
         timeRange: formatSlotGroupsAsTimeRange(slots) || "未提供時段",
       };
     })
     .sort((left, right) => {
-      const leftStart = Math.min(...left.slots);
-      const rightStart = Math.min(...right.slots);
+      const leftStart = left.startSlot;
+      const rightStart = right.startSlot;
 
       if (leftStart !== rightStart) return leftStart - rightStart;
 
@@ -263,7 +291,7 @@ onBeforeUnmount(() => {
 .dashboard-header {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
 .dashboard-title-row {
@@ -273,7 +301,28 @@ onBeforeUnmount(() => {
   gap: 1rem;
 }
 
+.dashboard-title-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.dashboard-title-visible {
+  order: 2;
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-4xl);
+  font-weight: 800;
+  line-height: var(--leading-tight);
+}
+
+.dashboard-title-content > h1:not(.dashboard-title-visible) {
+  display: none;
+}
+
 .eyebrow {
+  display: none;
+  order: 1;
   margin: 0 0 0.25rem;
   color: var(--accent);
   font-size: var(--text-sm);
@@ -289,25 +338,29 @@ onBeforeUnmount(() => {
 }
 
 .time-panel {
-  display: grid;
-  grid-template-columns: minmax(260px, 1.35fr) repeat(2, minmax(160px, 0.65fr));
-  gap: 0.9rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
 }
 
 .time-block {
-  min-height: 5.25rem;
-  padding: 1rem 1.1rem;
-  border: 1px solid rgba(var(--blue-900-rgb), 0.1);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: var(--shadow-soft);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 
   strong {
-    display: block;
-    margin-top: 0.35rem;
-    color: var(--ink);
-    font-size: var(--text-xl);
-    line-height: var(--leading-tight);
+    display: inline;
+    margin-top: 0;
+    color: var(--muted-strong);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
   }
 }
 
@@ -333,6 +386,14 @@ onBeforeUnmount(() => {
     linear-gradient(135deg, rgba(46, 139, 87, 0.15), rgba(255, 255, 255, 0.96) 52%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(46, 139, 87, 0.08));
   box-shadow: 0 12px 28px rgba(46, 139, 87, 0.08);
+
+  &.is-upcoming {
+    border-color: rgba(214, 165, 54, 0.24);
+    background:
+      linear-gradient(135deg, rgba(214, 165, 54, 0.15), rgba(255, 255, 255, 0.96) 52%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(214, 165, 54, 0.09));
+    box-shadow: 0 12px 28px rgba(214, 165, 54, 0.08);
+  }
 }
 
 .card-accent {
@@ -340,6 +401,10 @@ onBeforeUnmount(() => {
   inset: 0 auto 0 0;
   width: 0.45rem;
   background: #2e8b57;
+}
+
+.activity-card.is-upcoming .card-accent {
+  background: #d6a536;
 }
 
 .activity-card-body {
@@ -371,6 +436,11 @@ onBeforeUnmount(() => {
   color: #247047;
   font-size: var(--text-sm);
   font-weight: 800;
+
+  &.is-upcoming {
+    background: rgba(214, 165, 54, 0.16);
+    color: #8a5f00;
+  }
 }
 
 .activity-card h2 {
