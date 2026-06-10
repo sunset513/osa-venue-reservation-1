@@ -6,6 +6,7 @@ import MyBookingHistory from "@/views/MyBookingHistory.vue";
 import ReviewCalendar from "@/views/ReviewCalendar.vue";
 import EquipmentStatus from "@/views/EquipmentStatus.vue";
 import EquipmentBorrowHistory from "@/views/EquipmentBorrowHistory.vue";
+import ActivityDashboard from "@/views/ActivityDashboard.vue";
 import ConsentAgreement from "@/views/ConsentAgreement.vue";
 import { validateRouteAccess } from "./guards";
 
@@ -39,6 +40,11 @@ const routes = [
     path: "/my-bookings",
     name: "MyBookingHistory",
     component: MyBookingHistory,
+  },
+  {
+    path: "/activity-dashboard",
+    name: "ActivityDashboard",
+    component: ActivityDashboard,
   },
   {
     path: "/equipment-status",

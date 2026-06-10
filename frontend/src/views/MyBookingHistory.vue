@@ -57,12 +57,14 @@
               </div>
 
               <div ref="dateRangePickerRef" class="date-range-picker">
+                <label for="booking-date-range-trigger">借用日期</label>
                 <button
+                  id="booking-date-range-trigger"
                   type="button"
                   class="date-range-trigger"
                   :class="{ 'is-open': datePickerOpen }"
                   :aria-expanded="datePickerOpen"
-                  aria-controls="booking-date-range-calendar"
+                  aria-controls="booking-date-range-popover"
                   @click="toggleDatePicker"
                 >
                   <span class="date-range-segment" :class="{ 'has-value': startDateFilter }">
@@ -90,78 +92,34 @@
                 <Teleport to="body">
                   <div
                     v-if="datePickerOpen"
-                    id="booking-date-range-calendar"
+                    id="booking-date-range-popover"
                     ref="dateRangePopoverRef"
                     class="date-range-popover"
                   >
-                    <div class="calendar-toolbar">
-                      <button
-                        type="button"
-                        class="calendar-nav-btn"
-                        aria-label="上一個月"
-                        title="上一個月"
-                        @click="shiftCalendarMonths(-1)"
-                      >
-                        <ChevronLeft :size="22" aria-hidden="true" />
-                      </button>
-                      <p>{{ calendarRangeTitle }}</p>
-                      <button
-                        type="button"
-                        class="calendar-nav-btn"
-                        aria-label="下一個月"
-                        title="下一個月"
-                        @click="shiftCalendarMonths(1)"
-                      >
-                        <ChevronRight :size="22" aria-hidden="true" />
-                      </button>
-                    </div>
-
-                    <div class="calendar-months" @mouseleave="clearHoveredCalendarDate">
-                      <section
-                        v-for="month in calendarMonths"
-                        :key="month.key"
-                        class="calendar-month"
-                      >
-                        <h3>{{ month.label }}</h3>
-                        <div class="calendar-weekdays" aria-hidden="true">
-                          <span
-                            v-for="weekday in WEEKDAY_LABELS"
-                            :key="weekday"
-                          >
-                            {{ weekday }}
-                          </span>
-                        </div>
-                        <div class="calendar-grid">
-                          <template
-                            v-for="day in month.days"
-                            :key="day.key"
-                          >
-                            <span
-                              v-if="day.isBlank"
-                              class="calendar-day-placeholder"
-                              aria-hidden="true"
-                            />
-                            <button
-                              v-else
-                              type="button"
-                              class="calendar-day"
-                              :class="{
-                                'is-start': isRangeStart(day.dateString),
-                                'is-end': isRangeEnd(day.dateString),
-                                'is-between': isDateInRange(day.dateString),
-                                'is-preview': isDateInPreviewRange(day.dateString),
-                                'is-preview-end': isPreviewEnd(day.dateString),
-                                'is-today': day.isToday,
-                              }"
-                              @mouseenter="setHoveredCalendarDate(day.dateString)"
-                              @focus="setHoveredCalendarDate(day.dateString)"
-                              @click="selectCalendarDate(day.dateString)"
-                            >
-                              {{ day.dayNumber }}
-                            </button>
-                          </template>
-                        </div>
-                      </section>
+                    <div class="calendar-selection-footer">
+                      <div class="calendar-selection-summary" aria-live="polite">
+                        <span class="calendar-selection-label">已選日期</span>
+                        <strong>{{ selectedCalendarRangeLabel }}</strong>
+                        <span class="calendar-selection-hint">{{ selectedCalendarRangeHint }}</span>
+                      </div>
+                      <div class="calendar-manual-inputs">
+                        <label class="calendar-manual-field">
+                          <span>起始日期</span>
+                          <input
+                            type="date"
+                            :value="startDateFilter"
+                            @change="updateManualStartDate($event.target.value)"
+                          />
+                        </label>
+                        <label class="calendar-manual-field">
+                          <span>結束日期</span>
+                          <input
+                            type="date"
+                            :value="endDateFilter"
+                            @change="updateManualEndDate($event.target.value)"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </Teleport>
@@ -437,12 +395,9 @@ const currentPage = ref(1);
 const datePickerOpen = ref(false);
 const dateRangePickerRef = ref(null);
 const dateRangePopoverRef = ref(null);
-const visibleMonthDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-const hoveredCalendarDate = ref("");
 
 const BOOKING_PAGE_SIZE = 10;
 const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
-const DISPLAYED_MONTH_COUNT = 2;
 
 const statusTabs = [
   { value: "", label: "全部", icon: null },
@@ -525,16 +480,6 @@ const formatDateTimeLabel = (value) => {
   }).format(date);
 };
 
-const padDatePart = (value) => String(value).padStart(2, "0");
-
-const toDateString = (date) => {
-  return [
-    date.getFullYear(),
-    padDatePart(date.getMonth() + 1),
-    padDatePart(date.getDate()),
-  ].join("-");
-};
-
 const parseDateString = (value) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null;
 
@@ -552,14 +497,6 @@ const parseDateString = (value) => {
   return date;
 };
 
-const addMonths = (date, monthOffset) => {
-  return new Date(date.getFullYear(), date.getMonth() + monthOffset, 1);
-};
-
-const formatMonthLabel = (date) => {
-  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月`;
-};
-
 const formatDatePickerLabel = (value) => {
   const date = parseDateString(value);
 
@@ -574,108 +511,67 @@ const formatDatePickerLabel = (value) => {
   return `${dateLabel}（${weekdayLabel}）`;
 };
 
-const buildCalendarMonth = (monthDate) => {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const todayString = toDateString(new Date());
-  const days = [];
-
-  for (let index = 0; index < firstDay.getDay(); index += 1) {
-    days.push({
-      key: `${year}-${month}-blank-${index}`,
-      isBlank: true,
-    });
+const selectedCalendarRangeLabel = computed(() => {
+  if (!startDateFilter.value && !endDateFilter.value) {
+    return "尚未選擇日期";
   }
 
-  for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber += 1) {
-    const dateString = toDateString(new Date(year, month, dayNumber));
-    days.push({
-      key: dateString,
-      isBlank: false,
-      dateString,
-      dayNumber,
-      isToday: dateString === todayString,
-    });
+  if (!startDateFilter.value && endDateFilter.value) {
+    return `截至 ${formatDatePickerLabel(endDateFilter.value)}`;
   }
 
-  return {
-    key: `${year}-${month}`,
-    label: formatMonthLabel(monthDate),
-    days,
-  };
-};
+  if (startDateFilter.value && endDateFilter.value) {
+    if (startDateFilter.value === endDateFilter.value) {
+      return formatDatePickerLabel(startDateFilter.value);
+    }
 
-const calendarMonths = computed(() => {
-  return Array.from({ length: DISPLAYED_MONTH_COUNT }, (_, index) =>
-    buildCalendarMonth(addMonths(visibleMonthDate.value, index)),
-  );
-});
-
-const calendarRangeTitle = computed(() => {
-  const firstMonth = visibleMonthDate.value;
-  const lastMonth = addMonths(firstMonth, DISPLAYED_MONTH_COUNT - 1);
-
-  if (firstMonth.getFullYear() === lastMonth.getFullYear()) {
-    return `${firstMonth.getFullYear()} 年 ${firstMonth.getMonth() + 1} - ${lastMonth.getMonth() + 1} 月`;
+    return `${formatDatePickerLabel(startDateFilter.value)} - ${formatDatePickerLabel(endDateFilter.value)}`;
   }
 
-  return `${formatMonthLabel(firstMonth)} - ${formatMonthLabel(lastMonth)}`;
+  return `自 ${formatDatePickerLabel(startDateFilter.value)} 起`;
 });
 
-const isRangeStart = (dateString) => dateString === startDateFilter.value;
-const isRangeEnd = (dateString) => dateString === endDateFilter.value;
+const selectedCalendarRangeHint = computed(() => {
+  if (!startDateFilter.value && !endDateFilter.value) {
+    return "請先選擇起始日期";
+  }
 
-const isSelectingRangeEnd = computed(() => {
-  return startDateFilter.value !== "" && endDateFilter.value === "";
+  if (!startDateFilter.value && endDateFilter.value) {
+    return "可再輸入起始日期";
+  }
+
+  if (startDateFilter.value && !endDateFilter.value) {
+    return "再選擇結束日期，或再次選取同一天";
+  }
+
+  return "日期範圍已套用";
 });
 
-const isDateInRange = (dateString) => {
-  return (
-    startDateFilter.value !== ""
-    && endDateFilter.value !== ""
-    && dateString > startDateFilter.value
-    && dateString < endDateFilter.value
-  );
+const updateManualStartDate = (dateString) => {
+  const normalizedDate = parseDateString(dateString) ? dateString : "";
+  startDateFilter.value = normalizedDate;
+
+  if (normalizedDate && endDateFilter.value && endDateFilter.value < normalizedDate) {
+    endDateFilter.value = "";
+  }
+
 };
 
-const setHoveredCalendarDate = (dateString) => {
-  hoveredCalendarDate.value = isSelectingRangeEnd.value ? dateString : "";
-};
+const updateManualEndDate = (dateString) => {
+  const normalizedDate = parseDateString(dateString) ? dateString : "";
+  endDateFilter.value = normalizedDate;
 
-const clearHoveredCalendarDate = () => {
-  hoveredCalendarDate.value = "";
-};
-
-const isDateInPreviewRange = (dateString) => {
-  return (
-    isSelectingRangeEnd.value
-    && hoveredCalendarDate.value > startDateFilter.value
-    && dateString > startDateFilter.value
-    && dateString < hoveredCalendarDate.value
-  );
-};
-
-const isPreviewEnd = (dateString) => {
-  return (
-    isSelectingRangeEnd.value
-    && hoveredCalendarDate.value > startDateFilter.value
-    && dateString === hoveredCalendarDate.value
-  );
+  if (normalizedDate && startDateFilter.value && normalizedDate < startDateFilter.value) {
+    startDateFilter.value = "";
+  }
 };
 
 const openDatePicker = () => {
-  const selectedDate = parseDateString(startDateFilter.value || endDateFilter.value);
-  visibleMonthDate.value = selectedDate
-    ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
-    : visibleMonthDate.value;
   datePickerOpen.value = true;
 };
 
 const toggleDatePicker = () => {
   if (datePickerOpen.value) {
-    clearHoveredCalendarDate();
     datePickerOpen.value = false;
     return;
   }
@@ -683,31 +579,9 @@ const toggleDatePicker = () => {
   openDatePicker();
 };
 
-const shiftCalendarMonths = (monthOffset) => {
-  visibleMonthDate.value = addMonths(visibleMonthDate.value, monthOffset);
-};
-
-const selectCalendarDate = (dateString) => {
-  if (
-    startDateFilter.value === ""
-    || endDateFilter.value !== ""
-    || dateString < startDateFilter.value
-  ) {
-    startDateFilter.value = dateString;
-    endDateFilter.value = "";
-    clearHoveredCalendarDate();
-    return;
-  }
-
-  endDateFilter.value = dateString;
-  clearHoveredCalendarDate();
-  datePickerOpen.value = false;
-};
-
 const clearDateRange = () => {
   startDateFilter.value = "";
   endDateFilter.value = "";
-  clearHoveredCalendarDate();
 };
 
 const handleDocumentClick = (event) => {
@@ -717,7 +591,6 @@ const handleDocumentClick = (event) => {
   const clickedPopover = dateRangePopoverRef.value?.contains(event.target);
 
   if (!clickedTrigger && !clickedPopover) {
-    clearHoveredCalendarDate();
     datePickerOpen.value = false;
   }
 };
@@ -1115,6 +988,12 @@ watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter]
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+
+  label {
+    color: var(--muted-strong);
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
 }
 
 .date-range-trigger {
@@ -1203,7 +1082,7 @@ watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter]
   top: 50%;
   left: 50%;
   z-index: 80;
-  width: min(720px, calc(100vw - 2rem));
+  width: min(520px, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
   padding: 1.2rem;
   overflow-y: auto;
@@ -1215,134 +1094,79 @@ watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter]
   transform: translate(-50%, -50%);
 }
 
-.calendar-toolbar {
+.calendar-selection-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.calendar-selection-summary {
   display: grid;
-  grid-template-columns: 2.4rem 1fr 2.4rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.35rem 0.85rem;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
 
-  p {
-    margin: 0;
+  strong {
+    min-width: 0;
     color: var(--ink);
-    font-size: var(--text-lg);
+    font-size: var(--text-base);
     font-weight: 900;
-    text-align: center;
+    line-height: 1.25;
   }
 }
 
-.calendar-nav-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--ink);
-  cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
-
-  &:hover {
-    background: rgba(var(--blue-900-rgb), 0.06);
-    color: var(--accent);
-  }
+.calendar-selection-hint {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  line-height: 1.35;
 }
 
-.calendar-months {
+.calendar-selection-label {
+  align-self: flex-start;
+  padding-top: 0.1rem;
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.calendar-manual-inputs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
+  gap: 0.75rem;
 }
 
-.calendar-month {
+.calendar-manual-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
   min-width: 0;
 
-  h3 {
-    margin: 0 0 0.9rem;
-    color: var(--ink);
-    font-size: var(--text-lg);
-    font-weight: 900;
-    text-align: center;
-  }
-}
-
-.calendar-weekdays,
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.25rem;
-}
-
-.calendar-weekdays {
-  margin-bottom: 0.4rem;
-
   span {
-    color: var(--accent);
+    color: var(--muted-strong);
     font-size: var(--text-xs);
     font-weight: 800;
-    text-align: center;
-  }
-}
-
-.calendar-day-placeholder,
-.calendar-day {
-  width: 100%;
-  aspect-ratio: 1;
-}
-
-.calendar-day {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 0.7rem;
-  background: transparent;
-  color: var(--ink);
-  font-size: var(--text-base);
-  font-weight: 900;
-  cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
-
-  &:hover {
-    background: rgba(var(--blue-900-rgb), 0.08);
-    color: var(--accent);
-    transform: translateY(-1px);
   }
 
-  &.is-today {
-    box-shadow: inset 0 0 0 1px rgba(var(--blue-900-rgb), 0.22);
-  }
+  input {
+    width: 100%;
+    min-height: 2.55rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 700;
 
-  &.is-between {
-    border-radius: 0.35rem;
-    background: rgba(70, 99, 242, 0.12);
-    color: var(--accent);
-  }
-
-  &.is-preview {
-    border-radius: 0.35rem;
-    background: rgba(70, 99, 242, 0.1);
-    color: var(--accent);
-  }
-
-  &.is-preview-end {
-    background: rgba(70, 99, 242, 0.2);
-    color: var(--accent);
-    box-shadow: inset 0 -3px 0 rgba(70, 99, 242, 0.28);
-  }
-
-  &.is-start,
-  &.is-end {
-    background: var(--accent);
-    color: #ffffff;
-    box-shadow: 0 10px 20px rgba(70, 99, 242, 0.22);
+    &:focus {
+      outline: none;
+      border-color: rgba(var(--blue-900-rgb), 0.34);
+      box-shadow: 0 0 0 3px rgba(70, 99, 242, 0.12);
+    }
   }
 }
 
@@ -1832,14 +1656,20 @@ watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter]
     transform: translateX(-50%);
   }
 
-  .calendar-months {
+  .calendar-selection-summary {
     grid-template-columns: 1fr;
   }
 
-  .calendar-toolbar {
-    p {
-      font-size: var(--text-base);
-    }
+  .calendar-selection-hint {
+    grid-column: 1;
+  }
+
+  .calendar-selection-label {
+    padding-top: 0;
+  }
+
+  .calendar-manual-inputs {
+    grid-template-columns: 1fr;
   }
 
   .history-records {

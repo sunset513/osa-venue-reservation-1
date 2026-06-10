@@ -5,6 +5,20 @@
       <p>{{ UNIT_SELECTOR_DESCRIPTION }}</p>
     </header>
 
+    <section class="dashboard-entry" aria-labelledby="dashboard-entry-title">
+      <div class="dashboard-entry-icon">
+        <Activity :size="28" />
+      </div>
+      <div class="dashboard-entry-copy">
+        <h2 id="dashboard-entry-title">活動資訊</h2>
+        <p>查看目前正在使用中的場地與活動。</p>
+      </div>
+      <button class="btn btn-primary dashboard-entry-action" type="button" @click="goToActivityDashboard">
+        前往查看
+        <ArrowRight :size="18" />
+      </button>
+    </section>
+
     <div v-if="loading" class="loading-state">載入中...</div>
 
     <div v-else class="card-grid">
@@ -30,7 +44,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { Building2 } from "lucide-vue-next";
+import { Activity, ArrowRight, Building2 } from "lucide-vue-next";
 import { fetchAllUnits } from "@/api/venue";
 import {
   UNIT_SELECTOR_DESCRIPTION,
@@ -68,11 +82,59 @@ const selectUnit = (unit) => {
   if (unit.disabled) return;
   router.push(`/unit/${unit.id}`);
 };
+
+const goToActivityDashboard = () => {
+  router.push({ name: "ActivityDashboard" });
+};
 </script>
 
 <style lang="scss" scoped>
 // 將 @import 改為 @use 解決警告
 @use "@/assets/styles/selector-common.scss";
+
+.dashboard-entry {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.2rem 1.35rem;
+  border: 1px solid rgba(var(--blue-900-rgb), 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-soft);
+}
+
+.dashboard-entry-icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(46, 139, 87, 0.12);
+  color: #247047;
+}
+
+.dashboard-entry-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+
+  h2 {
+    color: var(--ink);
+    font-size: var(--text-xl);
+  }
+
+  p {
+    margin: 0.2rem 0 0;
+    color: var(--muted);
+  }
+}
+
+.dashboard-entry-action {
+  flex: 0 0 auto;
+}
 
 /* 針對待開發單位的專屬樣式 */
 .is-disabled {
@@ -100,5 +162,17 @@ const selectUnit = (unit) => {
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   font-weight: 700;
+}
+
+@media (max-width: 680px) {
+  .dashboard-entry {
+    align-items: stretch;
+    flex-direction: column;
+    text-align: left;
+  }
+
+  .dashboard-entry-action {
+    width: 100%;
+  }
 }
 </style>
