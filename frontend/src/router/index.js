@@ -65,9 +65,6 @@ const routes = [
     path: "/consent-agreement",
     name: "ConsentAgreement",
     component: ConsentAgreement,
-    meta: {
-      skipConsentGate: true,
-    },
   },
 ];
 

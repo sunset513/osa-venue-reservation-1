@@ -107,10 +107,11 @@ import {
   Users,
   Wrench,
 } from "lucide-vue-next";
-import { acceptConsent } from "@/utils/consentGate";
+import { useAuthSessionStore } from "@/stores/authSession";
 
 const route = useRoute();
 const router = useRouter();
+const authSession = useAuthSessionStore();
 
 const agreementContentRef = ref(null);
 const hasReadAgreement = ref(false);
@@ -175,11 +176,15 @@ const getRedirectTarget = () => {
   const redirect = route.query.redirect;
 
   if (typeof redirect !== "string" || !redirect.startsWith("/")) {
-    return "/";
+    return authSession.getPostConsentRoute();
   }
 
   if (redirect.startsWith("/consent-agreement")) {
-    return "/";
+    return authSession.getPostConsentRoute();
+  }
+
+  if (redirect === "/") {
+    return authSession.getPostConsentRoute();
   }
 
   return redirect;
@@ -198,7 +203,7 @@ const handleAgreementScroll = () => {
 const enterSystem = () => {
   if (!canEnterSystem.value) return;
 
-  acceptConsent();
+  authSession.acceptConsentForCurrentUser();
   router.replace(getRedirectTarget());
 };
 

@@ -1,5 +1,5 @@
 import { fetchAllUnits, fetchVenueDetail } from "@/api/venue";
-import { hasAcceptedConsent } from "@/utils/consentGate";
+import { useAuthSessionStore } from "@/stores/authSession";
 import { warning } from "@/utils/useToast";
 
 let cachedUnitIds = null;
@@ -41,11 +41,35 @@ const notifyInvalidRoute = (message) => {
   warning(message);
 };
 
+const isConsentRoute = (to) => {
+  return to.name === "ConsentAgreement" || to.path === "/consent-agreement";
+};
+
 export const validateRouteAccess = async (to) => {
-  if (!to.meta.skipConsentGate && !hasAcceptedConsent()) {
+  const authSession = useAuthSessionStore();
+
+  try {
+    await authSession.ensureCurrentUser();
+  } catch (error) {
+    console.error("取得目前登入者失敗:", error);
+    return false;
+  }
+
+  if (isConsentRoute(to)) {
+    return true;
+  }
+
+  if (!authSession.hasAcceptedConsent) {
     return {
       name: "ConsentAgreement",
       query: { redirect: to.fullPath },
+      replace: true,
+    };
+  }
+
+  if (to.path === "/" && authSession.isReviewer) {
+    return {
+      path: authSession.getPostConsentRoute(),
       replace: true,
     };
   }

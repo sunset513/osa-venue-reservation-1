@@ -17,6 +17,12 @@ const redirectToLogin = () => {
     return;
   }
 
+  import("@/stores/authSession")
+    .then(({ useAuthSessionStore }) => {
+      useAuthSessionStore().clearSessionState();
+    })
+    .catch(() => {});
+
   const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   const loginUrl = `/auth/login?redirect=${encodeURIComponent(currentPath)}`;
 
