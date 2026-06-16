@@ -105,7 +105,7 @@ public class BookingController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<Long> createBooking(@Valid @RequestBody BookingRequestDTO request) {
         log.info("【BookingController】收到請求：提交預約申請");
         log.info("【BookingController】請求參數 - venueId={}, bookingDate={}, slots={}, purpose={}",
@@ -178,7 +178,7 @@ public class BookingController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<List<BookingVO>> getMyBookings() {
         log.info("【BookingController】收到請求：查看個人預約清單");
         try {
@@ -280,7 +280,7 @@ public class BookingController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingPageVO> queryMyBookings(
             @Valid @RequestBody tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingQueryDTO queryCondition) {
         log.info("【BookingController】收到請求：多維度篩選查詢個人預約清單");
@@ -365,7 +365,7 @@ public class BookingController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<Void> updateBooking(
             @PathVariable(name = "id")
             @Parameter(
@@ -451,7 +451,7 @@ public class BookingController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<Void> withdrawBooking(
             @PathVariable(name = "id")
             @Parameter(

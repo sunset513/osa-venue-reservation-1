@@ -74,7 +74,7 @@ public class EquipmentController {
                     description = "成功獲取設備及使用狀態"
             )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<List<EquipmentListByVenueVO>> queryAllEquipments() {
         log.info("【EquipmentController】收到請求：查詢所有設備及使用狀態");
 
@@ -124,7 +124,7 @@ public class EquipmentController {
                     description = "設備名稱已存在或其他參數錯誤"
             )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<Long> createEquipment(
             @RequestBody EquipmentCreateDTO request
     ) {
@@ -179,7 +179,7 @@ public class EquipmentController {
                     description = "新名稱已存在、設備不存在或其他參數錯誤"
             )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<String> updateEquipment(
             @PathVariable
             @Parameter(
@@ -235,7 +235,7 @@ public class EquipmentController {
                     description = "設備有進行中的預約、設備不存在或其他參數錯誤"
             )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<String> deleteEquipment(
             @PathVariable
             @Parameter(
@@ -290,7 +290,7 @@ public class EquipmentController {
                     description = "成功獲取借用歷史紀錄"
             )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<EquipmentBorrowRecordPageVO> getEquipmentBorrowHistory(
             @RequestParam(value = "pageNum", defaultValue = "1")
             @Parameter(

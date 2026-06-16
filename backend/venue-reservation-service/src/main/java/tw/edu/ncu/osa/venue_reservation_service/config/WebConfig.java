@@ -1,19 +1,17 @@
 package tw.edu.ncu.osa.venue_reservation_service.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import tw.edu.ncu.osa.venue_reservation_service.interceptor.MockAuthInterceptor;
+import tw.edu.ncu.osa.venue_reservation_service.interceptor.GatewaySessionAuthInterceptor;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
     @Autowired
-    private MockAuthInterceptor mockAuthInterceptor;
+    private GatewaySessionAuthInterceptor gatewaySessionAuthInterceptor;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -40,19 +38,11 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(mockAuthInterceptor)
+        registry.addInterceptor(gatewaySessionAuthInterceptor)
                 .addPathPatterns("/api/**")         // 攔截所有 API 請求
                 .excludePathPatterns(
-                        "/api/public/**",
                         "/api/bookings/approved/two-venues"
-                ); // 排除公開 API 與免驗證查詢接口
+                ); // 排除免驗證查詢接口
     }
 
-    /**
-     * 配置 ObjectMapper Bean，用於 JSON 序列化/反序列化
-     */
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
 }

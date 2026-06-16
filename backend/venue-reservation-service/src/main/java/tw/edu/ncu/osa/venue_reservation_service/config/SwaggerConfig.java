@@ -16,10 +16,10 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .info(new Info().title("場地租借系統 API").version("1.0"))
                 .components(new Components()
-                        .addSecuritySchemes("Mock-Authorization",
+                        .addSecuritySchemes("Session-Cookie",
                                 new SecurityScheme()
-                                        .name("Authorization")
+                                        .name("SESSIONID")
                                         .type(SecurityScheme.Type.APIKEY)
-                                        .in(SecurityScheme.In.HEADER)));
+                                        .in(SecurityScheme.In.COOKIE)));
     }
 }

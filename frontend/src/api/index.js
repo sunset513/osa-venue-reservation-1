@@ -4,29 +4,26 @@ import axios from "axios";
 
 // 建立 Axios 實例
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
   timeout: 10000, // 請求超時時間 10 秒
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request 攔截器 (發送請求前)
-request.interceptors.request.use(
-  (config) => {
-    if (!config.headers?.Authorization) {
-      // 配合後端 MockAuthInterceptor，帶入暫時性身分校驗 Token
-      // 未來串接 Portal 或 JWT 時，可改從 localStorage 或 Pinia Store 讀取
-      const mockToken = "mock-token-123";
-      config.headers["Authorization"] = mockToken;
-    }
+const redirectToLogin = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
 
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  },
-);
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const loginUrl = `/auth/login?redirect=${encodeURIComponent(currentPath)}`;
+
+  if (window.location.pathname !== "/auth/login") {
+    window.location.assign(loginUrl);
+  }
+};
 
 // Response 攔截器 (接收響應後)
 request.interceptors.response.use(
@@ -51,7 +48,8 @@ request.interceptors.response.use(
 
       switch (status) {
         case 401:
-          errorMsg = "尚未登入或 Token 已過期";
+          errorMsg = "尚未登入或登入狀態已失效";
+          redirectToLogin();
           break;
         case 403:
           errorMsg = "無權限執行此操作";

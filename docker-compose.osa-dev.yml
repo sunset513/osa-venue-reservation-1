@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend/venue-reservation-service
+      dockerfile: Dockerfile
+    container_name: venue-backend
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-dev}
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${DB_NAME:-venue_reservation_system}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-root}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - AUTH_SESSION_COOKIE_NAME=SESSIONID
+      - AUTH_SESSION_TTL_SECONDS=1800
+      - AUTH_SESSION_SECURE_COOKIE=false
+      - AUTH_SESSION_SAME_SITE=Lax
+      - AUTH_REVIEWER_IDENTIFIER=${AUTH_REVIEWER_IDENTIFIER:-114423011}
+    networks:
+      - osa_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: venue-frontend
+    restart: unless-stopped
+    expose:
+      - "5173"
+    environment:
+      - VITE_PROXY_TARGET=http://backend:8080
+      - VITE_API_BASE_URL=/api/venue
+      - VITE_APP_BASE_PATH=/venue/
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - osa_network
+
+networks:
+  osa_network:
+    external: true

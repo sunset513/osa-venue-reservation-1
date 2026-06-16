@@ -83,7 +83,7 @@ public class ReviewController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<List<BookingVO>> getPendingBookings(
             @RequestParam(required = false)
             @Parameter(
@@ -177,7 +177,7 @@ public class ReviewController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<BookingVO> getBookingDetails(
             @PathVariable(name = "id")
             @Parameter(
@@ -260,7 +260,7 @@ public class ReviewController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<Void> reviewBooking(
             @PathVariable(name = "id")
             @Parameter(
@@ -337,7 +337,7 @@ public class ReviewController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<Void> updateReviewStatus(
             @PathVariable(name = "id")
             @Parameter(
@@ -420,7 +420,7 @@ public class ReviewController {
             )
         )
     })
-    @SecurityRequirement(name = "Mock-Authorization")
+    @SecurityRequirement(name = "Session-Cookie")
     public Result<Void> deleteBooking(
             @PathVariable(name = "id")
             @Parameter(
