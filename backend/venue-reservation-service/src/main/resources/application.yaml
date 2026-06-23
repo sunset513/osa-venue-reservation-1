@@ -15,7 +15,6 @@ auth:
   session-ttl-seconds: ${AUTH_SESSION_TTL_SECONDS:1800}
   session-secure-cookie: ${AUTH_SESSION_SECURE_COOKIE:false}
   session-same-site: ${AUTH_SESSION_SAME_SITE:Lax}
-  reviewer-identifier: ${AUTH_REVIEWER_IDENTIFIER:114423011}
 
 # MyBatis 通用配置也可以放在主檔，除非不同環境有不同的 Mapper 路徑
 mybatis:

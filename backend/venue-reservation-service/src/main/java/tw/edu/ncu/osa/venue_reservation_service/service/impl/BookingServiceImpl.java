@@ -44,7 +44,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(rollbackFor = Exception.class)
     public Long createBooking(BookingRequestDTO request) {
         log.info("【BookingService】[createBooking] 開始建立預約申請");
-        // 1. 從 ThreadLocal 拿到 Mock 登入的用戶 ID
+        // 1. 從 Gateway session 建立的 ThreadLocal 拿到登入者 Portal identifier
         String userId = UserContext.getUser().getUserId();
         log.info("【BookingService】[createBooking] 獲取當前用戶ID={}", userId);
 

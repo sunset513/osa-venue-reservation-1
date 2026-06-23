@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.edu.ncu.osa.venue_reservation_service.mapper.AdminRoleMapper">
+
+    <select id="selectActiveByUserId" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.AdminRole">
+        SELECT id, user_id, level, deleted_at, created_at, updated_at
+        FROM admin_role
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByUserId" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.AdminRole">
+        SELECT id, user_id, level, deleted_at, created_at, updated_at
+        FROM admin_role
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectById" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.AdminRole">
+        SELECT id, user_id, level, deleted_at, created_at, updated_at
+        FROM admin_role
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.AdminRole">
+        SELECT id, user_id, level, deleted_at, created_at, updated_at
+        FROM admin_role
+        <if test="includeDeleted == false">
+            WHERE deleted_at IS NULL
+        </if>
+        ORDER BY level DESC, user_id ASC
+    </select>
+
+    <insert id="insertAdminRole" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO admin_role (user_id, level, deleted_at)
+        VALUES (#{userId}, #{level}, NULL)
+    </insert>
+
+    <update id="restoreAndUpdateLevel">
+        UPDATE admin_role
+        SET level = #{level},
+            deleted_at = NULL
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateLevel">
+        UPDATE admin_role
+        SET level = #{level}
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="softDelete">
+        UPDATE admin_role
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <select id="countActiveLevelOne" resultType="int">
+        SELECT COUNT(*)
+        FROM admin_role
+        WHERE level = 1
+          AND deleted_at IS NULL
+    </select>
+
+</mapper>

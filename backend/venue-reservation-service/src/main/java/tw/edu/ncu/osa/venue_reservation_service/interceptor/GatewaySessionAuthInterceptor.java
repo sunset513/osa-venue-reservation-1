@@ -15,6 +15,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import tw.edu.ncu.osa.venue_reservation_service.common.result.Result;
 import tw.edu.ncu.osa.venue_reservation_service.config.AuthProperties;
+import tw.edu.ncu.osa.venue_reservation_service.mapper.AdminRoleMapper;
+import tw.edu.ncu.osa.venue_reservation_service.mapper.UserMapper;
+import tw.edu.ncu.osa.venue_reservation_service.model.entity.AdminRole;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.User;
 import tw.edu.ncu.osa.venue_reservation_service.util.UserContext;
 
@@ -27,9 +30,12 @@ import java.util.Objects;
 public class GatewaySessionAuthInterceptor implements HandlerInterceptor {
     private static final String ROLE_ADMIN = "ADMIN";
     private static final String ROLE_USER = "USER";
+    private static final int LEVEL_ONE_ADMIN = 1;
 
     private final StringRedisTemplate redisTemplate;
     private final AuthProperties authProperties;
+    private final UserMapper userMapper;
+    private final AdminRoleMapper adminRoleMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -70,22 +76,57 @@ public class GatewaySessionAuthInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        String role = authProperties.isReviewer(profile.identifier()) ? ROLE_ADMIN : ROLE_USER;
+        String displayName = firstNonBlank(profile.chineseName(), profile.identifier());
+        User user;
+        AdminRole adminRole;
+        try {
+            user = userMapper.selectByUserId(profile.identifier());
+            if (user != null && user.getDeletedAt() != null) {
+                log.warn("Banned user login denied - method={}, path={}, identifier={}",
+                        request.getMethod(), path, profile.identifier());
+                writeError(response, HttpServletResponse.SC_FORBIDDEN, "帳號已停用，無法登入");
+                return false;
+            }
+
+            adminRole = adminRoleMapper.selectActiveByUserId(profile.identifier());
+            String role = adminRole == null ? ROLE_USER : ROLE_ADMIN;
+            if (user == null) {
+                userMapper.insertPortalUser(profile.identifier(), displayName, profile.email(), role);
+            } else {
+                userMapper.updateLoginAt(profile.identifier());
+            }
+            user = userMapper.selectByUserId(profile.identifier());
+            user.setRole(role);
+        } catch (Exception ex) {
+            log.error("Unable to sync Gateway user - method={}, path={}, identifier={}",
+                    request.getMethod(), path, profile.identifier(), ex);
+            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "登入者資料目前無法同步");
+            return false;
+        }
+
         UserContext.setUser(new User(
-                profile.identifier(),
-                profile.chineseName(),
-                profile.email(),
-                role,
-                null,
-                0,
-                null
+                user.getUserId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getUnitId(),
+                user.getLoginAt(),
+                user.getDeletedAt()
         ));
 
-        if (requiresReviewer(path) && !ROLE_ADMIN.equals(role)) {
+        if (requiresReviewer(path) && !ROLE_ADMIN.equals(user.getRole())) {
             log.warn("Reviewer permission denied - method={}, path={}, identifier={}",
                     request.getMethod(), path, profile.identifier());
             UserContext.remove();
             writeError(response, HttpServletResponse.SC_FORBIDDEN, "無審核權限");
+            return false;
+        }
+
+        if (requiresLevelOneAdmin(path) && !isLevelOneAdmin(adminRole)) {
+            log.warn("Admin role management permission denied - method={}, path={}, identifier={}",
+                    request.getMethod(), path, profile.identifier());
+            UserContext.remove();
+            writeError(response, HttpServletResponse.SC_FORBIDDEN, "無管理員帳號管理權限");
             return false;
         }
 
@@ -173,6 +214,17 @@ public class GatewaySessionAuthInterceptor implements HandlerInterceptor {
 
     private boolean requiresReviewer(String path) {
         return "/api/reviews".equals(path) || path.startsWith("/api/reviews/");
+    }
+
+    private boolean requiresLevelOneAdmin(String path) {
+        return "/api/admin-roles".equals(path) || path.startsWith("/api/admin-roles/");
+    }
+
+    private boolean isLevelOneAdmin(AdminRole adminRole) {
+        return adminRole != null
+                && adminRole.getDeletedAt() == null
+                && adminRole.getLevel() != null
+                && adminRole.getLevel() == LEVEL_ONE_ADMIN;
     }
 
     private String resolveSessionId(HttpServletRequest request) {

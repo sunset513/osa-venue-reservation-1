@@ -14,7 +14,7 @@ public class User {
     private String name;     // 姓名
     private String email;    // 電子郵件
     private String role;     // USER, ADMIN
-    private Long unitId;     // 租用場地 ID
-    private Integer isDeleted; // 0: normal, 1: deleted
+    private Long unitId;     // 用戶所屬單位
+    private LocalDateTime loginAt;
     private LocalDateTime deletedAt;
 }
