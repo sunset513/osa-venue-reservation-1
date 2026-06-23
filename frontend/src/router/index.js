@@ -8,6 +8,7 @@ import EquipmentStatus from "@/views/EquipmentStatus.vue";
 import EquipmentBorrowHistory from "@/views/EquipmentBorrowHistory.vue";
 import ActivityDashboard from "@/views/ActivityDashboard.vue";
 import ConsentAgreement from "@/views/ConsentAgreement.vue";
+import NotFound from "@/views/NotFound.vue";
 import { validateRouteAccess } from "./guards";
 
 const routes = [
@@ -20,20 +21,18 @@ const routes = [
     path: "/unit/:unitId",
     name: "VenueSelector",
     component: VenueSelector,
-    props: true, // 將路徑參數轉為組件的 props
+    props: true,
     meta: {
       validateUnit: true,
-      redirectOnInvalid: "/",
     },
   },
   {
     path: "/venue/:venueId",
     name: "VenueCalendar",
     component: VenueCalendar,
-    props: true, // 將路徑參數轉為組件的 props
+    props: true,
     meta: {
       validateVenue: true,
-      redirectOnInvalid: "/",
     },
   },
   {
@@ -52,7 +51,6 @@ const routes = [
     component: EquipmentStatus,
     meta: {
       requiresReviewer: true,
-      redirectOnInvalid: "/",
     },
   },
   {
@@ -64,11 +62,26 @@ const routes = [
     path: "/review",
     name: "ReviewCalendar",
     component: ReviewCalendar,
+    meta: {
+      requiresReviewer: true,
+    },
   },
   {
     path: "/consent-agreement",
     name: "ConsentAgreement",
     component: ConsentAgreement,
+  },
+  {
+    path: "/404",
+    name: "NotFound",
+    component: NotFound,
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    redirect: {
+      name: "NotFound",
+      replace: true,
+    },
   },
 ];
 

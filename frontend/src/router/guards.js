@@ -1,8 +1,13 @@
 import { fetchAllUnits, fetchVenueDetail } from "@/api/venue";
 import { useAuthSessionStore } from "@/stores/authSession";
-import { warning } from "@/utils/useToast";
+
+const NOT_FOUND_ROUTE_NAME = "NotFound";
 
 let cachedUnitIds = null;
+
+export const resetRouteValidationCache = () => {
+  cachedUnitIds = null;
+};
 
 export const isValidRouteParam = (value) => {
   if (typeof value !== "string" || value.trim() === "") {
@@ -26,37 +31,71 @@ export const ensureVenueExists = async (venueId) => {
   return true;
 };
 
-const getRedirectPath = (to) => {
-  return typeof to.meta.redirectOnInvalid === "string" ? to.meta.redirectOnInvalid : "/";
-};
-
-const redirectToSafePage = (to) => {
-  return {
-    path: getRedirectPath(to),
-    replace: true,
-  };
-};
-
-const notifyInvalidRoute = (message) => {
-  warning(message);
-};
-
 const isConsentRoute = (to) => {
   return to.name === "ConsentAgreement" || to.path === "/consent-agreement";
 };
 
+const isNotFoundRoute = (to) => {
+  return to.name === NOT_FOUND_ROUTE_NAME || to.path === "/404";
+};
+
+export const redirectToNotFound = () => {
+  return {
+    name: NOT_FOUND_ROUTE_NAME,
+    replace: true,
+  };
+};
+
 export const validateRouteAccess = async (to) => {
+  if (isNotFoundRoute(to) || isConsentRoute(to)) {
+    return true;
+  }
+
   const authSession = useAuthSessionStore();
 
   try {
     await authSession.ensureCurrentUser();
   } catch (error) {
-    console.error("取得目前登入者失敗:", error);
+    console.error("Failed to load current user before route access validation.", error);
     return false;
   }
 
-  if (isConsentRoute(to)) {
-    return true;
+  if (to.meta?.requiresReviewer && !authSession.isReviewer) {
+    return redirectToNotFound();
+  }
+
+  if (to.meta?.validateUnit) {
+    const unitId = String(to.params.unitId ?? "");
+
+    if (!isValidRouteParam(unitId)) {
+      return redirectToNotFound();
+    }
+
+    try {
+      const unitExists = await ensureUnitExists(unitId);
+
+      if (!unitExists) {
+        return redirectToNotFound();
+      }
+    } catch (error) {
+      console.error("Failed to validate unit route parameter.", error);
+      return redirectToNotFound();
+    }
+  }
+
+  if (to.meta?.validateVenue) {
+    const venueId = String(to.params.venueId ?? "");
+
+    if (!isValidRouteParam(venueId)) {
+      return redirectToNotFound();
+    }
+
+    try {
+      await ensureVenueExists(venueId);
+    } catch (error) {
+      console.error("Failed to validate venue route parameter.", error);
+      return redirectToNotFound();
+    }
   }
 
   if (!authSession.hasAcceptedConsent) {
@@ -65,49 +104,6 @@ export const validateRouteAccess = async (to) => {
       query: { redirect: to.fullPath },
       replace: true,
     };
-  }
-
-  if (to.meta.requiresReviewer && !authSession.isReviewer) {
-    return redirectToSafePage(to);
-  }
-
-  if (to.meta.validateUnit) {
-    const unitId = String(to.params.unitId ?? "");
-
-    if (!isValidRouteParam(unitId)) {
-      notifyInvalidRoute("單位網址格式不正確，已導回首頁");
-      return redirectToSafePage(to);
-    }
-
-    try {
-      const unitExists = await ensureUnitExists(unitId);
-
-      if (!unitExists) {
-        notifyInvalidRoute("找不到指定的管理單位，已導回首頁");
-        return redirectToSafePage(to);
-      }
-    } catch (error) {
-      console.error("驗證單位路由失敗:", error);
-      notifyInvalidRoute("目前無法驗證單位網址，已導回首頁");
-      return redirectToSafePage(to);
-    }
-  }
-
-  if (to.meta.validateVenue) {
-    const venueId = String(to.params.venueId ?? "");
-
-    if (!isValidRouteParam(venueId)) {
-      notifyInvalidRoute("場地網址格式不正確，已導回首頁");
-      return redirectToSafePage(to);
-    }
-
-    try {
-      await ensureVenueExists(venueId);
-    } catch (error) {
-      console.error("驗證場地路由失敗:", error);
-      notifyInvalidRoute("找不到指定場地或目前無法驗證，已導回首頁");
-      return redirectToSafePage(to);
-    }
   }
 
   return true;
