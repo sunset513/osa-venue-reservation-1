@@ -184,7 +184,7 @@ const getRedirectTarget = () => {
   }
 
   if (redirect === "/") {
-    return authSession.getPostConsentRoute();
+    return redirect;
   }
 
   return redirect;

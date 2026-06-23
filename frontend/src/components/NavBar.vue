@@ -37,6 +37,18 @@
               <span>我的預約歷史紀錄</span>
             </button>
             <button
+              v-if="isReviewer"
+              type="button"
+              class="menu-item"
+              :class="{ 'is-active': isReviewPage }"
+              role="menuitem"
+              @click="goToReviewPage"
+            >
+              <ClipboardCheck :size="18" aria-hidden="true" class="menu-item-icon" />
+              <span>場地審核</span>
+            </button>
+            <button
+              v-if="isReviewer"
               type="button"
               class="menu-item"
               :class="{ 'is-active': isEquipmentStatusPage }"
@@ -65,15 +77,19 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { ChevronDown, ClipboardList, History, User, Wrench } from "lucide-vue-next";
+import { ChevronDown, ClipboardCheck, ClipboardList, History, User, Wrench } from "lucide-vue-next";
 import { RouterLink, useRoute, useRouter } from "vue-router";
+import { useAuthSessionStore } from "@/stores/authSession";
 
 const route = useRoute();
 const router = useRouter();
+const authSession = useAuthSessionStore();
 const menuRef = ref(null);
 const isMenuOpen = ref(false);
 
+const isReviewer = computed(() => authSession.isReviewer);
 const isHistoryPage = computed(() => route.name === "MyBookingHistory");
+const isReviewPage = computed(() => route.name === "ReviewCalendar");
 const isEquipmentStatusPage = computed(() => route.name === "EquipmentStatus");
 const isEquipmentHistoryPage = computed(() => route.name === "EquipmentBorrowHistory");
 
@@ -99,6 +115,14 @@ const goToEquipmentStatus = async () => {
   if (route.name === "EquipmentStatus") return;
 
   await router.push({ name: "EquipmentStatus" });
+};
+
+const goToReviewPage = async () => {
+  closeMenu();
+
+  if (route.name === "ReviewCalendar") return;
+
+  await router.push({ name: "ReviewCalendar" });
 };
 
 const goToEquipmentHistory = async () => {

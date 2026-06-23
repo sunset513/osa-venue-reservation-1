@@ -10,11 +10,29 @@
         <Activity :size="28" />
       </div>
       <div class="dashboard-entry-copy">
-        <h2 id="dashboard-entry-title">活動資訊</h2>
-        <p>查看目前正在使用中的場地與活動。</p>
+        <h2 id="dashboard-entry-title">活動看板</h2>
+        <p>快速查看近期活動與場地借用整體概況。</p>
       </div>
       <button class="btn btn-primary dashboard-entry-action" type="button" @click="goToActivityDashboard">
-        前往查看
+        前往看板
+        <ArrowRight :size="18" />
+      </button>
+    </section>
+
+    <section
+      v-if="isReviewer"
+      class="dashboard-entry review-entry"
+      aria-labelledby="review-entry-title"
+    >
+      <div class="dashboard-entry-icon review-entry-icon">
+        <ClipboardCheck :size="28" />
+      </div>
+      <div class="dashboard-entry-copy">
+        <h2 id="review-entry-title">場地審核</h2>
+        <p>進入 reviewer 專用的審核頁面，查看並處理場地借用申請。</p>
+      </div>
+      <button class="btn btn-primary dashboard-entry-action" type="button" @click="goToReviewPage">
+        前往審核
         <ArrowRight :size="18" />
       </button>
     </section>
@@ -29,7 +47,7 @@
         :class="{ 'is-disabled': unit.disabled }"
         @click="selectUnit(unit)"
       >
-        <span v-if="unit.disabled" class="dev-badge">待開發</span>
+        <span v-if="unit.disabled" class="dev-badge">開發中</span>
 
         <div class="card-icon">
           <Building2 :size="32" />
@@ -42,43 +60,39 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { Activity, ArrowRight, Building2 } from "lucide-vue-next";
+import { Activity, ArrowRight, Building2, ClipboardCheck } from "lucide-vue-next";
 import { fetchAllUnits } from "@/api/venue";
+import { useAuthSessionStore } from "@/stores/authSession";
 import {
   UNIT_SELECTOR_DESCRIPTION,
   UNIT_SELECTOR_TITLE,
 } from "@/utils/navigationLabels";
 
 const router = useRouter();
+const authSession = useAuthSessionStore();
 const units = ref([]);
 const loading = ref(true);
 
+const isReviewer = computed(() => authSession.isReviewer);
+
 onMounted(async () => {
   try {
-    // 1. 取得後端真實資料 (學務處本部)
     const fetchedUnits = await fetchAllUnits();
-
-    // 將真實資料標記為可用
-    const activeUnits = fetchedUnits.map((u) => ({ ...u, disabled: false }));
-
-    // 2. 建立佔位單位
+    const activeUnits = fetchedUnits.map((unit) => ({ ...unit, disabled: false }));
     const placeholderUnits = [
-      { id: "dev-1", name: "住宿服務組", code: "HSD", disabled: true },
-      { id: "dev-2", name: "課外活動組", code: "EAD", disabled: true },
+      { id: "dev-1", name: "學生宿舍場地", code: "HSD", disabled: true },
+      { id: "dev-2", name: "課外活動場地", code: "EAD", disabled: true },
     ];
 
-    // 3. 合併陣列
     units.value = [...activeUnits, ...placeholderUnits];
   } finally {
     loading.value = false;
   }
 });
 
-// 修改傳入參數為整個 unit 物件，方便判斷
 const selectUnit = (unit) => {
-  // 如果是待開發單位，直接 return 阻擋跳轉
   if (unit.disabled) return;
   router.push(`/unit/${unit.id}`);
 };
@@ -86,10 +100,13 @@ const selectUnit = (unit) => {
 const goToActivityDashboard = () => {
   router.push({ name: "ActivityDashboard" });
 };
+
+const goToReviewPage = () => {
+  router.push({ name: "ReviewCalendar" });
+};
 </script>
 
 <style lang="scss" scoped>
-// 將 @import 改為 @use 解決警告
 @use "@/assets/styles/selector-common.scss";
 
 .dashboard-entry {
@@ -136,14 +153,22 @@ const goToActivityDashboard = () => {
   flex: 0 0 auto;
 }
 
-/* 針對待開發單位的專屬樣式 */
+.review-entry {
+  border-color: rgba(36, 63, 107, 0.16);
+  background: linear-gradient(135deg, rgba(243, 247, 252, 0.98), rgba(232, 240, 250, 0.96));
+}
+
+.review-entry-icon {
+  background: rgba(36, 63, 107, 0.12);
+  color: #243f6b;
+}
+
 .is-disabled {
   opacity: 0.6;
   cursor: not-allowed;
   position: relative;
-  background-color: rgba(var(--blue-900-rgb), 0.02); /* 稍微深一點的背景色 */
+  background-color: rgba(var(--blue-900-rgb), 0.02);
 
-  /* 覆蓋共用樣式的 hover 效果，防止浮動和變色 */
   &:hover {
     transform: none;
     box-shadow: var(--shadow-soft);
@@ -151,7 +176,6 @@ const goToActivityDashboard = () => {
   }
 }
 
-/* 右上角待開發標籤 */
 .dev-badge {
   position: absolute;
   top: 1rem;

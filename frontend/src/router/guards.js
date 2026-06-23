@@ -67,11 +67,8 @@ export const validateRouteAccess = async (to) => {
     };
   }
 
-  if (to.path === "/" && authSession.isReviewer) {
-    return {
-      path: authSession.getPostConsentRoute(),
-      replace: true,
-    };
+  if (to.meta.requiresReviewer && !authSession.isReviewer) {
+    return redirectToSafePage(to);
   }
 
   if (to.meta.validateUnit) {

@@ -50,6 +50,10 @@ const routes = [
     path: "/equipment-status",
     name: "EquipmentStatus",
     component: EquipmentStatus,
+    meta: {
+      requiresReviewer: true,
+      redirectOnInvalid: "/",
+    },
   },
   {
     path: "/equipment-history",
