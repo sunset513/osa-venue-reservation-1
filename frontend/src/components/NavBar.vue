@@ -2,13 +2,13 @@
   <nav class="navbar site-header">
     <div class="nav-topbar"></div>
     <div class="container navbar-inner">
-      <div class="nav-brand" @click="$router.push('/')">
+      <RouterLink class="nav-brand" :to="{ name: 'Home' }" aria-label="回到首頁">
         <span class="brand-mark">NCU OSA</span>
         <div class="brand-copy">
           <strong>國立中央大學學務處</strong>
           <span>場地租借系統</span>
         </div>
-      </div>
+      </RouterLink>
       <div ref="menuRef" class="nav-user">
         <button
           type="button"
@@ -33,7 +33,8 @@
               role="menuitem"
               @click="goToMyBookings"
             >
-              我的預約歷史紀錄
+              <History :size="18" aria-hidden="true" class="menu-item-icon" />
+              <span>我的預約歷史紀錄</span>
             </button>
             <button
               type="button"
@@ -42,7 +43,8 @@
               role="menuitem"
               @click="goToEquipmentStatus"
             >
-              設備狀態管理
+              <Wrench :size="18" aria-hidden="true" class="menu-item-icon" />
+              <span>設備狀態管理</span>
             </button>
             <button
               type="button"
@@ -51,7 +53,8 @@
               role="menuitem"
               @click="goToEquipmentHistory"
             >
-              設備借用記錄
+              <ClipboardList :size="18" aria-hidden="true" class="menu-item-icon" />
+              <span>設備借用記錄</span>
             </button>
           </div>
         </transition>
@@ -62,8 +65,8 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { ChevronDown, User } from "lucide-vue-next";
-import { useRoute, useRouter } from "vue-router";
+import { ChevronDown, ClipboardList, History, User, Wrench } from "lucide-vue-next";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
 const router = useRouter();
@@ -161,6 +164,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.9rem;
   cursor: pointer;
+  color: inherit;
+  text-decoration: none;
 }
 
 .brand-mark {
@@ -253,6 +258,9 @@ onBeforeUnmount(() => {
 
 .menu-item {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   padding: 0.8rem 0.95rem;
   border: 0;
   border-radius: calc(var(--radius-sm) - 2px);
@@ -269,6 +277,10 @@ onBeforeUnmount(() => {
     background: var(--accent-soft);
     color: var(--accent);
   }
+}
+
+.menu-item-icon {
+  flex-shrink: 0;
 }
 
 .menu-fade-enter-active,

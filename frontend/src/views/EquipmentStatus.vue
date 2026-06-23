@@ -5,7 +5,10 @@
         ← {{ BACK_TO_UNIT_SELECTOR_LABEL }}
       </button>
       <p class="hero-eyebrow">Equipment Status</p>
-      <h1>設備狀態管理</h1>
+      <h1 class="page-title">
+        <Wrench :size="28" aria-hidden="true" class="page-title-icon" />
+        <span>設備狀態管理</span>
+      </h1>
       <p>查看各場地設備數量與當前使用狀態，直接在資料列中編輯設備資訊。</p>
     </header>
 
@@ -406,6 +409,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Wrench,
 } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import {
@@ -716,6 +720,17 @@ onMounted(() => {
   font-size: var(--text-sm);
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.page-title-icon {
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .equipment-feedback {

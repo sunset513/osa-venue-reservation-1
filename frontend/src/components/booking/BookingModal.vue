@@ -302,16 +302,18 @@ const handleSlotClick = (slot) => {
   const currentStart = selectedSlots[0];
   const currentEnd = selectedSlots[selectedSlots.length - 1];
 
-  if (slot < currentStart) {
+  if (selectedSlots.length >= 2 && slot >= currentStart && slot <= currentEnd) {
+    slotRangeAnchor.value = slot;
+    formData.slots = [slot];
+  } else if (slot < currentStart) {
     slotRangeAnchor.value = currentEnd;
     formData.slots = buildSlotRange(slot, currentEnd);
   } else if (slot > currentEnd) {
     slotRangeAnchor.value = currentStart;
     formData.slots = buildSlotRange(currentStart, slot);
   } else {
-    const anchor = slotRangeAnchor.value ?? currentStart;
-    formData.slots = buildSlotRange(anchor, slot);
-    slotRangeAnchor.value = anchor;
+    slotRangeAnchor.value = slot;
+    formData.slots = [slot];
   }
 
   formErrors.slots = false;

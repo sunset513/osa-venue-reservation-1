@@ -114,7 +114,13 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "approve", "update-status"]);
 
-const statusMeta = computed(() => getBookingStatusMeta(props.booking?.status));
+const statusMeta = computed(() => {
+  const meta = getBookingStatusMeta(props.booking?.status);
+  return {
+    ...meta,
+    text: meta.text === "審核中" ? "待審核" : meta.text,
+  };
+});
 
 const contactInfo = computed(() => {
   if (!props.booking?.contactInfo) {
@@ -142,12 +148,12 @@ const actions = computed(() => {
       ];
     case 3:
       return [
-        { key: "pending", label: "改為審核中", icon: Clock3, variant: "btn-secondary-alt", type: "update-status", status: 1 },
+        { key: "pending", label: "改為待審核", icon: Clock3, variant: "btn-secondary-alt", type: "update-status", status: 1 },
         { key: "approve-rejected", label: "改為通過", icon: Check, variant: "btn-primary", type: "update-status", status: 2 },
       ];
     case 0:
       return [
-        { key: "restore", label: "改為審核中", icon: RotateCcw, variant: "btn-secondary-alt", type: "update-status", status: 1 },
+        { key: "restore", label: "改為待審核", icon: RotateCcw, variant: "btn-secondary-alt", type: "update-status", status: 1 },
       ];
     default:
       return [];

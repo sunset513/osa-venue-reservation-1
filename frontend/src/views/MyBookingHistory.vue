@@ -24,7 +24,10 @@
           ← {{ BACK_TO_UNIT_SELECTOR_LABEL }}
         </button>
         <p class="hero-eyebrow">Booking Archive</p>
-        <h1>我的預約歷史紀錄</h1>
+        <h1 class="page-title">
+          <History :size="28" aria-hidden="true" class="page-title-icon" />
+          <span>我的預約歷史紀錄</span>
+        </h1>
         <p>集中查看所有預約申請、借用時段與目前審核狀態。</p>
       </header>
 
@@ -368,6 +371,7 @@ import {
   ChevronRight,
   ChevronUp,
   Clock3,
+  History,
   RotateCcw,
 } from "lucide-vue-next";
 import { useRouter } from "vue-router";
@@ -857,6 +861,17 @@ watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter]
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.page-title-icon {
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .history-feedback {

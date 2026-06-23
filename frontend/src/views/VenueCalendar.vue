@@ -663,7 +663,7 @@ const calendarOptions = ref({
     right: "",
   },
   locale: "zh-tw",
-  firstDay: 1,
+  firstDay: 0,
   height: "auto",
   dayMaxEvents: 3,
   displayEventEnd: true,

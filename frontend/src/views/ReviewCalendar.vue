@@ -95,7 +95,7 @@
               <span>目前篩選</span>
               <select id="review-status-quick" v-model="selectedStatus" :disabled="isFetchingEvents" @change="handleFilterChange">
                 <option value="">全部申請</option>
-                <option value="1">審核中</option>
+                <option value="1">待審核</option>
                 <option value="2">已通過</option>
                 <option value="3">已拒絕</option>
               </select>
@@ -231,11 +231,11 @@ const REVIEW_UNIT_ID = "1";
 
 const calendarRef = ref(null);
 const venues = ref([]);
-const selectedVenueId = ref(1);
-const selectedStatus = ref("");
+const selectedVenueId = ref(ALL_VENUES_VALUE);
+const selectedStatus = ref("1");
 const pageLoading = ref(true);
 const isFetchingEvents = ref(false);
-const activeViewMode = ref("calendar");
+const activeViewMode = ref("list");
 const isMonthPickerOpen = ref(false);
 const monthPickerValue = ref("");
 const monthPickerRef = ref(null);
@@ -358,10 +358,15 @@ const enhanceCalendarTitleInteraction = async () => {
   calendarTitleElement = titleElement;
 };
 
+const getReviewStatusText = (status) => {
+  const statusMeta = getBookingStatusMeta(status);
+  return statusMeta.text === "審核中" ? "待審核" : statusMeta.text;
+};
+
 const selectedStatusLabel = computed(() => {
   return selectedStatus.value === ""
     ? "顯示全部申請"
-    : `目前篩選：${getBookingStatusMeta(Number(selectedStatus.value)).text}`;
+    : `目前篩選：${getReviewStatusText(Number(selectedStatus.value))}`;
 });
 
 const statusCounts = computed(() => {
@@ -391,7 +396,7 @@ const statusFilterOptions = computed(() => [
   },
   {
     key: "pending",
-    label: "審核中",
+    label: "待審核",
     helper: "等待處理的申請",
     value: statusCounts.value.pending,
     className: "is-pending",
@@ -435,7 +440,7 @@ const selectedDayBookings = computed(() => {
         contactName: parsedContact.name || "申請人",
         participantCount: booking.pCount || 0,
         timeRange: formatSlotGroupsAsTimeRange(booking.slots),
-        statusText: statusMeta.text,
+        statusText: getReviewStatusText(booking.status),
         statusClass: statusMeta.className,
       };
     });
@@ -462,7 +467,7 @@ const reviewListBookings = computed(() => {
         contactName: parsedContact.name || "申請人",
         participantCount: booking.pCount || 0,
         timeRange: formatSlotGroupsAsTimeRange(booking.slots),
-        statusText: statusMeta.text,
+        statusText: getReviewStatusText(booking.status),
         statusClass: statusMeta.className,
       };
     });
@@ -511,7 +516,7 @@ const calendarOptions = ref({
     right: "",
   },
   locale: "zh-tw",
-  firstDay: 1,
+  firstDay: 0,
   height: "auto",
   dayMaxEvents: 3,
   eventTimeFormat: {
@@ -586,14 +591,14 @@ const mapBookingsToEvents = (bookings) => {
       if (!timeRange) return;
 
       mappedEvents.push({
-        title: `${statusMeta.text}｜${booking.purpose || "未填寫用途"}`,
+        title: `${getReviewStatusText(booking.status)}｜${booking.purpose || "未填寫用途"}`,
         start: timeRange.start,
         end: timeRange.end,
         display: "block",
         extendedProps: {
           bookingId: booking.id,
           booking,
-          statusLabel: statusMeta.text,
+          statusLabel: getReviewStatusText(booking.status),
           statusClass: statusMeta.className,
           timeLabel: formatSlotsAsTimeRange(group),
           purposeLabel: displayPurpose,
@@ -790,7 +795,7 @@ const handleStatusUpdate = async (status) => {
 
   try {
     await updateReviewBookingStatus(selectedBookingId.value, status);
-    success(`申請狀態已更新為${getBookingStatusMeta(status).text}`);
+    success(`申請狀態已更新為${getReviewStatusText(status)}`);
     closeDetailModal();
     await reloadCurrentView();
   } catch (updateError) {
@@ -808,7 +813,7 @@ onMounted(async () => {
     venues.value = fetchedVenues;
     pageLoading.value = false;
 
-    if (!fetchedVenues.some((venue) => venue.id === selectedVenueId.value)) {
+    if (selectedVenueId.value !== ALL_VENUES_VALUE && !fetchedVenues.some((venue) => venue.id === selectedVenueId.value)) {
       selectedVenueId.value = fetchedVenues[0]?.id || null;
     }
 

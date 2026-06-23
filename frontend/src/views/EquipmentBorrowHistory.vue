@@ -5,7 +5,10 @@
         ← 返回設備狀態管理
       </button>
       <p class="hero-eyebrow">Equipment Records</p>
-      <h1>設備借用記錄</h1>
+      <h1 class="page-title">
+        <ClipboardList :size="28" aria-hidden="true" class="page-title-icon" />
+        <span>設備借用記錄</span>
+      </h1>
       <p>查看已通過預約中的設備借用紀錄，包含借用場地、日期、時段與用途。</p>
     </header>
 
@@ -108,6 +111,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { ClipboardList } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
 import { fetchEquipmentBorrowHistory } from "@/api/equipment";
 import { normalizeEquipmentBorrowPage } from "@/utils/equipment";
@@ -292,6 +296,17 @@ onMounted(() => {
   font-size: var(--text-sm);
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.page-title-icon {
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .history-toolbar,
