@@ -16,7 +16,6 @@ public class AuthProperties {
     private long sessionTtlSeconds = 1800;
     private boolean sessionSecureCookie = false;
     private String sessionSameSite = "Lax";
-    private String reviewerIdentifier = "114423011";
 
     public Duration getSessionTtl() {
         return Duration.ofSeconds(sessionTtlSeconds);
@@ -29,9 +28,5 @@ public class AuthProperties {
 
         String value = sessionSameSite.trim().toLowerCase(Locale.ROOT);
         return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
-    }
-
-    public boolean isReviewer(String identifier) {
-        return reviewerIdentifier != null && reviewerIdentifier.equals(identifier);
     }
 }

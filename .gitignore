@@ -1,2 +1,5 @@
 # environment
 .env
+
+# local generated database seed drafts
+docs/02_seed_venue.sql
