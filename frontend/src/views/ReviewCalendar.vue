@@ -7,7 +7,10 @@
           審核者模式
         </span>
         <p class="header-eyebrow">Review Workbench</p>
-        <h1>審核工作台</h1>
+        <h1 class="page-title">
+          <ClipboardCheck :size="28" aria-hidden="true" class="page-title-icon" />
+          <span>審核工作台</span>
+        </h1>
         <p>以預約申請為中心處理場地借用，檢視狀態、比對時段，並從同一處完成核准或退回。</p>
       </div>
 
@@ -197,6 +200,7 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarDays,
+  ClipboardCheck,
   ClipboardList,
   Clock3,
   List,
@@ -872,6 +876,17 @@ onBeforeUnmount(() => {
       max-width: 42rem;
       color: var(--review-muted);
     }
+  }
+
+  .page-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .page-title-icon {
+    flex-shrink: 0;
+    color: var(--accent);
   }
 
   .header-eyebrow,

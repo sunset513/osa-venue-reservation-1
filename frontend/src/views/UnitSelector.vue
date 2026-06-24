@@ -28,8 +28,8 @@
         <ClipboardCheck :size="28" />
       </div>
       <div class="dashboard-entry-copy">
-        <h2 id="review-entry-title">場地審核</h2>
-        <p>進入 reviewer 專用的審核頁面，查看並處理場地借用申請。</p>
+        <h2 id="review-entry-title">審核工作台</h2>
+        <p>進入審核者專用的審核頁面，查看並處理場地借用申請。</p>
       </div>
       <button class="btn btn-primary dashboard-entry-action" type="button" @click="goToReviewPage">
         前往審核

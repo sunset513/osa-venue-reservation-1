@@ -45,7 +45,7 @@
               @click="goToReviewPage"
             >
               <ClipboardCheck :size="18" aria-hidden="true" class="menu-item-icon" />
-              <span>場地審核</span>
+              <span>審核工作台</span>
             </button>
             <button
               v-if="isReviewer"
@@ -59,6 +59,7 @@
               <span>設備狀態管理</span>
             </button>
             <button
+              v-if="isReviewer"
               type="button"
               class="menu-item"
               :class="{ 'is-active': isEquipmentHistoryPage }"

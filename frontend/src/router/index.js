@@ -57,6 +57,9 @@ const routes = [
     path: "/equipment-history",
     name: "EquipmentBorrowHistory",
     component: EquipmentBorrowHistory,
+    meta: {
+      requiresReviewer: true,
+    },
   },
   {
     path: "/review",
