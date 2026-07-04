@@ -156,7 +156,10 @@ public class EquipmentBookingSupport {
     }
 
     void assertVenueRulesForUser(EquipmentAvailabilityQueryDTO query) {
-        checkAvailability(query, false);
+        EquipmentAvailabilityVO availability = checkAvailability(query, false);
+        if (!Boolean.TRUE.equals(availability.getAvailable())) {
+            throw new RuntimeException("設備數量不足或場地規則不符，無法建立申請");
+        }
     }
 
     void assertApprovalAvailable(EquipmentAvailabilityQueryDTO query) {

@@ -4,10 +4,16 @@ import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentBookingQueryD
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingPageVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingVO;
 
+import java.util.List;
+
 public interface EquipmentReviewService {
     EquipmentBookingPageVO queryBookings(EquipmentBookingQueryDTO query);
 
     EquipmentBookingVO getBooking(Long id);
+
+    List<EquipmentBookingVO> getBookingsByVenueBooking(Long bookingId);
+
+    Long countStandalonePendingBookings();
 
     void approveBooking(Long id);
 

@@ -1,6 +1,8 @@
 package tw.edu.ncu.osa.venue_reservation_service.service;
 
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingRequestDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingWithEquipmentCreateDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingWithEquipmentCreateVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO;
 import java.util.List;
 
@@ -22,6 +24,13 @@ public interface BookingService {
      * @throws RuntimeException 當時段已被其他通過的申請佔用時拋出
      */
     Long createBooking(BookingRequestDTO request);
+
+    /**
+     * 建立場地預約，並在同一交易中建立關聯設備借用申請。
+     * @param request 場地預約與設備借用項目
+     * @return 場地預約 ID 與設備借用申請 ID
+     */
+    BookingWithEquipmentCreateVO createBookingWithEquipments(BookingWithEquipmentCreateDTO request);
 
     // ==========================================
     // 查詢預約

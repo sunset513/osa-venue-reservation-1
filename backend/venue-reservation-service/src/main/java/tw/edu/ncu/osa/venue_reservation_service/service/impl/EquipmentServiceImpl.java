@@ -12,10 +12,18 @@ import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentVenueRuleDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Equipment;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentVenueRule;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Venue;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentStatusRowVO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentStatusVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.EquipmentService;
+import tw.edu.ncu.osa.venue_reservation_service.util.BookingUtils;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -34,6 +42,58 @@ public class EquipmentServiceImpl implements EquipmentService {
     @Transactional(readOnly = true)
     public EquipmentVO getEquipment(Long id) {
         return toVO(requireEquipment(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EquipmentStatusVO> getEquipmentStatuses(LocalDate date, Integer hour) {
+        LocalDate queryDate = date == null ? LocalDate.now() : date;
+        int queryHour = hour == null ? LocalTime.now().getHour() : hour;
+        if (queryHour < 0 || queryHour > 23) {
+            throw new IllegalArgumentException("查詢小時必須介於 0 到 23");
+        }
+
+        int hourMask = 1 << queryHour;
+        List<EquipmentStatusRowVO> rows = equipmentMapper.selectEquipmentStatusRows(queryDate, hourMask);
+        Map<Long, EquipmentStatusVO> statusMap = new LinkedHashMap<>();
+
+        for (EquipmentStatusRowVO row : rows) {
+            EquipmentStatusVO status = statusMap.computeIfAbsent(row.getEquipmentId(), id -> {
+                EquipmentStatusVO vo = new EquipmentStatusVO();
+                vo.setEquipmentId(row.getEquipmentId());
+                vo.setEquipmentName(row.getEquipmentName());
+                vo.setTotalQuantity(row.getTotalQuantity());
+                vo.setBorrowedQuantity(0);
+                vo.setAvailableQuantity(row.getTotalQuantity());
+                vo.setInUse(false);
+                vo.setActiveBookings(new ArrayList<>());
+                return vo;
+            });
+
+            if (row.getEquipmentBookingId() == null) {
+                continue;
+            }
+
+            EquipmentStatusVO.ActiveBooking activeBooking = new EquipmentStatusVO.ActiveBooking();
+            activeBooking.setEquipmentBookingId(row.getEquipmentBookingId());
+            activeBooking.setUserId(row.getUserId());
+            activeBooking.setBorrowDate(row.getBorrowDate());
+            activeBooking.setSlots(BookingUtils.parseMaskToList(row.getTimeSlots()));
+            activeBooking.setQuantity(row.getQuantity());
+            activeBooking.setPurpose(row.getPurpose());
+            activeBooking.setContactInfo(row.getContactInfo());
+            activeBooking.setRelatedVenueBookingId(row.getRelatedVenueBookingId());
+            activeBooking.setRelatedVenueId(row.getRelatedVenueId());
+            activeBooking.setRelatedVenueName(row.getRelatedVenueName());
+            status.getActiveBookings().add(activeBooking);
+
+            int borrowedQuantity = status.getBorrowedQuantity() + row.getQuantity();
+            status.setBorrowedQuantity(borrowedQuantity);
+            status.setAvailableQuantity(Math.max(status.getTotalQuantity() - borrowedQuantity, 0));
+            status.setInUse(borrowedQuantity > 0);
+        }
+
+        return new ArrayList<>(statusMap.values());
     }
 
     @Override

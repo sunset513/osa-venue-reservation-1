@@ -7,14 +7,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tw.edu.ncu.osa.venue_reservation_service.mapper.BookingMapper;
+import tw.edu.ncu.osa.venue_reservation_service.mapper.EquipmentBookingMapper;
 import tw.edu.ncu.osa.venue_reservation_service.mapper.VenueMapper;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingWithEquipmentCreateDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentAvailabilityQueryDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentBookingItemDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingRequestDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Booking;
+import tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking;
+import tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBookingItem;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Venue;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingQueryVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingSimpleVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingsByVenueVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingWithEquipmentCreateVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.BookingService;
 import tw.edu.ncu.osa.venue_reservation_service.util.BookingUtils;
 import tw.edu.ncu.osa.venue_reservation_service.util.UserContext;
@@ -34,6 +41,8 @@ public class BookingServiceImpl implements BookingService {
 
     private final BookingMapper bookingMapper;
     private final VenueMapper venueMapper;
+    private final EquipmentBookingMapper equipmentBookingMapper;
+    private final EquipmentBookingSupport equipmentBookingSupport;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ==========================================
@@ -98,6 +107,26 @@ public class BookingServiceImpl implements BookingService {
 
         log.info("【BookingService】[createBooking] 用戶 {} 成功建立預約申請 ID：{}", userId, booking.getId());
         return booking.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BookingWithEquipmentCreateVO createBookingWithEquipments(BookingWithEquipmentCreateDTO request) {
+        if (request == null || request.getBooking() == null) {
+            throw new IllegalArgumentException("場地預約資料不可為空");
+        }
+
+        Long bookingId = createBooking(request.getBooking());
+        Long equipmentBookingId = createRelatedEquipmentBooking(
+                bookingId,
+                request.getBooking(),
+                request.getEquipmentItems()
+        );
+
+        BookingWithEquipmentCreateVO result = new BookingWithEquipmentCreateVO();
+        result.setBookingId(bookingId);
+        result.setEquipmentBookingId(equipmentBookingId);
+        return result;
     }
 
     // ==========================================
@@ -814,6 +843,47 @@ public class BookingServiceImpl implements BookingService {
             default:
                 return "";
         }
+    }
+
+    private Long createRelatedEquipmentBooking(
+            Long bookingId,
+            BookingRequestDTO bookingRequest,
+            List<EquipmentBookingItemDTO> equipmentItems
+    ) {
+        if (equipmentItems == null || equipmentItems.isEmpty()) {
+            return null;
+        }
+
+        EquipmentAvailabilityQueryDTO availabilityQuery = new EquipmentAvailabilityQueryDTO();
+        availabilityQuery.setBorrowDate(bookingRequest.getBookingDate());
+        availabilityQuery.setSlots(bookingRequest.getSlots());
+        availabilityQuery.setRelatedVenueBookingId(bookingId);
+        availabilityQuery.setItems(equipmentItems);
+        equipmentBookingSupport.assertVenueRulesForUser(availabilityQuery);
+
+        EquipmentBooking equipmentBooking = new EquipmentBooking();
+        equipmentBooking.setUserId(UserContext.getUser().getUserId());
+        equipmentBooking.setBorrowDate(bookingRequest.getBookingDate());
+        equipmentBooking.setTimeSlots(BookingUtils.convertToMask(bookingRequest.getSlots()));
+        equipmentBooking.setStatus(1);
+        equipmentBooking.setPurpose(bookingRequest.getPurpose());
+        equipmentBooking.setRelatedVenueBookingId(bookingId);
+        try {
+            equipmentBooking.setContactInfo(objectMapper.writeValueAsString(bookingRequest.getContactInfo()));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("聯絡資訊格式錯誤");
+        }
+
+        equipmentBookingMapper.insertBooking(equipmentBooking);
+        Map<Long, Integer> itemMap = equipmentBookingSupport.aggregateItems(equipmentItems);
+        for (Map.Entry<Long, Integer> entry : itemMap.entrySet()) {
+            EquipmentBookingItem item = new EquipmentBookingItem();
+            item.setEquipmentBookingId(equipmentBooking.getId());
+            item.setEquipmentId(entry.getKey());
+            item.setQuantity(entry.getValue());
+            equipmentBookingMapper.insertItem(item);
+        }
+        return equipmentBooking.getId();
     }
 }
 

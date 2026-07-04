@@ -1,5 +1,7 @@
 package tw.edu.ncu.osa.venue_reservation_service.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class EquipmentBookingServiceImpl implements EquipmentBookingService {
     private final EquipmentBookingMapper equipmentBookingMapper;
     private final EquipmentBookingSupport support;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -37,7 +40,7 @@ public class EquipmentBookingServiceImpl implements EquipmentBookingService {
         booking.setTimeSlots(BookingUtils.convertToMask(request.getSlots()));
         booking.setStatus(1);
         booking.setPurpose(request.getPurpose());
-        booking.setContactInfo(request.getContactInfo());
+        booking.setContactInfo(writeContactInfo(request.getContactInfo()));
         booking.setRelatedVenueBookingId(request.getRelatedVenueBookingId());
         equipmentBookingMapper.insertBooking(booking);
         insertItems(booking.getId(), support.aggregateItems(request.getItems()));
@@ -58,10 +61,12 @@ public class EquipmentBookingServiceImpl implements EquipmentBookingService {
         query = normalize(query);
         String userId = UserContext.getUser().getUserId();
         Long total = equipmentBookingMapper.countMyBookings(
-                userId, query.getStatusList(), query.getStartDate(), query.getEndDate(), query.getEquipmentId());
+                userId, query.getStatusList(), query.getStartDate(), query.getEndDate(),
+                query.getEquipmentId(), query.getRelatedVenueBookingId(), query.getStandaloneOnly());
         var bookings = equipmentBookingMapper.selectMyBookings(
                 userId, query.getStatusList(), query.getStartDate(), query.getEndDate(),
-                query.getEquipmentId(), query.getPageSize(), query.getOffset());
+                query.getEquipmentId(), query.getRelatedVenueBookingId(), query.getStandaloneOnly(),
+                query.getPageSize(), query.getOffset());
         return toPage(query, total, bookings.stream().map(support::toVO).toList());
     }
 
@@ -81,7 +86,7 @@ public class EquipmentBookingServiceImpl implements EquipmentBookingService {
         booking.setTimeSlots(BookingUtils.convertToMask(request.getSlots()));
         booking.setStatus(1);
         booking.setPurpose(request.getPurpose());
-        booking.setContactInfo(request.getContactInfo());
+        booking.setContactInfo(writeContactInfo(request.getContactInfo()));
         booking.setRelatedVenueBookingId(request.getRelatedVenueBookingId());
         int updated = equipmentBookingMapper.updateBooking(booking);
         if (updated == 0) {
@@ -125,6 +130,14 @@ public class EquipmentBookingServiceImpl implements EquipmentBookingService {
     private void assertOwner(EquipmentBooking booking) {
         if (!booking.getUserId().equals(UserContext.getUser().getUserId())) {
             throw new RuntimeException("無權限操作他人的設備借用申請");
+        }
+    }
+
+    private String writeContactInfo(Object contactInfo) {
+        try {
+            return objectMapper.writeValueAsString(contactInfo);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("聯絡資訊格式錯誤");
         }
     }
 

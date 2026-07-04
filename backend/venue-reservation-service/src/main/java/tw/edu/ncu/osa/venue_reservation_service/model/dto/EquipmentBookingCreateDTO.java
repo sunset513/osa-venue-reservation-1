@@ -20,9 +20,9 @@ public class EquipmentBookingCreateDTO {
     @Size(max = 255, message = "用途描述過長")
     private String purpose;
 
-    @NotBlank(message = "聯絡資訊不可為空")
-    @Size(max = 500, message = "聯絡資訊過長")
-    private String contactInfo;
+    @Valid
+    @NotNull(message = "聯絡資訊不可為空")
+    private BookingRequestDTO.ContactDTO contactInfo;
 
     private Long relatedVenueBookingId;
 

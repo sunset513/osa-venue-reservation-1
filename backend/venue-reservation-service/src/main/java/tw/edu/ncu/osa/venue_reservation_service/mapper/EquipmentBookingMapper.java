@@ -30,7 +30,9 @@ public interface EquipmentBookingMapper {
             @Param("statusList") List<Integer> statusList,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
-            @Param("equipmentId") Long equipmentId
+            @Param("equipmentId") Long equipmentId,
+            @Param("relatedVenueBookingId") Long relatedVenueBookingId,
+            @Param("standaloneOnly") Boolean standaloneOnly
     );
 
     List<EquipmentBooking> selectMyBookings(
@@ -39,6 +41,8 @@ public interface EquipmentBookingMapper {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("equipmentId") Long equipmentId,
+            @Param("relatedVenueBookingId") Long relatedVenueBookingId,
+            @Param("standaloneOnly") Boolean standaloneOnly,
             @Param("limit") Integer limit,
             @Param("offset") Integer offset
     );
@@ -47,7 +51,9 @@ public interface EquipmentBookingMapper {
             @Param("statusList") List<Integer> statusList,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
-            @Param("equipmentId") Long equipmentId
+            @Param("equipmentId") Long equipmentId,
+            @Param("relatedVenueBookingId") Long relatedVenueBookingId,
+            @Param("standaloneOnly") Boolean standaloneOnly
     );
 
     List<EquipmentBooking> selectReviewBookings(
@@ -55,6 +61,8 @@ public interface EquipmentBookingMapper {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("equipmentId") Long equipmentId,
+            @Param("relatedVenueBookingId") Long relatedVenueBookingId,
+            @Param("standaloneOnly") Boolean standaloneOnly,
             @Param("limit") Integer limit,
             @Param("offset") Integer offset
     );

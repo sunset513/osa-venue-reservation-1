@@ -11,9 +11,11 @@ import tw.edu.ncu.osa.venue_reservation_service.common.result.Result;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentCreateDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentUpdateDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentVenueRuleDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentStatusVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.EquipmentService;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -30,6 +32,15 @@ public class EquipmentController {
     public Result<List<EquipmentVO>> listEquipments(
             @RequestParam(value = "includeDeleted", defaultValue = "false") boolean includeDeleted) {
         return Result.success(equipmentService.listEquipments(includeDeleted));
+    }
+
+    @GetMapping("/status")
+    @Operation(summary = "查詢設備目前或指定時段狀態")
+    @SecurityRequirement(name = "Session-Cookie")
+    public Result<List<EquipmentStatusVO>> getEquipmentStatuses(
+            @RequestParam(value = "date", required = false) LocalDate date,
+            @RequestParam(value = "hour", required = false) Integer hour) {
+        return Result.success(equipmentService.getEquipmentStatuses(date, hour));
     }
 
     @GetMapping("/{id}")

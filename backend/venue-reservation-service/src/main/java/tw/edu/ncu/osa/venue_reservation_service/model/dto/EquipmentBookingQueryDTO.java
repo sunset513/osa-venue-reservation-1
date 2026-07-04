@@ -11,6 +11,8 @@ public class EquipmentBookingQueryDTO {
     private LocalDate startDate;
     private LocalDate endDate;
     private Long equipmentId;
+    private Long relatedVenueBookingId;
+    private Boolean standaloneOnly;
     private Integer pageNo = 1;
     private Integer pageSize = 20;
 

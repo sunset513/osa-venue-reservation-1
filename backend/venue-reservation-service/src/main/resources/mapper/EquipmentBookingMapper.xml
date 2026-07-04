@@ -76,6 +76,12 @@
                 WHERE x.equipment_booking_id = eb.id AND x.equipment_id = #{equipmentId}
             )
         </if>
+        <if test="relatedVenueBookingId != null">
+            AND eb.related_venue_booking_id = #{relatedVenueBookingId}
+        </if>
+        <if test="standaloneOnly != null and standaloneOnly">
+            AND eb.related_venue_booking_id IS NULL
+        </if>
     </sql>
 
     <select id="countMyBookings" resultType="long">

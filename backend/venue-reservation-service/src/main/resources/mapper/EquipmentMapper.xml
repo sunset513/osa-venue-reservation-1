@@ -75,6 +75,47 @@
         ORDER BY evr.venue_id ASC
     </select>
 
+    <select id="selectEquipmentStatusRows" resultType="tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentStatusRowVO">
+        SELECT
+            e.id AS equipment_id,
+            e.name AS equipment_name,
+            e.total_quantity,
+            active.equipment_booking_id,
+            active.user_id,
+            active.borrow_date,
+            active.time_slots,
+            active.quantity,
+            active.purpose,
+            active.contact_info,
+            active.related_venue_booking_id,
+            active.related_venue_id,
+            active.related_venue_name
+        FROM equipments e
+        LEFT JOIN (
+            SELECT
+                ebi.equipment_id,
+                ebi.quantity,
+                eb.id AS equipment_booking_id,
+                eb.user_id,
+                eb.borrow_date,
+                eb.time_slots,
+                eb.purpose,
+                eb.contact_info,
+                eb.related_venue_booking_id,
+                b.venue_id AS related_venue_id,
+                v.name AS related_venue_name
+            FROM equipment_booking_items ebi
+            INNER JOIN equipment_bookings eb ON ebi.equipment_booking_id = eb.id
+            LEFT JOIN bookings b ON eb.related_venue_booking_id = b.id
+            LEFT JOIN venues v ON b.venue_id = v.id
+            WHERE eb.status = 2
+              AND eb.borrow_date = #{date}
+              AND (eb.time_slots &amp; #{hourMask}) != 0
+        ) active ON e.id = active.equipment_id
+        WHERE e.deleted_at IS NULL
+        ORDER BY e.id ASC, active.equipment_booking_id ASC
+    </select>
+
     <delete id="deleteVenueRules">
         DELETE FROM equipment_venue_rules
         WHERE equipment_id = #{equipmentId}

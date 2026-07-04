@@ -5,7 +5,9 @@ import org.apache.ibatis.annotations.Param;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Equipment;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentVenueRule;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentAllowedVenueVO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentStatusRowVO;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Mapper
@@ -29,6 +31,11 @@ public interface EquipmentMapper {
     List<EquipmentVenueRule> selectVenueRulesByEquipmentId(@Param("equipmentId") Long equipmentId);
 
     List<EquipmentAllowedVenueVO> selectAllowedVenuesByEquipmentId(@Param("equipmentId") Long equipmentId);
+
+    List<EquipmentStatusRowVO> selectEquipmentStatusRows(
+            @Param("date") LocalDate date,
+            @Param("hourMask") Integer hourMask
+    );
 
     int deleteVenueRules(@Param("equipmentId") Long equipmentId);
 

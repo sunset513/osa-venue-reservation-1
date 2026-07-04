@@ -13,6 +13,8 @@ import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingPageVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.EquipmentReviewService;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/equipment-reviews")
 @RequiredArgsConstructor
@@ -25,6 +27,20 @@ public class EquipmentReviewController {
     @SecurityRequirement(name = "Session-Cookie")
     public Result<EquipmentBookingPageVO> queryBookings(@RequestBody(required = false) EquipmentBookingQueryDTO query) {
         return Result.success(equipmentReviewService.queryBookings(query));
+    }
+
+    @GetMapping("/by-venue-booking/{bookingId}")
+    @Operation(summary = "查詢指定場地預約關聯的設備借用申請")
+    @SecurityRequirement(name = "Session-Cookie")
+    public Result<List<EquipmentBookingVO>> getBookingsByVenueBooking(@PathVariable Long bookingId) {
+        return Result.success(equipmentReviewService.getBookingsByVenueBooking(bookingId));
+    }
+
+    @GetMapping("/standalone/pending-count")
+    @Operation(summary = "查詢待審核的單獨設備借用申請數量")
+    @SecurityRequirement(name = "Session-Cookie")
+    public Result<Long> countStandalonePendingBookings() {
+        return Result.success(equipmentReviewService.countStandalonePendingBookings());
     }
 
     @GetMapping("/{id}")

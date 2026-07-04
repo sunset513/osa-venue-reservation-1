@@ -15,6 +15,7 @@ import tw.edu.ncu.osa.venue_reservation_service.util.BookingUtils;
 import tw.edu.ncu.osa.venue_reservation_service.util.UserContext;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -27,10 +28,12 @@ public class EquipmentReviewServiceImpl implements EquipmentReviewService {
     public EquipmentBookingPageVO queryBookings(EquipmentBookingQueryDTO query) {
         query = normalize(query);
         Long total = equipmentBookingMapper.countReviewBookings(
-                query.getStatusList(), query.getStartDate(), query.getEndDate(), query.getEquipmentId());
+                query.getStatusList(), query.getStartDate(), query.getEndDate(),
+                query.getEquipmentId(), query.getRelatedVenueBookingId(), query.getStandaloneOnly());
         var bookings = equipmentBookingMapper.selectReviewBookings(
                 query.getStatusList(), query.getStartDate(), query.getEndDate(),
-                query.getEquipmentId(), query.getPageSize(), query.getOffset());
+                query.getEquipmentId(), query.getRelatedVenueBookingId(), query.getStandaloneOnly(),
+                query.getPageSize(), query.getOffset());
         return toPage(query, total, bookings.stream().map(support::toVO).toList());
     }
 
@@ -38,6 +41,24 @@ public class EquipmentReviewServiceImpl implements EquipmentReviewService {
     @Transactional(readOnly = true)
     public EquipmentBookingVO getBooking(Long id) {
         return support.toVO(support.requireBooking(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EquipmentBookingVO> getBookingsByVenueBooking(Long bookingId) {
+        if (bookingId == null || bookingId <= 0) {
+            throw new IllegalArgumentException("場地預約 ID 不可為空或為負數");
+        }
+        var bookings = equipmentBookingMapper.selectReviewBookings(
+                null, null, null, null, bookingId, false, 100, 0);
+        return bookings.stream().map(support::toVO).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long countStandalonePendingBookings() {
+        return equipmentBookingMapper.countReviewBookings(
+                List.of(1), null, null, null, null, true);
     }
 
     @Override
