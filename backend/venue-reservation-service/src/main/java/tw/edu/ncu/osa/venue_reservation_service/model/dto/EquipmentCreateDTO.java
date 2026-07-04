@@ -1,35 +1,35 @@
 package tw.edu.ncu.osa.venue_reservation_service.model.dto;
 
-import lombok.AllArgsConstructor;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
-/**
- * 新增設備請求物件 (Data Transfer Object)
- * 用於接收前端新增設備的請求參數
- */
+import java.util.List;
+
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Schema(description = "新增設備主檔請求 DTO")
 public class EquipmentCreateDTO {
+    @NotBlank(message = "設備名稱不可為空")
+    @Size(max = 100, message = "設備名稱過長")
+    @Schema(description = "設備名稱", example = "無線麥克風")
+    private String name;
 
-    /**
-     * 設備名稱
-     * 必填欄位，唯一性需在業務層檢查
-     */
-    private String equipmentName;
+    @NotNull(message = "設備總數量不可為空")
+    @Min(value = 1, message = "設備總數量至少為 1")
+    @Schema(description = "同一時段可核准借出的總數量", example = "4")
+    private Integer totalQuantity;
 
-    /**
-     * 場地 ID
-     * 必填欄位，表示該設備屬於哪個場地
-     */
-    private Long venueId;
+    @Size(max = 255, message = "設備說明過長")
+    private String description;
 
-    /**
-     * 設備數量
-     * 必填欄位，表示該場地擁有的該設備數量
-     * 預設為 1，可根據實際情況調整
-     */
-    private Integer quantity;
+    @Size(max = 255, message = "借用注意事項過長")
+    private String borrowNote;
+
+    @Valid
+    @Schema(description = "允許場地規則。空陣列或 null 表示不限場地")
+    private List<EquipmentVenueRuleDTO> venueRules;
 }
-

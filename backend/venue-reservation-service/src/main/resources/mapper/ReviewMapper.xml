@@ -17,7 +17,6 @@
         <result column="purpose" property="purpose"/>
         <result column="p_count" property="pCount"/>
         <result column="contact_info" property="contactInfo"/>
-        <result column="equipments" property="equipments" typeHandler="tw.edu.ncu.osa.venue_reservation_service.util.CommaSeparatedListTypeHandler"/>
     </resultMap>
 
     <!-- ========================================== -->
@@ -34,19 +33,15 @@
             b.created_at,
             b.purpose,
             b.p_count,
-            b.contact_info,
-            GROUP_CONCAT(e.name SEPARATOR ',') AS equipments
+            b.contact_info
         FROM bookings b
         LEFT JOIN venues v ON b.venue_id = v.id
-        LEFT JOIN booking_equipment be ON b.id = be.booking_id
-        LEFT JOIN equipments e ON be.equipment_id = e.id
         WHERE b.venue_id = #{venueId}
         AND b.booking_date BETWEEN #{startDate} AND #{endDate}
         AND b.status != 4
         <if test="status != null">
             AND b.status = #{status}
         </if>
-        GROUP BY b.id
         ORDER BY b.created_at ASC
     </select>
 
@@ -64,25 +59,21 @@
             b.created_at,
             b.purpose,
             b.p_count,
-            b.contact_info,
-            GROUP_CONCAT(e.name SEPARATOR ',') AS equipments
+            b.contact_info
         FROM bookings b
         LEFT JOIN venues v ON b.venue_id = v.id
-        LEFT JOIN booking_equipment be ON b.id = be.booking_id
-        LEFT JOIN equipments e ON be.equipment_id = e.id
         WHERE b.venue_id = #{venueId}
         AND b.booking_date BETWEEN #{startDate} AND #{endDate}
         AND b.status = 1
         AND b.status != 4
-        GROUP BY b.id
         ORDER BY b.created_at ASC
     </select>
 
     <!-- ========================================== -->
-    <!-- 查詢預約詳細資訊（含設備清單）-->
+    <!-- 查詢預約詳細資訊 -->
     <!-- ========================================== -->
 
-    <select id="selectBookingWithEquipments" resultMap="bookingVOResultMap">
+    <select id="selectBookingDetail" resultMap="bookingVOResultMap">
         SELECT
             b.id,
             v.name AS venue_name,
@@ -92,15 +83,11 @@
             b.created_at,
             b.purpose,
             b.p_count,
-            b.contact_info,
-            GROUP_CONCAT(e.name SEPARATOR ',') AS equipments
+            b.contact_info
         FROM bookings b
         LEFT JOIN venues v ON b.venue_id = v.id
-        LEFT JOIN booking_equipment be ON b.id = be.booking_id
-        LEFT JOIN equipments e ON be.equipment_id = e.id
         WHERE b.id = #{bookingId}
         AND b.status != 4
-        GROUP BY b.id
     </select>
 
     <!-- ========================================== -->
@@ -141,10 +128,5 @@
             version = version + 1
         WHERE id = #{bookingId}
     </update>
-
-    <delete id="deleteBookingEquipmentsByBookingId">
-        DELETE FROM booking_equipment
-        WHERE booking_id = #{bookingId}
-    </delete>
 </mapper>
 

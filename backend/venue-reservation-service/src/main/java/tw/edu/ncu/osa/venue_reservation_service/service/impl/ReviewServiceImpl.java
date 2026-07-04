@@ -90,8 +90,7 @@ public class ReviewServiceImpl implements ReviewService {
             throw new RuntimeException("預約案編號無效");
         }
 
-        // 查詢預約詳細資訊（含設備清單）
-        BookingVO bookingDetail = reviewMapper.selectBookingWithEquipments(bookingId);
+        BookingVO bookingDetail = reviewMapper.selectBookingDetail(bookingId);
 
         if (bookingDetail == null) {
             log.warn("【ReviewService】[getBookingDetails] 查詢的預約案不存在，bookingId={}", bookingId);
@@ -287,11 +286,7 @@ public class ReviewServiceImpl implements ReviewService {
         }
         log.info("【ReviewService】[deleteBooking] 預約案存在，準備進行軟刪除");
 
-        // 2. 刪除相關的設備紀錄
-        int equipmentDeleteCount = reviewMapper.deleteBookingEquipmentsByBookingId(bookingId);
-        log.info("【ReviewService】[deleteBooking] 成功刪除 {} 筆相關的設備紀錄", equipmentDeleteCount);
-
-        // 3. 軟刪除預約案（將狀態改為 4：已刪除）
+        // 2. 軟刪除預約案（將狀態改為 4：已刪除）
         int softDeleteResult = reviewMapper.deleteSoftBooking(bookingId);
         if (softDeleteResult == 0) {
             log.warn("【ReviewService】[deleteBooking] 軟刪除失敗，bookingId={}", bookingId);

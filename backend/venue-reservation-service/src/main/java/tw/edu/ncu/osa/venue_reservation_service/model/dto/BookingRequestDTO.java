@@ -25,8 +25,7 @@ import java.util.List;
         "name": "王小明",
         "email": "xm@ncu.edu.tw",
         "phone": "0912345678"
-      },
-      "equipmentIds": [1, 2]
+      }
     }
     """
 )
@@ -81,13 +80,6 @@ public class BookingRequestDTO {
     @Valid
     @NotNull(message = "聯絡資訊不可為空")
     private ContactDTO contactInfo;
-
-    @Schema(
-        description = "借用設備 ID 列表（可選）。若不借用設備可省略此欄位或傳入空陣列",
-        example = "[1, 2]",
-        requiredMode = Schema.RequiredMode.NOT_REQUIRED
-    )
-    private List<Long> equipmentIds;
 
     /**
      * 聯絡人資訊 DTO

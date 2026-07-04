@@ -4,34 +4,23 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.util.List;
 
 /**
  * 場地詳細資訊輸出物件 (Value Object)
- * 用於 API 回傳給前端的場地資訊，包含可借用的設備清單
+ * 用於 API 回傳給前端的場地資訊
  */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Schema(
-    description = "場地詳細資訊物件，包含場地基本資訊與可借用設備清單",
+    description = "場地詳細資訊物件，包含場地基本資訊",
     example = """
     {
       "id": 1,
       "unitId": 1,
       "name": "會議室 A",
       "capacity": 50,
-      "description": "位於 3 樓，配備投影機和音響系統。可容納 50 人會議。借用需提前 3 天提出申請。",
-      "equipments": [
-        {
-          "id": 1,
-          "name": "投影機"
-        },
-        {
-          "id": 2,
-          "name": "音響系統"
-        }
-      ]
+      "description": "位於 3 樓，可容納 50 人會議。借用需提前 3 天提出申請。"
     }
     """
 )
@@ -74,11 +63,5 @@ public class VenueVO {
         requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String description;
-    
-    @Schema(
-        description = "該場地可供借用的設備清單。包含設備的 ID 和名稱，用戶可在預約時選擇借用",
-        requiredMode = Schema.RequiredMode.REQUIRED
-    )
-    private List<EquipmentVO> equipments;
 }
 

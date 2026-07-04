@@ -4,7 +4,7 @@
 <mapper namespace="tw.edu.ncu.osa.venue_reservation_service.mapper.VenueMapper">
 
     <!-- ========================================== -->
-    <!-- ResultMap 定義 - 場地與設備關聯映射 -->
+    <!-- ResultMap 定義 - 場地資料映射 -->
     <!-- ========================================== -->
 
     <resultMap id="VenueDetailMap" type="tw.edu.ncu.osa.venue_reservation_service.model.entity.Venue">
@@ -15,12 +15,6 @@
         <result property="description" column="description" />
         <result property="createdAt" column="created_at" />
         <result property="updatedAt" column="updated_at" />
-        <!-- 透過 LEFT JOIN 結果填充場地的設備清單 -->
-        <collection property="equipments" ofType="tw.edu.ncu.osa.venue_reservation_service.model.entity.Equipment">
-            <id property="id" column="equip_id" />
-            <result property="name" column="equip_name" />
-            <result property="createdAt" column="equip_created_at" />
-        </collection>
     </resultMap>
 
     <!-- ========================================== -->
@@ -35,13 +29,8 @@
             v.capacity,
             v.description,
             v.created_at,
-            v.updated_at,
-            e.id as equip_id,
-            e.name as equip_name,
-            e.created_at as equip_created_at
+            v.updated_at
         FROM venues v
-        LEFT JOIN venue_equipment_map vem ON v.id = vem.venue_id
-        LEFT JOIN equipments e ON vem.equipment_id = e.id
         WHERE v.unit_id = #{unitId}
         ORDER BY v.id ASC
     </select>
@@ -54,13 +43,8 @@
             v.capacity,
             v.description,
             v.created_at,
-            v.updated_at,
-            e.id as equip_id,
-            e.name as equip_name,
-            e.created_at as equip_created_at
+            v.updated_at
         FROM venues v
-        LEFT JOIN venue_equipment_map vem ON v.id = vem.venue_id
-        LEFT JOIN equipments e ON vem.equipment_id = e.id
         WHERE v.id = #{id}
     </select>
 

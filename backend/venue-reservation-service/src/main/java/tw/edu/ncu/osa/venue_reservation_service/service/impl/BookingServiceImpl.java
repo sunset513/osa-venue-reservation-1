@@ -96,16 +96,6 @@ public class BookingServiceImpl implements BookingService {
         bookingMapper.insertBooking(booking);
         log.info("【BookingService】[createBooking] 成功插入預約記錄到數據庫，新預約ID={}", booking.getId());
 
-        // 5. 處理設備借用關聯 (如果有的話)
-        if (request.getEquipmentIds() != null && !request.getEquipmentIds().isEmpty()) {
-            log.info("【BookingService】[createBooking] 開始關聯設備，共 {} 個設備", request.getEquipmentIds().size());
-            for (Long equipId : request.getEquipmentIds()) {
-                bookingMapper.insertBookingEquipment(booking.getId(), equipId);
-                log.debug("【BookingService】[createBooking] 已關聯設備，equipId={}", equipId);
-            }
-            log.info("【BookingService】[createBooking] 所有設備關聯完成");
-        }
-
         log.info("【BookingService】[createBooking] 用戶 {} 成功建立預約申請 ID：{}", userId, booking.getId());
         return booking.getId();
     }
@@ -331,18 +321,6 @@ public class BookingServiceImpl implements BookingService {
 
         // 執行更新操作
         bookingMapper.updateBooking(updatedBooking);
-
-        // === 新增以下設備更新邏輯 ===
-        // 刪除舊的設備關聯
-        bookingMapper.deleteBookingEquipmentByBookingId(bookingId);
-        // 2. 如果請求中有新的設備清單，則重新寫入
-        if (request.getEquipmentIds() != null && !request.getEquipmentIds().isEmpty()) {
-            log.info("【BookingService】[updateBooking] 開始更新關聯設備，共 {} 個設備", request.getEquipmentIds().size());
-            for (Long equipId : request.getEquipmentIds()) {
-                bookingMapper.insertBookingEquipment(bookingId, equipId);
-            }
-        }
-// =============================
 
         log.info("【BookingService】[updateBooking] 用戶 {} 成功修改預約申請 ID：{}", userId, bookingId);
     }

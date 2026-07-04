@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.edu.ncu.osa.venue_reservation_service.mapper.EquipmentBookingMapper">
+
+    <insert id="insertBooking" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO equipment_bookings
+            (user_id, borrow_date, time_slots, status, purpose, contact_info, related_venue_booking_id, version)
+        VALUES
+            (#{userId}, #{borrowDate}, #{timeSlots}, #{status}, #{purpose}, #{contactInfo}, #{relatedVenueBookingId}, 1)
+    </insert>
+
+    <update id="updateBooking">
+        UPDATE equipment_bookings
+        SET borrow_date = #{borrowDate},
+            time_slots = #{timeSlots},
+            status = #{status},
+            purpose = #{purpose},
+            contact_info = #{contactInfo},
+            related_venue_booking_id = #{relatedVenueBookingId},
+            reject_reason = NULL,
+            reviewed_by = NULL,
+            reviewed_at = NULL,
+            version = version + 1
+        WHERE id = #{id} AND version = #{version}
+    </update>
+
+    <insert id="insertItem">
+        INSERT INTO equipment_booking_items (equipment_booking_id, equipment_id, quantity)
+        VALUES (#{equipmentBookingId}, #{equipmentId}, #{quantity})
+    </insert>
+
+    <delete id="deleteItemsByBookingId">
+        DELETE FROM equipment_booking_items
+        WHERE equipment_booking_id = #{bookingId}
+    </delete>
+
+    <select id="selectById" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking">
+        SELECT id, user_id, borrow_date, time_slots, status, purpose, contact_info, related_venue_booking_id,
+               reviewed_by, reviewed_at, reject_reason, version, created_at, updated_at
+        FROM equipment_bookings
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectItemsByBookingId" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBookingItem">
+        SELECT id, equipment_booking_id, equipment_id, quantity
+        FROM equipment_booking_items
+        WHERE equipment_booking_id = #{bookingId}
+        ORDER BY id ASC
+    </select>
+
+    <select id="selectItemVOsByBookingId" resultType="tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingItemVO">
+        SELECT ebi.id, ebi.equipment_id, e.name AS equipment_name, ebi.quantity
+        FROM equipment_booking_items ebi
+        INNER JOIN equipments e ON ebi.equipment_id = e.id
+        WHERE ebi.equipment_booking_id = #{bookingId}
+        ORDER BY ebi.id ASC
+    </select>
+
+    <sql id="bookingFilter">
+        <if test="statusList != null and statusList.size() &gt; 0">
+            AND eb.status IN
+            <foreach item="status" collection="statusList" open="(" separator="," close=")">
+                #{status}
+            </foreach>
+        </if>
+        <if test="startDate != null">
+            AND eb.borrow_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND eb.borrow_date &lt;= #{endDate}
+        </if>
+        <if test="equipmentId != null">
+            AND EXISTS (
+                SELECT 1 FROM equipment_booking_items x
+                WHERE x.equipment_booking_id = eb.id AND x.equipment_id = #{equipmentId}
+            )
+        </if>
+    </sql>
+
+    <select id="countMyBookings" resultType="long">
+        SELECT COUNT(*)
+        FROM equipment_bookings eb
+        WHERE eb.user_id = #{userId}
+          AND eb.status != 4
+        <include refid="bookingFilter"/>
+    </select>
+
+    <select id="selectMyBookings" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking">
+        SELECT id, user_id, borrow_date, time_slots, status, purpose, contact_info, related_venue_booking_id,
+               reviewed_by, reviewed_at, reject_reason, version, created_at, updated_at
+        FROM equipment_bookings eb
+        WHERE eb.user_id = #{userId}
+          AND eb.status != 4
+        <include refid="bookingFilter"/>
+        ORDER BY eb.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countReviewBookings" resultType="long">
+        SELECT COUNT(*)
+        FROM equipment_bookings eb
+        WHERE eb.status != 4
+        <include refid="bookingFilter"/>
+    </select>
+
+    <select id="selectReviewBookings" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking">
+        SELECT id, user_id, borrow_date, time_slots, status, purpose, contact_info, related_venue_booking_id,
+               reviewed_by, reviewed_at, reject_reason, version, created_at, updated_at
+        FROM equipment_bookings eb
+        WHERE eb.status != 4
+        <include refid="bookingFilter"/>
+        ORDER BY eb.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <update id="updateStatusWithVersion">
+        UPDATE equipment_bookings
+        SET status = #{newStatus},
+            reviewed_by = #{reviewedBy},
+            reviewed_at = NOW(),
+            reject_reason = #{rejectReason},
+            version = version + 1
+        WHERE id = #{id} AND version = #{oldVersion}
+    </update>
+
+    <select id="sumApprovedQuantityAtHour" resultType="int">
+        SELECT COALESCE(SUM(ebi.quantity), 0)
+        FROM equipment_booking_items ebi
+        INNER JOIN equipment_bookings eb ON ebi.equipment_booking_id = eb.id
+        WHERE ebi.equipment_id = #{equipmentId}
+          AND eb.borrow_date = #{borrowDate}
+          AND eb.status = 2
+          AND (eb.time_slots &amp; #{hourMask}) != 0
+          AND (#{excludeEquipmentBookingId} IS NULL OR eb.id != #{excludeEquipmentBookingId})
+    </select>
+</mapper>

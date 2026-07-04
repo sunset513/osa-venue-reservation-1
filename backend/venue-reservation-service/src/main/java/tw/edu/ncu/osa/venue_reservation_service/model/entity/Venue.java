@@ -4,11 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 場地資訊實體類
- * 對應資料庫 venues 表，管理各單位下的場地基本資訊與設備配置
+ * 對應資料庫 venues 表，管理各單位下的場地基本資訊
  */
 @Data
 @AllArgsConstructor
@@ -39,12 +38,6 @@ public class Venue {
      * 場地介紹或借用規則說明
      */
     private String description;
-    
-    /**
-     * 該場地可供借用的設備清單
-     * 透過 venue_equipment_map 表關聯，透過 MyBatis collection 填充
-     */
-    private List<Equipment> equipments;
     
     /**
      * 建立時間

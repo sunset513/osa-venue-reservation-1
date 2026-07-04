@@ -122,6 +122,14 @@ public class GatewaySessionAuthInterceptor implements HandlerInterceptor {
             return false;
         }
 
+        if (requiresEquipmentManager(path, request.getMethod()) && !ROLE_ADMIN.equals(user.getRole())) {
+            log.warn("Equipment manager permission denied - method={}, path={}, identifier={}",
+                    request.getMethod(), path, profile.identifier());
+            UserContext.remove();
+            writeError(response, HttpServletResponse.SC_FORBIDDEN, "無設備管理權限");
+            return false;
+        }
+
         if (requiresLevelOneAdmin(path) && !isLevelOneAdmin(adminRole)) {
             log.warn("Admin role management permission denied - method={}, path={}, identifier={}",
                     request.getMethod(), path, profile.identifier());
@@ -213,7 +221,17 @@ public class GatewaySessionAuthInterceptor implements HandlerInterceptor {
     }
 
     private boolean requiresReviewer(String path) {
-        return "/api/reviews".equals(path) || path.startsWith("/api/reviews/");
+        return "/api/reviews".equals(path) || path.startsWith("/api/reviews/")
+                || "/api/equipment-reviews".equals(path) || path.startsWith("/api/equipment-reviews/");
+    }
+
+    private boolean requiresEquipmentManager(String path, String method) {
+        if (!"/api/equipments".equals(path) && !path.startsWith("/api/equipments/")) {
+            return false;
+        }
+        return "POST".equalsIgnoreCase(method)
+                || "PUT".equalsIgnoreCase(method)
+                || "DELETE".equalsIgnoreCase(method);
     }
 
     private boolean requiresLevelOneAdmin(String path) {

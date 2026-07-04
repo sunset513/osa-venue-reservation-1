@@ -168,8 +168,7 @@ public class BookingController {
                           "createdAt": "2026-04-03T10:00:00",
                           "purpose": "專案討論",
                           "pCount": 5,
-                          "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}",
-                          "equipments": ["麥克風", "投影機"]
+                          "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}"
                         }
                       ]
                     }
@@ -252,8 +251,7 @@ public class BookingController {
                             "createdAt": "2026-04-03T10:00:00",
                             "purpose": "專案討論",
                             "pCount": 5,
-                            "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}",
-                            "equipments": ["麥克風", "投影機"]
+                            "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}"
                           }
                         ]
                       }
