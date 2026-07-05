@@ -54,7 +54,6 @@ public class EquipmentBookingSupport {
         vo.setRelatedVenueBookingId(booking.getRelatedVenueBookingId());
         vo.setReviewedBy(booking.getReviewedBy());
         vo.setReviewedAt(booking.getReviewedAt());
-        vo.setRejectReason(booking.getRejectReason());
         vo.setVersion(booking.getVersion());
         vo.setCreatedAt(booking.getCreatedAt());
         vo.setUpdatedAt(booking.getUpdatedAt());

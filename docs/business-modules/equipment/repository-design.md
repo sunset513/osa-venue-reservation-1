@@ -5,15 +5,14 @@
 - `venue_seed_v2.sql`
 - 設備獨立借用功能修改指南
 
-## Repository / Mapper 建議
+## Repository / Mapper 現況
 
-建議拆成三個 mapper：
+目前後端主要使用兩個 mapper 承擔 equipment 模組資料存取：
 
 - `EquipmentMapper`：設備主檔與場地規則。
-- `EquipmentBookingMapper`：使用者設備借用申請與可用量查詢。
-- `EquipmentReviewMapper`：管理端設備審核查詢與狀態更新。
+- `EquipmentBookingMapper`：使用者設備借用申請、管理端設備審核查詢、狀態更新與可用量查詢。
 
-也可以先以一個 mapper 實作，但 SQL 責任應維持上述邊界。
+文件仍以責任區塊描述 SQL 邊界；若後續規模擴大，可再拆出獨立 `EquipmentReviewMapper`。
 
 ## EquipmentMapper
 
@@ -27,6 +26,7 @@
 - 整批更新設備允許場地規則。
 - 檢查設備是否可刪除。
 - 檢查降低總數量是否安全。
+- 查詢指定日期/小時所有設備的 active booking 狀態列，供 `/api/equipments/status` 使用。
 
 ### 主要 SQL
 
@@ -120,16 +120,14 @@ WHERE ebi.equipment_id = #{equipmentId}
 
 每個 requested slot 都要查或以 SQL 聚合後在 service 逐小時比對，避免誤把不同小時的數量加總。
 
-## EquipmentReviewMapper
+## Equipment Review Query And Status SQL
 
 ### 責任
 
-- 管理端依條件查詢設備申請。
+- 管理端依條件查詢設備申請，目前由 `EquipmentBookingMapper.countReviewBookings` 與 `selectReviewBookings` 實作。
 - 查詢設備申請詳情與明細。
-- 使用樂觀鎖核准申請。
-- 使用樂觀鎖拒絕申請。
-- 軟刪除設備申請。
-- 寫入 `reviewed_by`、`reviewed_at`、`reject_reason`。
+- 使用樂觀鎖更新審核狀態。
+- 寫入 `reviewed_by`、`reviewed_at`；系統不保存拒絕原因。
 
 ### 查詢條件
 
@@ -146,6 +144,23 @@ WHERE ebi.equipment_id = #{equipmentId}
 
 列表應排除 `status=4`，除非明確查詢刪除資料。
 
+目前額外支援：
+
+- `relatedVenueBookingId`：查詢指定場地預約關聯的設備申請。
+- `standaloneOnly`：只查詢沒有關聯場地預約的設備申請。
+
+狀態更新目前使用同一個 mapper 方法：
+
+```sql
+UPDATE equipment_bookings
+SET status = #{newStatus},
+    reviewed_by = #{reviewedBy},
+    reviewed_at = NOW(),
+    version = version + 1
+WHERE id = #{id}
+  AND version = #{oldVersion};
+```
+
 ## 場地預約輔助查詢
 
 設備借用需要查關聯場地預約：
@@ -160,7 +175,7 @@ WHERE ebi.equipment_id = #{equipmentId}
 - `bookings.purpose`
 - `bookings.contact_info`
 
-建議在 `BookingMapper` 新增使用者可查自己的單筆場地預約 API 所需查詢，供 `/api/bookings/{id}` 與設備申請驗證共用。
+目前設備申請驗證直接透過 `BookingMapper.selectById` 查詢關聯場地預約，並透過 `VenueMapper.selectVenueById` 補場地名稱。
 
 ## Transaction
 
@@ -170,7 +185,7 @@ WHERE ebi.equipment_id = #{equipmentId}
 - 修改設備申請與明細。
 - 核准設備申請。
 - 拒絕設備申請。
-- 刪除設備申請。
+- 審核端更新設備申請狀態。
 - 更新設備主檔與場地規則。
 
 核准多設備申請時，需避免併發超借。建議固定依 `equipment_id ASC` 查詢或鎖定相關設備資料，再逐項做可用量檢查。

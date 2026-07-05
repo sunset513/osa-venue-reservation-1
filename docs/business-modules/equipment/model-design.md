@@ -44,7 +44,7 @@
 約束：
 
 - `name` 唯一。
-- `total_quantity >= 0`。
+- `total_quantity >= 1`。
 
 ## Equipment Venue Rules
 
@@ -86,7 +86,6 @@
 | `related_venue_booking_id` | 選擇性關聯的場地預約 ID。 |
 | `reviewed_by` | 審核人員 Portal ID。 |
 | `reviewed_at` | 審核時間。 |
-| `reject_reason` | 拒絕原因。 |
 | `version` | 樂觀鎖版本號。 |
 | `created_at` | 建立時間。 |
 | `updated_at` | 更新時間。 |

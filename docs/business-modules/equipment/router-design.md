@@ -7,28 +7,28 @@
 
 ## Equipment Master Routes
 
-建議 base path：`/api/equipments`
+Base path：`/api/equipments`
 
 | Method | Path | Auth | 功能 |
 | --- | --- | --- | --- |
 | GET | `/api/equipments` | User | 查詢可借設備與場地限制規則。 |
+| GET | `/api/equipments/status` | User | 查詢指定日期/小時所有設備目前借出狀態與 active booking。 |
 | GET | `/api/equipments/{id}` | User | 查詢設備詳情。 |
-| POST | `/api/equipments` | Admin / Level 1 | 新增設備。 |
-| PUT | `/api/equipments/{id}` | Admin / Level 1 | 修改設備主檔。 |
-| DELETE | `/api/equipments/{id}` | Admin / Level 1 | 軟刪除設備。 |
-| PUT | `/api/equipments/{id}/restore` | Admin / Level 1 | 恢復已軟刪除設備。 |
-| PUT | `/api/equipments/{id}/venue-rules` | Admin / Level 1 | 更新設備允許場地規則。 |
+| POST | `/api/equipments` | Admin | 新增設備。 |
+| PUT | `/api/equipments/{id}` | Admin | 修改設備主檔。 |
+| DELETE | `/api/equipments/{id}` | Admin | 軟刪除設備。 |
+| PUT | `/api/equipments/{id}/restore` | Admin | 恢復已軟刪除設備。 |
+| PUT | `/api/equipments/{id}/venue-rules` | Admin | 更新設備允許場地規則。 |
 
-目前舊 endpoint `/api/equipment` 可在過渡期保留相容，但新設計建議使用複數資源名稱 `/api/equipments`。
+目前系統使用複數資源名稱 `/api/equipments`；舊 endpoint `/api/equipment` 不再作為主要對接面。
 
 ## Equipment Booking Routes
 
-建議 base path：`/api/equipment-bookings`
+Base path：`/api/equipment-bookings`
 
 | Method | Path | Auth | 功能 |
 | --- | --- | --- | --- |
 | POST | `/api/equipment-bookings` | User | 建立設備借用申請。 |
-| GET | `/api/equipment-bookings/my` | User | 查詢自己的設備申請。 |
 | POST | `/api/equipment-bookings/query` | User | 條件與分頁查詢自己的設備申請。 |
 | GET | `/api/equipment-bookings/{id}` | User | 查詢自己的設備申請詳情。 |
 | PUT | `/api/equipment-bookings/{id}` | User | 修改自己的設備申請。 |
@@ -37,27 +37,27 @@
 
 ## Equipment Review Routes
 
-建議 base path：`/api/equipment-reviews`
+Base path：`/api/equipment-reviews`
 
 | Method | Path | Auth | 功能 |
 | --- | --- | --- | --- |
-| GET | `/api/equipment-reviews` | Admin | 管理端查詢設備申請。 |
+| POST | `/api/equipment-reviews/query` | Admin | 管理端條件與分頁查詢設備申請。 |
+| GET | `/api/equipment-reviews/by-venue-booking/{bookingId}` | Admin | 查詢指定場地預約關聯的設備申請。 |
+| GET | `/api/equipment-reviews/standalone/pending-count` | Admin | 查詢待審核的單獨設備借用數量，供 review badge 使用。 |
 | GET | `/api/equipment-reviews/{id}` | Admin | 管理端查看設備申請詳情。 |
 | PUT | `/api/equipment-reviews/{id}/approve` | Admin | 核准設備申請。 |
+| PUT | `/api/equipment-reviews/{id}/status` | Admin | 彈性更新設備審核狀態為審核中、已通過或已拒絕。 |
 | PUT | `/api/equipment-reviews/{id}/reject` | Admin | 拒絕設備申請。 |
-| DELETE | `/api/equipment-reviews/{id}` | Admin | 將設備申請改為 `status=4`。 |
 
-## Booking Helper Route
+目前沒有提供設備申請刪除 endpoint；`status=4` 是資料模型保留狀態。
 
-設備借用頁從場地預約跳轉時，需要取得場地預約資料作為預填內容。
+## Booking Integration Route
 
-建議新增：
+Base path：`/api/bookings`
 
 | Method | Path | Auth | 功能 |
 | --- | --- | --- | --- |
-| GET | `/api/bookings/{id}` | User | 查詢自己的單筆場地預約詳情。 |
-
-一般使用者只能查自己的場地預約。管理端若需查任意場地預約，仍使用 review API。
+| POST | `/api/bookings/with-equipments` | User | 在同一交易中建立場地預約與關聯設備借用申請。 |
 
 ## Request Examples
 
@@ -110,22 +110,17 @@
 }
 ```
 
-### Reject Equipment Booking
+### Update Equipment Review Status
 
 ```json
 {
-  "version": 3,
-  "reason": "該時段設備已無可借數量"
+  "status": 3
 }
 ```
 
 ### Approve Equipment Booking
 
-```json
-{
-  "version": 3
-}
-```
+不需 request body；後端會以目前資料庫版本進行狀態更新。
 
 ### Update Venue Rules
 
@@ -184,18 +179,22 @@
 {
   "success": true,
   "message": "操作成功",
-  "data": [
-    {
-      "equipmentId": 1,
-      "equipmentName": "麥克風",
-      "totalQuantity": 4,
-      "minimumAvailableQuantity": 2,
-      "requestedQuantity": 2,
-      "available": true,
-      "venueRuleValid": true,
-      "message": null
-    }
-  ]
+  "data": {
+    "available": true,
+    "message": "設備可借用",
+    "items": [
+      {
+        "equipmentId": 1,
+        "equipmentName": "麥克風",
+        "requestedQuantity": 2,
+        "totalQuantity": 4,
+        "minAvailableQuantity": 2,
+        "available": true,
+        "venueRulePassed": true,
+        "message": null
+      }
+    ]
+  }
 }
 ```
 
@@ -205,10 +204,7 @@
 
 - `/api/reviews/**` 需要 ADMIN。
 - `/api/admin-roles/**` 需要 level 1 admin。
-
-重構後需補上：
-
 - `/api/equipment-reviews/**` 需要 ADMIN。
-- 設備主檔寫入 API 需要管理員權限，實際採一般 admin 或 level 1 admin 需依政策定案。
+- `/api/equipments` 的 `POST`、`PUT`、`DELETE` 需要 ADMIN。
 
 不能只依賴前端隱藏按鈕。

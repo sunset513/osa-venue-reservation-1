@@ -33,16 +33,7 @@
               role="menuitem"
               @click="goToMyBookings"
             >
-              我的預約歷史紀錄
-            </button>
-            <button
-              type="button"
-              class="menu-item"
-              :class="{ 'is-active': isEquipmentStatusPage }"
-              role="menuitem"
-              @click="goToEquipmentStatus"
-            >
-              設備狀態管理
+              我的場地借用紀錄
             </button>
             <button
               type="button"
@@ -51,7 +42,7 @@
               role="menuitem"
               @click="goToEquipmentHistory"
             >
-              設備借用記錄
+              我的設備借用紀錄
             </button>
           </div>
         </transition>
@@ -71,7 +62,6 @@ const menuRef = ref(null);
 const isMenuOpen = ref(false);
 
 const isHistoryPage = computed(() => route.name === "MyBookingHistory");
-const isEquipmentStatusPage = computed(() => route.name === "EquipmentStatus");
 const isEquipmentHistoryPage = computed(() => route.name === "EquipmentBorrowHistory");
 
 const closeMenu = () => {
@@ -88,14 +78,6 @@ const goToMyBookings = async () => {
   if (route.name === "MyBookingHistory") return;
 
   await router.push({ name: "MyBookingHistory" });
-};
-
-const goToEquipmentStatus = async () => {
-  closeMenu();
-
-  if (route.name === "EquipmentStatus") return;
-
-  await router.push({ name: "EquipmentStatus" });
 };
 
 const goToEquipmentHistory = async () => {

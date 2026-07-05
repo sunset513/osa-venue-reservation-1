@@ -71,7 +71,6 @@ public interface EquipmentBookingMapper {
             @Param("id") Long id,
             @Param("newStatus") Integer newStatus,
             @Param("reviewedBy") String reviewedBy,
-            @Param("rejectReason") String rejectReason,
             @Param("oldVersion") Integer oldVersion
     );
 

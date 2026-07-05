@@ -105,7 +105,7 @@ public class EquipmentBookingServiceImpl implements EquipmentBookingService {
             throw new RuntimeException("此狀態不可撤回");
         }
         int updated = equipmentBookingMapper.updateStatusWithVersion(
-                id, 0, null, null, booking.getVersion());
+                id, 0, null, booking.getVersion());
         if (updated == 0) {
             throw new RuntimeException("設備借用申請已被他人修改，請重新查詢");
         }

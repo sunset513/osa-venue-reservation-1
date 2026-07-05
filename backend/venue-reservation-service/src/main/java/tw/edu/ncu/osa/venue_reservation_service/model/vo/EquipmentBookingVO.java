@@ -20,7 +20,6 @@ public class EquipmentBookingVO {
     private String relatedVenueName;
     private String reviewedBy;
     private LocalDateTime reviewedAt;
-    private String rejectReason;
     private Integer version;
     private List<EquipmentBookingItemVO> items;
     private LocalDateTime createdAt;

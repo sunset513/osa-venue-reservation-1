@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import tw.edu.ncu.osa.venue_reservation_service.common.result.Result;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentBookingQueryDTO;
-import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentBookingRejectDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentReviewStatusUpdateDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingPageVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.EquipmentReviewService;
@@ -58,11 +58,21 @@ public class EquipmentReviewController {
         return Result.success();
     }
 
+    @PutMapping("/{id}/status")
+    @Operation(summary = "更新設備借用審核狀態")
+    @SecurityRequirement(name = "Session-Cookie")
+    public Result<Void> updateBookingStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody EquipmentReviewStatusUpdateDTO request) {
+        equipmentReviewService.updateBookingStatus(id, request.getStatus());
+        return Result.success();
+    }
+
     @PutMapping("/{id}/reject")
     @Operation(summary = "拒絕設備借用申請")
     @SecurityRequirement(name = "Session-Cookie")
-    public Result<Void> rejectBooking(@PathVariable Long id, @Valid @RequestBody EquipmentBookingRejectDTO request) {
-        equipmentReviewService.rejectBooking(id, request.getRejectReason());
+    public Result<Void> rejectBooking(@PathVariable Long id) {
+        equipmentReviewService.rejectBooking(id);
         return Result.success();
     }
 }

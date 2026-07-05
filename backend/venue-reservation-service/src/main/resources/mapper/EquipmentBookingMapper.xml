@@ -18,7 +18,6 @@
             purpose = #{purpose},
             contact_info = #{contactInfo},
             related_venue_booking_id = #{relatedVenueBookingId},
-            reject_reason = NULL,
             reviewed_by = NULL,
             reviewed_at = NULL,
             version = version + 1
@@ -37,7 +36,7 @@
 
     <select id="selectById" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking">
         SELECT id, user_id, borrow_date, time_slots, status, purpose, contact_info, related_venue_booking_id,
-               reviewed_by, reviewed_at, reject_reason, version, created_at, updated_at
+               reviewed_by, reviewed_at, version, created_at, updated_at
         FROM equipment_bookings
         WHERE id = #{id}
     </select>
@@ -94,7 +93,7 @@
 
     <select id="selectMyBookings" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking">
         SELECT id, user_id, borrow_date, time_slots, status, purpose, contact_info, related_venue_booking_id,
-               reviewed_by, reviewed_at, reject_reason, version, created_at, updated_at
+               reviewed_by, reviewed_at, version, created_at, updated_at
         FROM equipment_bookings eb
         WHERE eb.user_id = #{userId}
           AND eb.status != 4
@@ -112,7 +111,7 @@
 
     <select id="selectReviewBookings" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking">
         SELECT id, user_id, borrow_date, time_slots, status, purpose, contact_info, related_venue_booking_id,
-               reviewed_by, reviewed_at, reject_reason, version, created_at, updated_at
+               reviewed_by, reviewed_at, version, created_at, updated_at
         FROM equipment_bookings eb
         WHERE eb.status != 4
         <include refid="bookingFilter"/>
@@ -125,7 +124,6 @@
         SET status = #{newStatus},
             reviewed_by = #{reviewedBy},
             reviewed_at = NOW(),
-            reject_reason = #{rejectReason},
             version = version + 1
         WHERE id = #{id} AND version = #{oldVersion}
     </update>

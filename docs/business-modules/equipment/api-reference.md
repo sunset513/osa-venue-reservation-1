@@ -22,6 +22,13 @@
 | `3` | rejected | 已拒絕 |
 | `4` | deleted | 系統刪除 |
 
+## Permission Summary
+
+- 一般登入使用者可查詢設備清單、設備狀態、建立/查詢/修改/撤回自己的設備借用申請。
+- `/api/equipments` 的寫入端點（`POST`、`PUT`、`DELETE`）需要 admin role。
+- `/api/equipment-reviews/**` 需要 admin role。
+- 目前設備審核端沒有提供刪除設備申請的 API；`status=4` 僅作為資料模型保留狀態。
+
 ## Equipment Master
 
 Base path：`/api/equipments`
@@ -224,7 +231,7 @@ Rules：
 
 設備借用會沿用 `booking.bookingDate`、`booking.slots`、`booking.purpose`、`booking.contactInfo`，並自動填入 `relatedVenueBookingId`。若設備數量不足或場地限制不符，整筆合併建立會失敗。
 
-Returns：`data` 為 `BookingWithEquipmentCreateVO`。
+Returns：`data` 為 `BookingWithEquipmentCreateVO`。未選設備時只建立場地預約，`equipmentBookingId` 會是 `null`。
 
 ```json
 {
@@ -297,7 +304,6 @@ Returns：`data` 為 `EquipmentBookingVO`。
   "relatedVenueName": "會議室",
   "reviewedBy": null,
   "reviewedAt": null,
-  "rejectReason": null,
   "version": 1,
   "items": [
     {
@@ -348,7 +354,7 @@ Returns：`data` 為 `EquipmentBookingPageVO`。
 
 Rules：僅 `pending(1)` 或 `approved(2)` 可修改；修改後狀態重設為 `pending(1)`，審核欄位清空。
 
-Request body 欄位同建立。
+Request body 欄位同建立；目前前端不需要帶 `version`。
 
 Returns：`data` 為 `null`。
 
@@ -450,10 +456,33 @@ Returns：`data` 為 `EquipmentBookingVO`。
 
 Rules：
 
-- 僅 `pending(1)` 可核准。
+- 可將設備申請改為 `approved(2)`。
 - 核准時會重新檢查設備總量。
 - 若設備有限場地規則，相關場地預約必須已通過，日期與時段也需符合規則。
 - 成功後狀態改為 `approved(2)`，寫入 `reviewedBy` 與 `reviewedAt`。
+- 已撤回的設備借用申請 `withdrawn(0)` 不可由審核端重新啟用。
+
+Returns：`data` 為 `null`。
+
+### PUT `/api/equipment-reviews/{id}/status`
+
+更新設備借用審核狀態。此端點供審核者在核准後改為拒絕、拒絕後改為核准或退回審核中使用，行為比照場地預約審核的彈性狀態切換。
+
+Request body：
+
+```json
+{
+  "status": 2
+}
+```
+
+Rules：
+
+- `status` 可為 `1(pending)`、`2(approved)`、`3(rejected)`。
+- 已撤回的設備借用申請 `withdrawn(0)` 不可由審核端重新啟用。
+- 目標狀態為 `approved(2)` 時，會重新檢查設備總量與場地規則。
+- 成功後寫入 `reviewedBy`、`reviewedAt`，並透過 `version` 做樂觀鎖檢查。
+- 不寫入拒絕原因；承辦人若需說明，會於系統外通知使用者。
 
 Returns：`data` 為 `null`。
 
@@ -461,14 +490,6 @@ Returns：`data` 為 `null`。
 
 拒絕設備借用申請。
 
-Request body：
-
-```json
-{
-  "rejectReason": "設備數量不足"
-}
-```
-
-Rules：僅 `pending(1)` 可拒絕。
+Rules：可將設備申請改為 `rejected(3)`，不需要 request body，也不寫入拒絕原因。
 
 Returns：`data` 為 `null`。

@@ -64,27 +64,35 @@ public class EquipmentReviewServiceImpl implements EquipmentReviewService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approveBooking(Long id) {
-        EquipmentBooking booking = support.requireBooking(id);
-        if (!Integer.valueOf(1).equals(booking.getStatus())) {
-            throw new RuntimeException("僅審核中設備借用申請可核准");
-        }
-        support.assertApprovalAvailable(toAvailabilityQuery(booking));
-        int updated = equipmentBookingMapper.updateStatusWithVersion(
-                id, 2, UserContext.getUser().getUserId(), null, booking.getVersion());
-        if (updated == 0) {
-            throw new RuntimeException("設備借用申請已被他人修改，請重新查詢");
-        }
+        updateBookingStatus(id, 2);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void rejectBooking(Long id, String rejectReason) {
-        EquipmentBooking booking = support.requireBooking(id);
-        if (!Integer.valueOf(1).equals(booking.getStatus())) {
-            throw new RuntimeException("僅審核中設備借用申請可拒絕");
+    public void rejectBooking(Long id) {
+        updateBookingStatus(id, 3);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateBookingStatus(Long id, Integer status) {
+        if (status == null || status < 1 || status > 3) {
+            throw new RuntimeException("設備審核狀態值無效");
         }
+        EquipmentBooking booking = support.requireBooking(id);
+        if (Integer.valueOf(0).equals(booking.getStatus())) {
+            throw new RuntimeException("已撤回的設備借用申請不可由審核端重新啟用");
+        }
+
+        // Approved equipment bookings occupy stock, so any transition into
+        // approved status must re-run the same availability and venue-rule
+        // checks used by the dedicated approve endpoint.
+        if (Integer.valueOf(2).equals(status)) {
+            support.assertApprovalAvailable(toAvailabilityQuery(booking));
+        }
+
         int updated = equipmentBookingMapper.updateStatusWithVersion(
-                id, 3, UserContext.getUser().getUserId(), rejectReason, booking.getVersion());
+                id, status, UserContext.getUser().getUserId(), booking.getVersion());
         if (updated == 0) {
             throw new RuntimeException("設備借用申請已被他人修改，請重新查詢");
         }

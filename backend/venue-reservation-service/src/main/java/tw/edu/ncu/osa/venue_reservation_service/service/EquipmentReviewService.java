@@ -15,7 +15,9 @@ public interface EquipmentReviewService {
 
     Long countStandalonePendingBookings();
 
+    void updateBookingStatus(Long id, Integer status);
+
     void approveBooking(Long id);
 
-    void rejectBooking(Long id, String rejectReason);
+    void rejectBooking(Long id);
 }

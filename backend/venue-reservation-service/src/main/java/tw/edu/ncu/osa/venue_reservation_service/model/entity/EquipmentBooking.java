@@ -21,7 +21,6 @@ public class EquipmentBooking {
     private Long relatedVenueBookingId;
     private String reviewedBy;
     private LocalDateTime reviewedAt;
-    private String rejectReason;
     private Integer version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

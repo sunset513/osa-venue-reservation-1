@@ -21,7 +21,7 @@
 | 欄位 | 必填 | 說明 |
 | --- | --- | --- |
 | `name` | Yes | 設備名稱。 |
-| `totalQuantity` | Yes | 設備總數量，需大於等於 0。 |
+| `totalQuantity` | Yes | 設備總數量，需大於等於 1。 |
 | `description` | No | 設備介紹。 |
 | `borrowNote` | No | 借用方式與注意事項。 |
 | `venueRules` | No | 允許場地規則，空陣列代表不限場地。 |
@@ -60,7 +60,6 @@
 
 | 欄位 | 必填 | 說明 |
 | --- | --- | --- |
-| `version` | Yes | 樂觀鎖版本號。 |
 | `borrowDate` | Yes | 借用日期。 |
 | `slots` | Yes | 時段列表。 |
 | `purpose` | Yes | 借用用途。 |
@@ -77,18 +76,11 @@
 
 ## Review DTO
 
-### EquipmentBookingApproveDTO
+### EquipmentReviewStatusUpdateDTO
 
 | 欄位 | 必填 | 說明 |
 | --- | --- | --- |
-| `version` | Yes | 樂觀鎖版本號。 |
-
-### EquipmentBookingRejectDTO
-
-| 欄位 | 必填 | 說明 |
-| --- | --- | --- |
-| `version` | Yes | 樂觀鎖版本號。 |
-| `reason` | Yes | 拒絕原因，最多 500 字。 |
+| `status` | Yes | 目標審核狀態：`1=審核中`、`2=已通過`、`3=已拒絕`。 |
 
 ## Availability DTO
 
@@ -136,7 +128,6 @@
 | `items` | 設備明細。 |
 | `reviewedBy` | 審核人員。 |
 | `reviewedAt` | 審核時間。 |
-| `rejectReason` | 拒絕原因。 |
 | `version` | 版本號。 |
 | `createdAt` | 建立時間。 |
 | `updatedAt` | 更新時間。 |
@@ -145,13 +136,21 @@
 
 | 欄位 | 說明 |
 | --- | --- |
+| `available` | 整體是否可借用。 |
+| `message` | 整體結果訊息。 |
+| `items` | 各設備的可用性明細。 |
+
+### EquipmentAvailabilityVO.ItemAvailability
+
+| 欄位 | 說明 |
+| --- | --- |
 | `equipmentId` | 設備 ID。 |
 | `equipmentName` | 設備名稱。 |
 | `totalQuantity` | 總數量。 |
-| `minimumAvailableQuantity` | 查詢時段內最低可用數量。 |
+| `minAvailableQuantity` | 查詢時段內最低可用數量。 |
 | `requestedQuantity` | 本次要求數量。 |
 | `available` | 數量是否可用。 |
-| `venueRuleValid` | 場地規則是否符合。 |
+| `venueRulePassed` | 場地規則是否符合。 |
 | `message` | 不可借或限制說明。 |
 
 ## ContactInfoDTO
