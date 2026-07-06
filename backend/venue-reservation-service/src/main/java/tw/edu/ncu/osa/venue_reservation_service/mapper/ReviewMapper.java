@@ -52,12 +52,7 @@ public interface ReviewMapper {
     // 查詢預約詳細資訊
     // ==========================================
 
-    /**
-     * 根據預約 ID 查詢預約詳細資訊（包含設備清單）
-     * @param bookingId 預約申請案編號
-     * @return 預約詳細資訊
-     */
-    BookingVO selectBookingWithEquipments(@Param("bookingId") Long bookingId);
+    BookingVO selectBookingDetail(@Param("bookingId") Long bookingId);
 
     // ==========================================
     // 衝突檢查
@@ -104,11 +99,5 @@ public interface ReviewMapper {
      */
     int deleteSoftBooking(@Param("bookingId") Long bookingId);
 
-    /**
-     * 刪除預約的關聯設備紀錄
-     * @param bookingId 預約 ID
-     * @return 刪除的設備紀錄筆數
-     */
-    int deleteBookingEquipmentsByBookingId(@Param("bookingId") Long bookingId);
 }
 

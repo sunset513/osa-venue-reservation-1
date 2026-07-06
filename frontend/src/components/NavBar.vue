@@ -33,30 +33,7 @@
               role="menuitem"
               @click="goToMyBookings"
             >
-              <History :size="18" aria-hidden="true" class="menu-item-icon" />
-              <span>我的預約歷史紀錄</span>
-            </button>
-            <button
-              v-if="isReviewer"
-              type="button"
-              class="menu-item"
-              :class="{ 'is-active': isReviewPage }"
-              role="menuitem"
-              @click="goToReviewPage"
-            >
-              <ClipboardCheck :size="18" aria-hidden="true" class="menu-item-icon" />
-              <span>審核工作台</span>
-            </button>
-            <button
-              v-if="isReviewer"
-              type="button"
-              class="menu-item"
-              :class="{ 'is-active': isEquipmentStatusPage }"
-              role="menuitem"
-              @click="goToEquipmentStatus"
-            >
-              <Wrench :size="18" aria-hidden="true" class="menu-item-icon" />
-              <span>設備狀態管理</span>
+              我的場地借用紀錄
             </button>
             <button
               v-if="isReviewer"
@@ -66,8 +43,7 @@
               role="menuitem"
               @click="goToEquipmentHistory"
             >
-              <ClipboardList :size="18" aria-hidden="true" class="menu-item-icon" />
-              <span>設備借用記錄</span>
+              設備借用記錄
             </button>
           </div>
         </transition>
@@ -90,7 +66,6 @@ const isMenuOpen = ref(false);
 
 const isReviewer = computed(() => authSession.isReviewer);
 const isHistoryPage = computed(() => route.name === "MyBookingHistory");
-const isReviewPage = computed(() => route.name === "ReviewCalendar");
 const isEquipmentStatusPage = computed(() => route.name === "EquipmentStatus");
 const isEquipmentHistoryPage = computed(() => route.name === "EquipmentBorrowHistory");
 
@@ -116,14 +91,6 @@ const goToEquipmentStatus = async () => {
   if (route.name === "EquipmentStatus") return;
 
   await router.push({ name: "EquipmentStatus" });
-};
-
-const goToReviewPage = async () => {
-  closeMenu();
-
-  if (route.name === "ReviewCalendar") return;
-
-  await router.push({ name: "ReviewCalendar" });
 };
 
 const goToEquipmentHistory = async () => {

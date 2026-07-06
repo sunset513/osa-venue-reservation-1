@@ -92,23 +92,31 @@
             <input type="email" v-model="formData.contactInfo.email" required />
           </div>
 
-          <div
-            class="form-group"
-            v-if="venueInfo && venueInfo.equipments?.length > 0"
-          >
+          <div class="form-group" v-if="mode === 'create'">
             <div class="form-section-title">需借用設備</div>
-            <div class="equipments-flex">
-              <label
-                v-for="eq in venueInfo.equipments"
-                :key="eq.id"
-                class="eq-checkbox"
-              >
+            <div v-if="isEquipmentLoading" class="equipment-helper">載入可借用設備中...</div>
+            <div v-else-if="equipmentOptions.length === 0" class="equipment-helper">
+              此場地目前沒有可一併借用的設備。
+            </div>
+            <div v-else class="equipments-flex">
+              <label v-for="eq in equipmentOptions" :key="eq.id" class="eq-checkbox">
                 <input
                   type="checkbox"
                   :value="eq.id"
-                  v-model="formData.equipmentIds"
+                  :checked="isEquipmentSelected(eq.id)"
+                  @change="toggleEquipmentSelection(eq.id, $event.target.checked)"
                 />
-                {{ eq.name }}
+                <span>{{ eq.name }}</span>
+                <input
+                  v-if="isEquipmentSelected(eq.id)"
+                  v-model.number="equipmentQuantities[eq.id]"
+                  class="equipment-quantity-input"
+                  type="number"
+                  min="1"
+                  :max="eq.totalQuantity"
+                  aria-label="設備借用數量"
+                />
+                <small v-if="isEquipmentSelected(eq.id)">可借總量 {{ eq.totalQuantity }}</small>
               </label>
             </div>
           </div>
@@ -206,7 +214,13 @@
 <script setup>
 import { computed, ref, reactive, watch } from "vue";
 import { Save, Send, Undo2, X } from "lucide-vue-next";
-import { createBooking, updateBooking } from "@/api/booking";
+import { createBooking, createBookingWithEquipments, updateBooking } from "@/api/booking";
+import { listEquipments } from "@/api/equipment";
+import {
+  buildEquipmentBookingItems,
+  isEquipmentAllowedForVenue,
+  normalizeEquipmentMasters,
+} from "@/utils/equipment";
 import { useToast } from "@/utils/useToast.js";
 
 const { success, error: showError, warning } = useToast();
@@ -227,6 +241,9 @@ const canWithdraw = computed(() => props.mode === "edit" && props.initialData?.c
 const isWithdrawConfirmVisible = ref(false);
 const slotRangeAnchor = ref(null);
 const formErrors = reactive({ slots: false });
+const equipmentOptions = ref([]);
+const isEquipmentLoading = ref(false);
+const equipmentQuantities = reactive({});
 
 const formData = reactive({
   venueId: null,
@@ -239,8 +256,64 @@ const formData = reactive({
     email: "student@ncu.edu.tw",
     phone: "0912345678",
   },
-  equipmentIds: [],
+  equipmentItems: [],
 });
+
+const selectedEquipmentIds = computed(() => {
+  return new Set(formData.equipmentItems.map((item) => item.equipmentId));
+});
+
+const isEquipmentSelected = (equipmentId) => {
+  return selectedEquipmentIds.value.has(equipmentId);
+};
+
+const resetEquipmentSelection = () => {
+  formData.equipmentItems = [];
+  Object.keys(equipmentQuantities).forEach((key) => {
+    delete equipmentQuantities[key];
+  });
+};
+
+const toggleEquipmentSelection = (equipmentId, checked) => {
+  // Keep the form state as an array because the backend accepts `equipmentItems`
+  // rather than the legacy `equipmentIds`. Quantities are stored separately for
+  // easier v-model binding and merged into the submit payload at the boundary.
+  if (checked) {
+    if (!isEquipmentSelected(equipmentId)) {
+      formData.equipmentItems.push({ equipmentId, quantity: 1 });
+    }
+    equipmentQuantities[equipmentId] = equipmentQuantities[equipmentId] || 1;
+    return;
+  }
+
+  formData.equipmentItems = formData.equipmentItems.filter((item) => item.equipmentId !== equipmentId);
+  delete equipmentQuantities[equipmentId];
+};
+
+const loadEquipmentOptions = async () => {
+  if (!props.venueInfo?.id || props.mode !== "create") {
+    equipmentOptions.value = [];
+    return;
+  }
+
+  isEquipmentLoading.value = true;
+
+  try {
+    const masters = normalizeEquipmentMasters(await listEquipments());
+
+    // The backend enforces venue rules on submit; filtering here is only a
+    // usability layer so users do not select equipment that the backend will
+    // predictably reject for the current venue.
+    equipmentOptions.value = masters.filter((equipment) =>
+      isEquipmentAllowedForVenue(equipment, props.venueInfo.id),
+    );
+  } catch (loadError) {
+    console.error("載入設備選項失敗:", loadError);
+    equipmentOptions.value = [];
+  } finally {
+    isEquipmentLoading.value = false;
+  }
+};
 
 // ✨ 資料回顯邏輯
 watch(
@@ -265,12 +338,22 @@ watch(
               email: "student@ncu.edu.tw",
               phone: "0912345678",
             },
-        equipmentIds: props.initialData.equipmentIds
-          ? [...props.initialData.equipmentIds]
-          : [], // ✨ 設備 ID 回顯
+        equipmentItems: [],
       });
+      resetEquipmentSelection();
       slotRangeAnchor.value = sortedInitialSlots[0] ?? null;
       formErrors.slots = false;
+      void loadEquipmentOptions();
+    }
+  },
+);
+
+watch(
+  () => props.venueInfo?.id,
+  () => {
+    if (props.visible) {
+      resetEquipmentSelection();
+      void loadEquipmentOptions();
     }
   },
 );
@@ -364,11 +447,39 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true;
   try {
+    const bookingPayload = {
+      venueId: formData.venueId,
+      bookingDate: formData.bookingDate,
+      slots: formData.slots,
+      purpose: formData.purpose,
+      participantCount: formData.participantCount,
+      contactInfo: formData.contactInfo,
+    };
+
+    const equipmentItems = buildEquipmentBookingItems(
+      formData.equipmentItems.map((item) => ({
+        equipmentId: item.equipmentId,
+        quantity: equipmentQuantities[item.equipmentId] || item.quantity,
+      })),
+    );
+
     if (props.mode === "create") {
-      await createBooking(formData);
+      // The combined endpoint guarantees venue booking and equipment booking
+      // are created together. When no equipment is selected, the original venue
+      // endpoint remains the narrowest and most compatible request shape.
+      if (equipmentItems.length > 0) {
+        await createBookingWithEquipments({
+          booking: bookingPayload,
+          equipmentItems,
+        });
+      } else {
+        await createBooking(bookingPayload);
+      }
       success("申請已成功送出！");
     } else {
-      await updateBooking(props.initialData.id, formData);
+      // Editing related equipment is intentionally not bundled here because the
+      // backend currently exposes combined create, but not combined update.
+      await updateBooking(props.initialData.id, bookingPayload);
       success("申請已成功修改！");
     }
 
@@ -680,6 +791,15 @@ input[type="email"] {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
+}
+.equipment-helper {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.equipment-quantity-input {
+  width: 4.5rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.5rem;
 }
 .error-text {
   color: var(--danger);

@@ -81,25 +81,6 @@ public interface BookingMapper {
     int updateBooking(Booking booking);
 
     /**
-     * 刪除預約的所有設備關聯
-     * @param bookingId 預約案 ID
-     * @return 受影響行數
-     */
-    int deleteBookingEquipmentByBookingId(@Param("bookingId") Long bookingId);
-
-    // ==========================================
-    // 關聯操作
-    // ==========================================
-    
-    /**
-     * 插入預約設備關聯表
-     * @param bookingId 預約案 ID
-     * @param equipmentId 設備 ID
-     * @return 受影響行數
-     */
-    int insertBookingEquipment(@Param("bookingId") Long bookingId, @Param("equipmentId") Long equipmentId);
-
-    /**
      * 查詢與指定預約衝突的「審核中」預約
      * @param venueId 場地 ID
      * @param date 預約日期

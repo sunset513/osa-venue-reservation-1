@@ -15,6 +15,18 @@ export const createBooking = (bookingData) => {
 };
 
 /**
+ * Submit a venue booking and its related equipment request in one backend transaction.
+ * The caller should only use this API when at least one equipment item is selected,
+ * because the existing `/bookings` endpoint remains the simpler path for pure venue bookings.
+ *
+ * @param {Object} payload - Combined venue booking and equipment item payload.
+ * @returns {Promise<Object>} Created booking IDs: { bookingId, equipmentBookingId }.
+ */
+export const createBookingWithEquipments = (payload) => {
+  return request.post("/bookings/with-equipments", payload);
+};
+
+/**
  * 2.2 查看個人預約清單
  * @returns {Promise<Array>} 個人的預約申請清單
  */

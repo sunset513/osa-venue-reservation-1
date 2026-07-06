@@ -6,6 +6,7 @@ import MyBookingHistory from "@/views/MyBookingHistory.vue";
 import ReviewCalendar from "@/views/ReviewCalendar.vue";
 import EquipmentStatus from "@/views/EquipmentStatus.vue";
 import EquipmentBorrowHistory from "@/views/EquipmentBorrowHistory.vue";
+import EquipmentBorrowForm from "@/views/EquipmentBorrowForm.vue";
 import ActivityDashboard from "@/views/ActivityDashboard.vue";
 import ConsentAgreement from "@/views/ConsentAgreement.vue";
 import NotFound from "@/views/NotFound.vue";
@@ -52,6 +53,11 @@ const routes = [
     meta: {
       requiresReviewer: true,
     },
+  },
+  {
+    path: "/equipment-borrow",
+    name: "EquipmentBorrowForm",
+    component: EquipmentBorrowForm,
   },
   {
     path: "/equipment-history",

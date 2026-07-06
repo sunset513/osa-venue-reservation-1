@@ -62,9 +62,48 @@
 
           <article class="detail-card">
             <span class="detail-label">設備借用</span>
-            <ul v-if="booking.equipments?.length" class="equipment-list">
-              <li v-for="equipment in booking.equipments" :key="equipment">{{ equipment }}</li>
-            </ul>
+            <p v-if="equipmentLoading">載入設備申請中...</p>
+            <div v-else-if="equipmentBookings.length" class="equipment-review-list">
+              <article
+                v-for="equipmentBooking in equipmentBookings"
+                :key="equipmentBooking.id"
+                class="equipment-review-item"
+              >
+                <div>
+                  <strong>{{ equipmentBooking.itemSummary }}</strong>
+                  <span class="detail-subtle">
+                    {{ equipmentBooking.timeRange }}｜{{ equipmentBooking.purpose }}
+                  </span>
+                  <span class="detail-subtle">
+                    {{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}｜
+                    {{ equipmentBooking.contact.phone || "未提供電話" }}｜
+                    {{ equipmentBooking.contact.email || "未提供 Email" }}
+                  </span>
+                  <span
+                    class="equipment-status-pill"
+                    :class="getEquipmentBookingStatusMeta(equipmentBooking.status).className"
+                  >
+                    {{ getEquipmentBookingStatusMeta(equipmentBooking.status).text }}
+                  </span>
+                </div>
+                <div
+                  v-if="getEquipmentReviewActions(equipmentBooking).length"
+                  class="equipment-review-actions"
+                >
+                  <button
+                    v-for="action in getEquipmentReviewActions(equipmentBooking)"
+                    :key="action.key"
+                    type="button"
+                    class="inline-action"
+                    :class="action.variant"
+                    :disabled="equipmentProcessingId === equipmentBooking.id"
+                    @click="$emit('update-equipment-status', equipmentBooking.id, action.status)"
+                  >
+                    {{ action.label }}
+                  </button>
+                </div>
+              </article>
+            </div>
             <p v-else>未借用設備</p>
           </article>
         </section>
@@ -101,6 +140,7 @@ import { computed } from "vue";
 import { Check, Clock3, RotateCcw, X, XCircle } from "lucide-vue-next";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
 import { getBookingStatusMeta } from "@/utils/bookingMeta";
+import { getEquipmentBookingStatusMeta } from "@/utils/equipment";
 
 const props = defineProps({
   visible: Boolean,
@@ -110,9 +150,25 @@ const props = defineProps({
   },
   loading: Boolean,
   processing: Boolean,
+  equipmentBookings: {
+    type: Array,
+    default: () => [],
+  },
+  equipmentLoading: Boolean,
+  equipmentProcessingId: {
+    type: [Number, String],
+    default: null,
+  },
 });
 
-const emit = defineEmits(["close", "approve", "update-status"]);
+const emit = defineEmits([
+  "close",
+  "approve",
+  "update-status",
+  "approve-equipment",
+  "reject-equipment",
+  "update-equipment-status",
+]);
 
 const statusMeta = computed(() => {
   const meta = getBookingStatusMeta(props.booking?.status);
@@ -159,6 +215,31 @@ const actions = computed(() => {
       return [];
   }
 });
+
+const getEquipmentReviewActions = (equipmentBooking) => {
+  // Equipment review records can now move between pending, approved, and
+  // rejected states after the first decision. Keeping the available transitions
+  // close to the display logic makes each review row explain what the reviewer
+  // can do next without introducing another modal-level state machine.
+  switch (equipmentBooking?.status) {
+    case 1:
+      return [
+        { key: "reject", label: "拒絕", variant: "is-danger", status: 3 },
+        { key: "approve", label: "核准", variant: "is-primary", status: 2 },
+      ];
+    case 2:
+      return [
+        { key: "reject-approved", label: "改為拒絕", variant: "is-danger", status: 3 },
+      ];
+    case 3:
+      return [
+        { key: "pending-rejected", label: "改為審核中", variant: "is-secondary", status: 1 },
+        { key: "approve-rejected", label: "改為核准", variant: "is-primary", status: 2 },
+      ];
+    default:
+      return [];
+  }
+};
 
 const formatDateDisplay = (dateString) => {
   if (!dateString) return "未提供";
@@ -400,6 +481,94 @@ const emitAction = (action) => {
 .equipment-list {
   margin: 0;
   padding-left: 1.2rem;
+}
+
+.equipment-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.equipment-review-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+}
+
+.equipment-status-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 800;
+
+  &.is-pending {
+    background: rgba(217, 119, 6, 0.12);
+    color: #a15c00;
+  }
+
+  &.is-approved {
+    background: rgba(46, 139, 87, 0.12);
+    color: var(--status-approved);
+  }
+
+  &.is-rejected {
+    background: rgba(196, 69, 69, 0.1);
+    color: var(--danger);
+  }
+
+  &.is-withdrawn {
+    background: var(--surface-muted);
+    color: var(--muted-strong);
+  }
+}
+
+.equipment-review-actions {
+  flex: 0 0 auto;
+}
+
+.inline-action {
+  min-height: 1.9rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+  }
+
+  &.is-primary {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  &.is-danger {
+    background: rgba(196, 69, 69, 0.1);
+    color: var(--danger);
+  }
+
+  &.is-secondary {
+    background: #f3f6fb;
+    color: var(--accent);
+  }
 }
 
 .modal-footer {

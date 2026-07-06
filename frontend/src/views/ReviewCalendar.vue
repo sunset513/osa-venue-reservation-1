@@ -23,11 +23,33 @@
         <ArrowRight :size="17" aria-hidden="true" />
         <span>{{ bookingRouteLabel }}</span>
       </button>
+
+      <div class="review-mode-toggle" role="group" aria-label="切換審核類型">
+        <button
+          class="view-toggle-btn"
+          :class="{ 'is-active': activeReviewMode === 'venue' }"
+          type="button"
+          @click="activeReviewMode = 'venue'"
+        >
+          場地預約
+        </button>
+        <button
+          class="view-toggle-btn badge-toggle-btn"
+          :class="{ 'is-active': activeReviewMode === 'equipment' }"
+          type="button"
+          @click="activeReviewMode = 'equipment'"
+        >
+          設備借用
+          <span v-if="standalonePendingCount > 0" class="pending-badge">
+            {{ standalonePendingCount }}
+          </span>
+        </button>
+      </div>
     </header>
 
     <div v-if="pageLoading" class="loading-state">載入場地與審核資料中...</div>
 
-    <div v-else class="workbench-layout">
+    <div v-else-if="activeReviewMode === 'venue'" class="workbench-layout">
       <aside class="control-panel card">
         <section class="panel-section">
           <label for="review-venue">審核場地</label>
@@ -166,6 +188,65 @@
         </div>
       </section>
     </div>
+
+    <section v-else class="standalone-equipment-panel card">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">設備借用</p>
+          <h2>設備審核清單</h2>
+        </div>
+        <button class="btn btn-secondary" type="button" @click="loadEquipmentReviews">
+          重新整理
+        </button>
+      </div>
+
+      <div v-if="equipmentReviewLoading" class="loading-state">載入設備申請中...</div>
+      <div v-else-if="equipmentReviewPage.items.length === 0" class="list-empty-state">
+        目前沒有設備借用申請。
+      </div>
+      <div v-else class="case-list">
+        <article
+          v-for="equipmentBooking in equipmentReviewPage.items"
+          :key="equipmentBooking.id"
+          class="case-row equipment-case-row"
+        >
+          <div class="case-main">
+            <div class="case-title-line">
+              <span class="status-badge" :class="getEquipmentBookingStatusMeta(equipmentBooking.status).className">
+                {{ getEquipmentBookingStatusMeta(equipmentBooking.status).text }}
+              </span>
+              <strong>{{ equipmentBooking.itemSummary }}</strong>
+            </div>
+            <div class="case-meta">
+              <span>申請編號 #{{ equipmentBooking.id }}</span>
+              <span>{{ equipmentBooking.contact.name || equipmentBooking.userId }}</span>
+              <span>{{ equipmentBooking.contact.phone || "未提供電話" }}</span>
+              <span>{{ equipmentBooking.contact.email || "未提供 Email" }}</span>
+              <span v-if="equipmentBooking.relatedVenueName">關聯場地：{{ equipmentBooking.relatedVenueName }}</span>
+              <span v-else>單獨借用</span>
+              <span>{{ equipmentBooking.purpose }}</span>
+            </div>
+          </div>
+          <div class="case-schedule">
+            <strong>{{ equipmentBooking.borrowDate }}</strong>
+            <span>{{ equipmentBooking.timeRange }}</span>
+          </div>
+          <div class="equipment-review-row-actions">
+            <button
+              v-for="action in getEquipmentReviewActions(equipmentBooking)"
+              :key="action.key"
+              class="btn"
+              :class="action.buttonClass"
+              type="button"
+              :disabled="equipmentProcessingId === equipmentBooking.id"
+              @click="handleEquipmentStatusUpdate(equipmentBooking.id, action.status)"
+            >
+              {{ action.label }}
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
   </div>
 
   <ReviewDayScheduleModal
@@ -184,9 +265,15 @@
     :booking="selectedBookingDetail"
     :loading="detailLoading"
     :processing="detailProcessing"
+    :equipment-bookings="selectedEquipmentBookings"
+    :equipment-loading="equipmentDetailLoading"
+    :equipment-processing-id="equipmentProcessingId"
     @close="closeDetailModal"
     @approve="handleApprove"
     @update-status="handleStatusUpdate"
+    @approve-equipment="handleApproveEquipment"
+    @reject-equipment="handleRejectEquipment"
+    @update-equipment-status="handleEquipmentStatusUpdate"
   />
 </template>
 
@@ -218,6 +305,12 @@ import {
   updateReviewBookingStatus,
 } from "@/api/review";
 import {
+  getEquipmentReviewsByVenueBooking,
+  getStandaloneEquipmentPendingCount,
+  queryEquipmentReviews,
+  updateEquipmentReviewStatus,
+} from "@/api/equipment";
+import {
   convertSlotsToTimeRange,
   formatSlotsAsTimeRange,
   formatSlotGroupsAsTimeRange,
@@ -226,6 +319,11 @@ import {
 } from "@/utils/dateHelper";
 import { formatDateKey, getDailyEventCount, renderMoreLinkContent } from "@/utils/calendarDisplay";
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
+import {
+  getEquipmentBookingStatusMeta,
+  normalizeEquipmentBooking,
+  normalizeEquipmentBookingPage,
+} from "@/utils/equipment";
 import { useToast } from "@/utils/useToast";
 
 const { success, error } = useToast();
@@ -239,7 +337,8 @@ const selectedVenueId = ref(ALL_VENUES_VALUE);
 const selectedStatus = ref("1");
 const pageLoading = ref(true);
 const isFetchingEvents = ref(false);
-const activeViewMode = ref("list");
+const activeViewMode = ref("calendar");
+const activeReviewMode = ref("venue");
 const isMonthPickerOpen = ref(false);
 const monthPickerValue = ref("");
 const monthPickerRef = ref(null);
@@ -255,6 +354,12 @@ const detailLoading = ref(false);
 const detailProcessing = ref(false);
 const selectedBookingId = ref(null);
 const selectedBookingDetail = ref(null);
+const selectedEquipmentBookings = ref([]);
+const equipmentDetailLoading = ref(false);
+const equipmentProcessingId = ref(null);
+const standalonePendingCount = ref(0);
+const equipmentReviewLoading = ref(false);
+const equipmentReviewPage = ref(normalizeEquipmentBookingPage());
 
 const isAllVenuesSelected = computed(() => selectedVenueId.value === ALL_VENUES_VALUE);
 const canNavigateToVenueBooking = computed(() => {
@@ -477,6 +582,30 @@ const reviewListBookings = computed(() => {
     });
 });
 
+const getEquipmentReviewActions = (equipmentBooking) => {
+  // Reviewers can now correct an equipment decision after approval or rejection.
+  // The UI exposes only review-owned states here; user withdrawal remains a
+  // borrower-side action and is intentionally not offered from this workbench.
+  switch (equipmentBooking?.status) {
+    case 1:
+      return [
+        { key: "reject", label: "拒絕", buttonClass: "btn-danger", status: 3 },
+        { key: "approve", label: "核准", buttonClass: "btn-primary", status: 2 },
+      ];
+    case 2:
+      return [
+        { key: "reject-approved", label: "改為拒絕", buttonClass: "btn-danger", status: 3 },
+      ];
+    case 3:
+      return [
+        { key: "pending-rejected", label: "改為審核中", buttonClass: "btn-secondary", status: 1 },
+        { key: "approve-rejected", label: "改為核准", buttonClass: "btn-primary", status: 2 },
+      ];
+    default:
+      return [];
+  }
+};
+
 const renderEventContent = (arg) => {
   const wrapper = document.createElement("div");
   wrapper.className = "calendar-event-content";
@@ -683,6 +812,38 @@ const reloadCurrentView = async () => {
   }
 };
 
+const loadStandalonePendingCount = async () => {
+  try {
+    standalonePendingCount.value = Number(await getStandaloneEquipmentPendingCount()) || 0;
+  } catch (countError) {
+    console.error("取得單獨設備待審數失敗:", countError);
+    standalonePendingCount.value = 0;
+  }
+};
+
+const loadEquipmentReviews = async () => {
+  equipmentReviewLoading.value = true;
+
+  try {
+    // The equipment tab is a reviewer-facing list for every equipment request,
+    // including standalone requests and requests linked to venue bookings. The
+    // badge still uses the standalone pending-count endpoint so reviewers can
+    // spot requests that will not appear inside a venue booking detail modal.
+    equipmentReviewPage.value = normalizeEquipmentBookingPage(
+      await queryEquipmentReviews({
+        pageNo: 1,
+        pageSize: 100,
+      }),
+    );
+    await loadStandalonePendingCount();
+  } catch (standaloneError) {
+    equipmentReviewPage.value = normalizeEquipmentBookingPage();
+    error(standaloneError.message || "取得設備申請失敗");
+  } finally {
+    equipmentReviewLoading.value = false;
+  }
+};
+
 const openDayModal = (dateStr) => {
   selectedDate.value = dateStr;
 
@@ -703,8 +864,10 @@ const closeTransientUi = () => {
   isDetailModalVisible.value = false;
   detailLoading.value = false;
   detailProcessing.value = false;
+  equipmentDetailLoading.value = false;
   selectedBookingId.value = null;
   selectedBookingDetail.value = null;
+  selectedEquipmentBookings.value = [];
   selectedDate.value = "";
   selectedDayOfWeek.value = "";
 };
@@ -726,6 +889,19 @@ watch(activeViewMode, (nextMode) => {
     void refreshCalendarLayout();
   } else {
     closeMonthPicker();
+  }
+});
+
+watch(activeReviewMode, (nextMode) => {
+  // The two review modes have different data sources. Loading the equipment
+  // review list lazily keeps the venue calendar path unchanged for reviewers
+  // who only need to handle normal venue bookings.
+  if (nextMode === "equipment") {
+    closeTransientUi();
+    void loadEquipmentReviews();
+  } else {
+    void reloadCurrentView();
+    void loadStandalonePendingCount();
   }
 });
 
@@ -758,16 +934,26 @@ const openBookingDetail = async (bookingId) => {
   isDayModalVisible.value = false;
   selectedBookingId.value = bookingId;
   selectedBookingDetail.value = null;
+  selectedEquipmentBookings.value = [];
   detailLoading.value = true;
+  equipmentDetailLoading.value = true;
   isDetailModalVisible.value = true;
 
   try {
-    selectedBookingDetail.value = await fetchReviewBookingDetail(bookingId);
+    const [bookingDetail, equipmentBookings] = await Promise.all([
+      fetchReviewBookingDetail(bookingId),
+      getEquipmentReviewsByVenueBooking(bookingId),
+    ]);
+    selectedBookingDetail.value = bookingDetail;
+    selectedEquipmentBookings.value = Array.isArray(equipmentBookings)
+      ? equipmentBookings.map(normalizeEquipmentBooking)
+      : [];
   } catch (detailError) {
     error(detailError.message || "取得申請詳情失敗");
     closeDetailModal();
   } finally {
     detailLoading.value = false;
+    equipmentDetailLoading.value = false;
   }
 };
 
@@ -809,6 +995,49 @@ const handleStatusUpdate = async (status) => {
   }
 };
 
+const refreshEquipmentReviewState = async () => {
+  // Refresh only the data source that is currently visible. This avoids forcing
+  // a full venue calendar reload when the reviewer is processing standalone
+  // equipment requests, while still keeping modal equipment details current.
+  await loadStandalonePendingCount();
+
+  if (activeReviewMode.value === "equipment") {
+    await loadEquipmentReviews();
+    return;
+  }
+
+  if (selectedBookingId.value && isDetailModalVisible.value) {
+    const equipmentBookings = await getEquipmentReviewsByVenueBooking(selectedBookingId.value);
+    selectedEquipmentBookings.value = Array.isArray(equipmentBookings)
+      ? equipmentBookings.map(normalizeEquipmentBooking)
+      : [];
+  }
+};
+
+const handleApproveEquipment = async (equipmentBookingId) => {
+  await handleEquipmentStatusUpdate(equipmentBookingId, 2);
+};
+
+const handleRejectEquipment = async (equipmentBookingId) => {
+  await handleEquipmentStatusUpdate(equipmentBookingId, 3);
+};
+
+const handleEquipmentStatusUpdate = async (equipmentBookingId, status) => {
+  if (!equipmentBookingId) return;
+
+  equipmentProcessingId.value = equipmentBookingId;
+
+  try {
+    await updateEquipmentReviewStatus(equipmentBookingId, status);
+    success(`設備申請狀態已更新為${getEquipmentBookingStatusMeta(status).text}`);
+    await refreshEquipmentReviewState();
+  } catch (updateError) {
+    error(updateError.message || "更新設備申請狀態失敗");
+  } finally {
+    equipmentProcessingId.value = null;
+  }
+};
+
 onMounted(async () => {
   document.addEventListener("click", handleMonthPickerOutsideClick);
 
@@ -825,6 +1054,7 @@ onMounted(async () => {
       pageLoading.value = false;
       error("目前沒有可供審核的場地");
     }
+    await loadStandalonePendingCount();
   } catch (venueError) {
     error(venueError.message || "取得場地清單失敗");
     pageLoading.value = false;
@@ -916,6 +1146,37 @@ onBeforeUnmount(() => {
 
   .route-booking-btn {
     flex-shrink: 0;
+  }
+
+  .review-mode-toggle {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 0.4rem;
+    padding: 0.25rem;
+    border: 1px solid var(--review-line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+  }
+
+  .badge-toggle-btn {
+    position: relative;
+  }
+
+  .pending-badge {
+    position: absolute;
+    top: -0.45rem;
+    right: -0.45rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--danger);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 900;
   }
 
   .workbench-layout {
@@ -1324,6 +1585,30 @@ onBeforeUnmount(() => {
       box-shadow: inset 4px 0 0 #202936;
       outline: none;
     }
+  }
+
+  .standalone-equipment-panel {
+    padding: 1.15rem;
+    background: #f9fafb;
+    border-color: var(--review-line);
+  }
+
+  .equipment-case-row {
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, auto) auto;
+    cursor: default;
+
+    &:hover,
+    &:focus-visible {
+      background: #ffffff;
+      box-shadow: none;
+    }
+  }
+
+  .equipment-review-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
   }
 
   .case-main,

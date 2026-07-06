@@ -9,6 +9,15 @@
     <div v-if="loading" class="loading-state">載入中...</div>
 
     <div v-else class="card-grid">
+      <div class="select-card venue-card equipment-entry-card" @click="openEquipmentBorrowForm">
+        <h3>單獨設備借用</h3>
+        <div class="venue-info">
+          <span>不綁定場地預約</span>
+        </div>
+        <p class="description">若只需要借用設備，可直接填寫設備借用申請。</p>
+        <div class="card-footer">進入設備借用 →</div>
+      </div>
+
       <div
         v-for="venue in venues"
         :key="venue.id"
@@ -47,6 +56,12 @@ onMounted(async () => {
 
 const selectVenue = (id) => {
   router.push(`/venue/${id}`);
+};
+
+const openEquipmentBorrowForm = () => {
+  // Route standalone equipment borrowing away from a venue-specific calendar,
+  // because these requests intentionally submit without relatedVenueBookingId.
+  router.push({ name: "EquipmentBorrowForm" });
 };
 </script>
 

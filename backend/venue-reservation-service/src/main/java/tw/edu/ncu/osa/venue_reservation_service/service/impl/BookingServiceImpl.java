@@ -7,14 +7,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tw.edu.ncu.osa.venue_reservation_service.mapper.BookingMapper;
+import tw.edu.ncu.osa.venue_reservation_service.mapper.EquipmentBookingMapper;
 import tw.edu.ncu.osa.venue_reservation_service.mapper.VenueMapper;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingWithEquipmentCreateDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentAvailabilityQueryDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentBookingItemDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingRequestDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Booking;
+import tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking;
+import tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBookingItem;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Venue;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingQueryVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingSimpleVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingsByVenueVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingWithEquipmentCreateVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.BookingService;
 import tw.edu.ncu.osa.venue_reservation_service.util.BookingUtils;
 import tw.edu.ncu.osa.venue_reservation_service.util.UserContext;
@@ -34,6 +41,8 @@ public class BookingServiceImpl implements BookingService {
 
     private final BookingMapper bookingMapper;
     private final VenueMapper venueMapper;
+    private final EquipmentBookingMapper equipmentBookingMapper;
+    private final EquipmentBookingSupport equipmentBookingSupport;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ==========================================
@@ -96,18 +105,28 @@ public class BookingServiceImpl implements BookingService {
         bookingMapper.insertBooking(booking);
         log.info("【BookingService】[createBooking] 成功插入預約記錄到數據庫，新預約ID={}", booking.getId());
 
-        // 5. 處理設備借用關聯 (如果有的話)
-        if (request.getEquipmentIds() != null && !request.getEquipmentIds().isEmpty()) {
-            log.info("【BookingService】[createBooking] 開始關聯設備，共 {} 個設備", request.getEquipmentIds().size());
-            for (Long equipId : request.getEquipmentIds()) {
-                bookingMapper.insertBookingEquipment(booking.getId(), equipId);
-                log.debug("【BookingService】[createBooking] 已關聯設備，equipId={}", equipId);
-            }
-            log.info("【BookingService】[createBooking] 所有設備關聯完成");
-        }
-
         log.info("【BookingService】[createBooking] 用戶 {} 成功建立預約申請 ID：{}", userId, booking.getId());
         return booking.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BookingWithEquipmentCreateVO createBookingWithEquipments(BookingWithEquipmentCreateDTO request) {
+        if (request == null || request.getBooking() == null) {
+            throw new IllegalArgumentException("場地預約資料不可為空");
+        }
+
+        Long bookingId = createBooking(request.getBooking());
+        Long equipmentBookingId = createRelatedEquipmentBooking(
+                bookingId,
+                request.getBooking(),
+                request.getEquipmentItems()
+        );
+
+        BookingWithEquipmentCreateVO result = new BookingWithEquipmentCreateVO();
+        result.setBookingId(bookingId);
+        result.setEquipmentBookingId(equipmentBookingId);
+        return result;
     }
 
     // ==========================================
@@ -331,18 +350,6 @@ public class BookingServiceImpl implements BookingService {
 
         // 執行更新操作
         bookingMapper.updateBooking(updatedBooking);
-
-        // === 新增以下設備更新邏輯 ===
-        // 刪除舊的設備關聯
-        bookingMapper.deleteBookingEquipmentByBookingId(bookingId);
-        // 2. 如果請求中有新的設備清單，則重新寫入
-        if (request.getEquipmentIds() != null && !request.getEquipmentIds().isEmpty()) {
-            log.info("【BookingService】[updateBooking] 開始更新關聯設備，共 {} 個設備", request.getEquipmentIds().size());
-            for (Long equipId : request.getEquipmentIds()) {
-                bookingMapper.insertBookingEquipment(bookingId, equipId);
-            }
-        }
-// =============================
 
         log.info("【BookingService】[updateBooking] 用戶 {} 成功修改預約申請 ID：{}", userId, bookingId);
     }
@@ -836,6 +843,47 @@ public class BookingServiceImpl implements BookingService {
             default:
                 return "";
         }
+    }
+
+    private Long createRelatedEquipmentBooking(
+            Long bookingId,
+            BookingRequestDTO bookingRequest,
+            List<EquipmentBookingItemDTO> equipmentItems
+    ) {
+        if (equipmentItems == null || equipmentItems.isEmpty()) {
+            return null;
+        }
+
+        EquipmentAvailabilityQueryDTO availabilityQuery = new EquipmentAvailabilityQueryDTO();
+        availabilityQuery.setBorrowDate(bookingRequest.getBookingDate());
+        availabilityQuery.setSlots(bookingRequest.getSlots());
+        availabilityQuery.setRelatedVenueBookingId(bookingId);
+        availabilityQuery.setItems(equipmentItems);
+        equipmentBookingSupport.assertVenueRulesForUser(availabilityQuery);
+
+        EquipmentBooking equipmentBooking = new EquipmentBooking();
+        equipmentBooking.setUserId(UserContext.getUser().getUserId());
+        equipmentBooking.setBorrowDate(bookingRequest.getBookingDate());
+        equipmentBooking.setTimeSlots(BookingUtils.convertToMask(bookingRequest.getSlots()));
+        equipmentBooking.setStatus(1);
+        equipmentBooking.setPurpose(bookingRequest.getPurpose());
+        equipmentBooking.setRelatedVenueBookingId(bookingId);
+        try {
+            equipmentBooking.setContactInfo(objectMapper.writeValueAsString(bookingRequest.getContactInfo()));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("聯絡資訊格式錯誤");
+        }
+
+        equipmentBookingMapper.insertBooking(equipmentBooking);
+        Map<Long, Integer> itemMap = equipmentBookingSupport.aggregateItems(equipmentItems);
+        for (Map.Entry<Long, Integer> entry : itemMap.entrySet()) {
+            EquipmentBookingItem item = new EquipmentBookingItem();
+            item.setEquipmentBookingId(equipmentBooking.getId());
+            item.setEquipmentId(entry.getKey());
+            item.setQuantity(entry.getValue());
+            equipmentBookingMapper.insertItem(item);
+        }
+        return equipmentBooking.getId();
     }
 }
 

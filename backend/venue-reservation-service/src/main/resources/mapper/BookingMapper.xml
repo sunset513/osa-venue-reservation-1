@@ -17,7 +17,6 @@
         <result column="purpose" property="purpose"/>
         <result column="p_count" property="pCount"/>
         <result column="contact_info" property="contactInfo"/>
-        <result column="equipments" property="equipments" typeHandler="tw.edu.ncu.osa.venue_reservation_service.util.CommaSeparatedListTypeHandler"/>
     </resultMap>
 
     <resultMap id="approvedBookingQueryMap" type="tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingQueryVO">
@@ -86,19 +85,6 @@
         WHERE id = #{id}
     </update>
 
-    <delete id="deleteBookingEquipmentByBookingId">
-        DELETE FROM booking_equipment WHERE booking_id = #{bookingId}
-    </delete>
-
-    <!-- ========================================== -->
-    <!-- 關聯操作 -->
-    <!-- ========================================== -->
-
-    <insert id="insertBookingEquipment">
-        INSERT INTO booking_equipment (booking_id, equipment_id)
-        VALUES (#{bookingId}, #{equipmentId})
-    </insert>
-
     <!-- ========================================== -->
     <!-- 日曆視圖查詢 -->
     <!-- ========================================== -->
@@ -131,15 +117,11 @@
             b.created_at,
             b.purpose,
             b.p_count,
-            b.contact_info,
-            GROUP_CONCAT(DISTINCT e.name SEPARATOR ',') AS equipments
+            b.contact_info
         FROM bookings b
         INNER JOIN venues v ON b.venue_id = v.id
-        LEFT JOIN booking_equipment be ON b.id = be.booking_id
-        LEFT JOIN equipments e ON be.equipment_id = e.id
         WHERE b.venue_id = #{venueId}
           AND b.booking_date BETWEEN #{startDate} AND #{endDate}
-        GROUP BY b.id, v.name, b.booking_date, b.time_slots, b.status, b.created_at, b.purpose, b.p_count, b.contact_info
         ORDER BY b.booking_date ASC, b.created_at ASC
     </select>
 
@@ -191,12 +173,9 @@
             b.created_at,
             b.purpose,
             b.p_count,
-            b.contact_info,
-            GROUP_CONCAT(DISTINCT e.name SEPARATOR ',') AS equipments
+            b.contact_info
         FROM bookings b
         INNER JOIN venues v ON b.venue_id = v.id
-        LEFT JOIN booking_equipment be ON b.id = be.booking_id
-        LEFT JOIN equipments e ON be.equipment_id = e.id
         WHERE b.user_id = #{userId}
         <if test="venueId != null">
             AND b.venue_id = #{venueId}
@@ -213,7 +192,6 @@
         <if test="endDate != null">
             AND b.booking_date &lt;= #{endDate}
         </if>
-        GROUP BY b.id, v.name, b.booking_date, b.time_slots, b.status, b.created_at, b.purpose, b.p_count, b.contact_info
         ORDER BY b.created_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>

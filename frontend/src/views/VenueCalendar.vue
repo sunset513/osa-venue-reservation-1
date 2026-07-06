@@ -350,13 +350,6 @@ const handleCreateQuery = () => {
 const openEditModal = (originalData) => {
   modalMode.value = "edit";
 
-  const mappedEquipmentIds =
-    originalData.equipments && venueInfo.value?.equipments
-      ? venueInfo.value.equipments
-          .filter((eq) => originalData.equipments.includes(eq.name))
-          .map((eq) => eq.id)
-      : [];
-
   modalInitialData.value = {
     id: originalData.id,
     dateStr: originalData.bookingDate,
@@ -364,7 +357,8 @@ const openEditModal = (originalData) => {
     purpose: originalData.purpose || "",
     participantCount: originalData.pCount || 1,
     contactInfo: parseContactInfo(originalData.contactInfo),
-    equipmentIds: mappedEquipmentIds,
+    // Equipment edits are intentionally excluded here because the backend only
+    // provides combined creation, not combined venue/equipment update.
     canWithdraw: originalData.canWithdraw === true,
   };
 

@@ -23,6 +23,21 @@ public class Equipment {
      * 設備名稱 (如：無線麥克風、投影機等)
      */
     private String name;
+
+    /**
+     * 系統可同時核准借出的總數量
+     */
+    private Integer totalQuantity;
+
+    /**
+     * 設備說明
+     */
+    private String description;
+
+    /**
+     * 借用注意事項
+     */
+    private String borrowNote;
     
     /**
      * 軟刪除時間（若為 NULL 表示未被刪除）
@@ -33,5 +48,10 @@ public class Equipment {
      * 建立時間
      */
     private LocalDateTime createdAt;
+
+    /**
+     * 更新時間
+     */
+    private LocalDateTime updatedAt;
 }
 

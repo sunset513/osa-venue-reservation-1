@@ -14,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import tw.edu.ncu.osa.venue_reservation_service.common.result.Result;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingRequestDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.dto.BookingWithEquipmentCreateDTO;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingWithEquipmentCreateVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.BookingVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingsByVenueVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.VenueCalendarDayVO;
@@ -121,6 +123,18 @@ public class BookingController {
         }
     }
 
+    @PostMapping("/with-equipments")
+    @Operation(
+        summary = "提交場地與設備合併預約申請",
+        description = "在同一交易中建立場地預約與關聯設備借用申請。設備借用的 relatedVenueBookingId 會自動使用新建立的場地預約 ID。"
+    )
+    @SecurityRequirement(name = "Session-Cookie")
+    public Result<BookingWithEquipmentCreateVO> createBookingWithEquipments(
+            @Valid @RequestBody BookingWithEquipmentCreateDTO request) {
+        log.info("【BookingController】收到請求：提交場地與設備合併預約申請");
+        return Result.success(bookingService.createBookingWithEquipments(request));
+    }
+
     // ==========================================
     // 2. 查詢預約
     // ==========================================
@@ -168,8 +182,7 @@ public class BookingController {
                           "createdAt": "2026-04-03T10:00:00",
                           "purpose": "專案討論",
                           "pCount": 5,
-                          "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}",
-                          "equipments": ["麥克風", "投影機"]
+                          "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}"
                         }
                       ]
                     }
@@ -252,8 +265,7 @@ public class BookingController {
                             "createdAt": "2026-04-03T10:00:00",
                             "purpose": "專案討論",
                             "pCount": 5,
-                            "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}",
-                            "equipments": ["麥克風", "投影機"]
+                            "contactInfo": "{\\"name\\":\\"王小明\\",\\"phone\\":\\"0912345678\\",\\"email\\":\\"xm@ncu.edu.tw\\"}"
                           }
                         ]
                       }

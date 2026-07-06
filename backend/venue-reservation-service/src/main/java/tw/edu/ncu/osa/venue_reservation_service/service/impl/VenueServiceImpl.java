@@ -8,10 +8,8 @@ import tw.edu.ncu.osa.venue_reservation_service.mapper.UnitMapper;
 import tw.edu.ncu.osa.venue_reservation_service.mapper.VenueMapper;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Unit;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.Venue;
-import tw.edu.ncu.osa.venue_reservation_service.model.entity.Equipment;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.UnitVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.VenueVO;
-import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.VenueService;
 import java.util.ArrayList;
 import java.util.List;
@@ -76,9 +74,8 @@ public class VenueServiceImpl implements VenueService {
         for (Venue venue : venues) {
             VenueVO venueVO = convertVenueToVO(venue);
             venueVOs.add(venueVO);
-            log.debug("【VenueService】[getVenuesByUnitId] 轉換場地 - ID={}, 名稱={}, 容納人數={}, 設備數={}", 
-                    venueVO.getId(), venueVO.getName(), venueVO.getCapacity(), 
-                    venueVO.getEquipments() != null ? venueVO.getEquipments().size() : 0);
+            log.debug("【VenueService】[getVenuesByUnitId] 轉換場地 - ID={}, 名稱={}, 容納人數={}",
+                    venueVO.getId(), venueVO.getName(), venueVO.getCapacity());
         }
         
         log.info("【VenueService】[getVenuesByUnitId] 成功轉換 {} 個場地VO，unitId={}，準備返回", venueVOs.size(), unitId);
@@ -101,8 +98,8 @@ public class VenueServiceImpl implements VenueService {
         
         // 3. 將 Venue 實體轉換為 VenueVO 並回傳
         VenueVO venueVO = convertVenueToVO(venue);
-        log.info("【VenueService】[getVenueById] 成功查詢並轉換場地VO，id={}，名稱={}，設備數={}", 
-                id, venueVO.getName(), venueVO.getEquipments() != null ? venueVO.getEquipments().size() : 0);
+        log.info("【VenueService】[getVenueById] 成功查詢並轉換場地VO，id={}，名稱={}",
+                id, venueVO.getName());
         log.debug("【VenueService】[getVenueById] 返回場地VO：{}", venueVO);
         return venueVO;
     }
@@ -126,23 +123,7 @@ public class VenueServiceImpl implements VenueService {
         venueVO.setDescription(venue.getDescription());
         log.debug("【VenueService】[convertVenueToVO] 設置基本場地信息 - ID={}, 名稱={}, 容納人數={}", 
                 venue.getId(), venue.getName(), venue.getCapacity());
-        
-        // 轉換設備清單
-        List<EquipmentVO> equipmentVOs = new ArrayList<>();
-        if (venue.getEquipments() != null) {
-            log.debug("【VenueService】[convertVenueToVO] 開始轉換設備清單，共 {} 個設備", venue.getEquipments().size());
-            for (Equipment equipment : venue.getEquipments()) {
-                EquipmentVO equipmentVO = new EquipmentVO();
-                equipmentVO.setId(equipment.getId());
-                equipmentVO.setName(equipment.getName());
-                equipmentVOs.add(equipmentVO);
-                log.debug("【VenueService】[convertVenueToVO] 轉換設備 - ID={}, 名稱={}", equipment.getId(), equipment.getName());
-            }
-        }
-        venueVO.setEquipments(equipmentVOs);
-        
-        log.debug("【VenueService】[convertVenueToVO] 完成場地VO轉換，venueId={}，設備數={}", 
-                venue.getId(), equipmentVOs.size());
+        log.debug("【VenueService】[convertVenueToVO] 完成場地VO轉換，venueId={}", venue.getId());
         return venueVO;
     }
 }
