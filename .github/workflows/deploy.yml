@@ -1,0 +1,81 @@
+name: Deploy OSA Venue Reservation
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+concurrency:
+  group: osa-venue-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, X64, osa-prod, venue, docker]
+
+    steps:
+      - name: Deploy osa-venue-reservation
+        run: |
+          set -e
+
+          DEPLOY_DIR="/opt/OSA_SERVICE/osa-venue-reservation"
+          COMPOSE_FILE="docker-compose.osa-dev.yml"
+
+          echo "Current user:"
+          whoami
+
+          echo "Current directory before cd:"
+          pwd
+
+          echo "Check docker access:"
+          docker ps
+
+          echo "Check docker compose:"
+          docker compose version
+
+          echo "Go to deployment directory:"
+          cd "$DEPLOY_DIR"
+
+          echo "Current deployment directory:"
+          pwd
+
+          echo "Check current branch:"
+          git branch --show-current
+
+          echo "Check remote:"
+          git remote -v
+
+          echo "Fetch latest main:"
+          git fetch origin main
+
+          echo "Reset to origin/main:"
+          git reset --hard origin/main
+
+          echo "Check .env exists:"
+          test -f .env
+
+          echo "Check compose file exists:"
+          test -f "$COMPOSE_FILE"
+
+          echo "Check shared docker network exists:"
+          docker network inspect osa_network >/dev/null
+
+          echo "Set compose runtime user:"
+          export CURRENT_UID=$(id -u)
+          export CURRENT_GID=$(id -g)
+
+          echo "Validate compose file:"
+          docker compose -f "$COMPOSE_FILE" config
+
+          echo "Deploy venue reservation:"
+          docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
+
+          echo "Show venue compose status:"
+          docker compose -f "$COMPOSE_FILE" ps
+
+          echo "Reload infra nginx gateway:"
+          docker exec osa_nginx_gateway nginx -s reload
+
+          echo "Venue reservation deployment completed."
