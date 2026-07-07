@@ -3,130 +3,158 @@
     <div class="modal-container">
       <header class="modal-header">
         <h2>{{ mode === "create" ? "新增預約申請" : "修改預約申請" }}</h2>
-        <button class="close-btn" @click="closeModal">✕</button>
+        <button class="close-btn" type="button" @click="closeModal">✕</button>
       </header>
 
       <div class="modal-body">
-        <form @submit.prevent="handleSubmit" class="booking-form">
+        <form class="booking-form" @submit.prevent="handleSubmit">
           <div class="booking-form-layout">
             <section class="booking-form-panel booking-form-panel-times">
-          <div class="form-section-title">借用時間</div>
-          <div class="form-group">
-            <label>預約日期</label>
-            <input
-              type="text"
-              :value="formData.bookingDate"
-              disabled
-              class="disabled-input"
-            />
-          </div>
+              <div class="form-section-title">借用時間</div>
 
-          <div class="form-group">
-            <label>選擇時段 (可複選) <span class="required">*</span></label>
-            <div class="slots-grid" role="group">
-              <label
-                v-for="slot in slotOptions"
-                :key="slot.value"
-                class="slot-checkbox"
-                :class="{ 'is-selected': formData.slots.includes(slot.value) }"
-                role="checkbox"
-                tabindex="0"
-                :aria-checked="formData.slots.includes(slot.value)"
-                @click.prevent="handleSlotClick(slot.value)"
-                @keydown.enter.prevent="handleSlotClick(slot.value)"
-                @keydown.space.prevent="handleSlotClick(slot.value)"
-              >
+              <div class="form-group">
+                <label>預約日期</label>
                 <input
-                  class="slot-input"
-                  type="checkbox"
-                  :value="slot.value"
-                  :checked="formData.slots.includes(slot.value)"
-                  tabindex="-1"
-                  aria-hidden="true"
+                  type="text"
+                  :value="formData.bookingDate"
+                  disabled
+                  class="disabled-input"
                 />
-                <span class="slot-index">{{ slot.label }}</span>
-                <span class="slot-time">{{ slot.timeRange }}</span>
-              </label>
-            </div>
-            <small class="error-text" v-if="formErrors.slots"
-              >請至少選擇一個時段</small
-            >
-          </div>
+              </div>
+
+              <div class="form-group">
+                <label>選擇時段 (可複選) <span class="required">*</span></label>
+                <div class="slots-grid" role="group">
+                  <label
+                    v-for="slot in slotOptions"
+                    :key="slot.value"
+                    class="slot-checkbox"
+                    :class="{ 'is-selected': formData.slots.includes(slot.value) }"
+                    role="checkbox"
+                    tabindex="0"
+                    :aria-checked="formData.slots.includes(slot.value)"
+                    @click.prevent="handleSlotClick(slot.value)"
+                    @keydown.enter.prevent="handleSlotClick(slot.value)"
+                    @keydown.space.prevent="handleSlotClick(slot.value)"
+                  >
+                    <input
+                      class="slot-input"
+                      type="checkbox"
+                      :value="slot.value"
+                      :checked="formData.slots.includes(slot.value)"
+                      tabindex="-1"
+                      aria-hidden="true"
+                    />
+                    <span class="slot-index">{{ slot.label }}</span>
+                    <span class="slot-time">{{ slot.timeRange }}</span>
+                  </label>
+                </div>
+                <small v-if="formErrors.slots" class="error-text">
+                  請至少選擇一個時段。
+                </small>
+              </div>
             </section>
 
             <section class="booking-form-panel booking-form-panel-details">
-          <div class="form-section-title">借用說明</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>使用用途 <span class="required">*</span></label>
-              <input
-                type="text"
-                v-model="formData.purpose"
-                placeholder="例如：系學會開會"
-                required
-              />
-            </div>
-            <div class="form-group">
-              <label>預估人數 <span class="required">*</span></label>
-              <input
-                type="number"
-                v-model="formData.participantCount"
-                min="1"
-                required
-              />
-            </div>
-          </div>
+              <div class="form-section-title">借用說明</div>
 
-          <div class="form-section-title">聯絡人資訊</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>姓名 <span class="required">*</span></label>
-              <input type="text" v-model="formData.contactInfo.name" required />
-            </div>
-            <div class="form-group">
-              <label>電話 <span class="required">*</span></label>
-              <input type="tel" v-model="formData.contactInfo.phone" required />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>電子郵件 <span class="required">*</span></label>
-            <input type="email" v-model="formData.contactInfo.email" required />
-          </div>
-
-          <div class="form-group" v-if="mode === 'create'">
-            <div class="form-section-title">需借用設備</div>
-            <div v-if="isEquipmentLoading" class="equipment-helper">載入可借用設備中...</div>
-            <div v-else-if="equipmentOptions.length === 0" class="equipment-helper">
-              此場地目前沒有可一併借用的設備。
-            </div>
-            <template v-else>
-              <div class="equipment-list-heading">選擇設備</div>
-              <div class="equipment-list">
-                <label
-                  v-for="equipment in equipmentOptions"
-                  :key="equipment.id"
-                  class="equipment-option"
-                  :class="{ 'is-selected': isEquipmentSelected(equipment.id) }"
-                >
+              <div class="form-row">
+                <div class="form-group">
+                  <label>使用用途 <span class="required">*</span></label>
                   <input
-                    type="checkbox"
-                    :checked="isEquipmentSelected(equipment.id)"
-                    @change="toggleEquipmentSelection(equipment.id, $event.target.checked)"
+                    v-model="formData.purpose"
+                    type="text"
+                    placeholder="例如：系學會開會"
+                    required
                   />
-                  <strong>{{ equipment.name }}</strong>
-                  <span>總數 {{ equipment.totalQuantity }}</span>
+                </div>
+                <div class="form-group">
+                  <label>預估人數 <span class="required">*</span></label>
                   <input
-                    v-if="isEquipmentSelected(equipment.id)"
-                    v-model.number="equipmentQuantities[equipment.id]"
+                    v-model.number="formData.participantCount"
                     type="number"
                     min="1"
-                    :max="equipment.totalQuantity"
-                    aria-label="設備借用數量"
+                    required
                   />
-                </label>
+                </div>
               </div>
-            </template>
-          </div>
+
+              <div class="form-section-title">聯絡人資訊</div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>姓名 <span class="required">*</span></label>
+                  <input v-model="formData.contactInfo.name" type="text" required />
+                </div>
+                <div class="form-group">
+                  <label>電話 <span class="required">*</span></label>
+                  <input v-model="formData.contactInfo.phone" type="tel" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>電子郵件 <span class="required">*</span></label>
+                <input v-model="formData.contactInfo.email" type="email" required />
+              </div>
+
+              <div v-if="shouldShowEquipmentSection" class="form-group">
+                <div class="form-section-title">需借用器材</div>
+
+                <div v-if="isEquipmentLoading" class="equipment-helper">
+                  載入可借用器材中...
+                </div>
+
+                <div v-else-if="isEquipmentReadonly" class="equipment-readonly-panel">
+                  <p class="equipment-helper">{{ equipmentReadonlyMessage }}</p>
+                  <div v-if="readonlyEquipmentItems.length" class="equipment-readonly-list">
+                    <div
+                      v-for="item in readonlyEquipmentItems"
+                      :key="`${item.equipmentId}-${item.id ?? 'readonly'}`"
+                      class="equipment-readonly-item"
+                    >
+                      <strong>{{ item.equipmentName }}</strong>
+                      <span>數量 {{ item.quantity }}</span>
+                    </div>
+                  </div>
+                  <p v-else class="equipment-helper">此筆關聯器材申請沒有品項資料。</p>
+                </div>
+
+                <div v-else-if="equipmentSelectionOptions.length === 0" class="equipment-helper">
+                  此場地目前沒有可修改的器材品項。
+                </div>
+
+                <template v-else>
+                  <div class="equipment-list-heading">
+                    {{ mode === "create" ? "選擇器材" : "修改器材" }}
+                  </div>
+                  <div class="equipment-list">
+                    <label
+                      v-for="equipment in equipmentSelectionOptions"
+                      :key="equipment.id"
+                      class="equipment-option"
+                      :class="{ 'is-selected': isEquipmentSelected(equipment.id) }"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="isEquipmentSelected(equipment.id)"
+                        :disabled="isEquipmentReadonly"
+                        @change="toggleEquipmentSelection(equipment.id, $event.target.checked)"
+                      />
+                      <strong>{{ equipment.name }}</strong>
+                      <span>總數 {{ equipment.totalQuantity }}</span>
+                      <input
+                        v-if="isEquipmentSelected(equipment.id)"
+                        v-model.number="equipmentQuantities[equipment.id]"
+                        type="number"
+                        min="1"
+                        :max="Math.max(equipment.totalQuantity || 1, 1)"
+                        :disabled="isEquipmentReadonly"
+                        aria-label="器材借用數量"
+                      />
+                    </label>
+                  </div>
+                </template>
+              </div>
             </section>
           </div>
         </form>
@@ -137,8 +165,8 @@
           v-if="canWithdraw"
           class="btn btn-danger"
           type="button"
-          @click="handleWithdraw"
           :disabled="isBusy"
+          @click="handleWithdraw"
         >
           <span class="btn-icon">
             <Undo2 :size="16" />
@@ -147,33 +175,23 @@
         </button>
 
         <div class="modal-footer-actions">
-          <button
-            class="btn btn-secondary"
-            type="button"
-            @click="closeModal"
-            :disabled="isBusy"
-          >
+          <button class="btn btn-secondary" type="button" :disabled="isBusy" @click="closeModal">
             <span class="btn-icon">
               <X :size="16" />
             </span>
             <span>取消</span>
           </button>
-          <button
-            class="btn btn-primary"
-            type="button"
-            @click="handleSubmit"
-            :disabled="isBusy"
-          >
+          <button class="btn btn-primary" type="button" :disabled="isBusy" @click="handleSubmit">
             <template v-if="!isBusy">
               <span class="btn-icon">
                 <Send v-if="mode === 'create'" :size="16" />
-                <Save v-if="mode === 'edit'" :size="16" />
+                <Save v-else :size="16" />
               </span>
             </template>
             <span>
               {{
                 isBusy
-                  ? (isWithdrawing ? "撤回中..." : "送出中...")
+                  ? (isWithdrawing ? "撤回中..." : "儲存中...")
                   : mode === "create"
                     ? "送出申請"
                     : "儲存修改"
@@ -195,16 +213,16 @@
             <button
               class="btn btn-secondary"
               type="button"
-              @click="closeWithdrawConfirm"
               :disabled="isBusy"
+              @click="closeWithdrawConfirm"
             >
               取消
             </button>
             <button
               class="btn btn-danger"
               type="button"
-              @click="confirmWithdraw"
               :disabled="isBusy"
+              @click="confirmWithdraw"
             >
               <span class="btn-icon">
                 <Undo2 :size="16" />
@@ -219,10 +237,10 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { Save, Send, Undo2, X } from "lucide-vue-next";
 import { createBooking, createBookingWithEquipments, updateBooking } from "@/api/booking";
-import { listEquipments } from "@/api/equipment";
+import { listEquipments, updateEquipmentBooking } from "@/api/equipment";
 import {
   buildEquipmentBookingItems,
   isEquipmentAllowedForVenue,
@@ -235,16 +253,20 @@ const { success, error: showError, warning } = useToast();
 const props = defineProps({
   visible: Boolean,
   mode: { type: String, default: "create" },
-  initialData: Object,
-  venueInfo: Object,
+  initialData: {
+    type: Object,
+    default: () => ({}),
+  },
+  venueInfo: {
+    type: Object,
+    default: null,
+  },
   isWithdrawing: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:visible", "success", "withdraw-booking"]);
 
 const isSubmitting = ref(false);
-const isBusy = computed(() => isSubmitting.value || props.isWithdrawing);
-const canWithdraw = computed(() => props.mode === "edit" && props.initialData?.canWithdraw === true);
 const isWithdrawConfirmVisible = ref(false);
 const slotRangeAnchor = ref(null);
 const formErrors = reactive({ slots: false });
@@ -266,8 +288,49 @@ const formData = reactive({
   equipmentItems: [],
 });
 
+const isBusy = computed(() => isSubmitting.value || props.isWithdrawing);
+const canWithdraw = computed(() => props.mode === "edit" && props.initialData?.canWithdraw === true);
+const linkedEquipmentBooking = computed(() => props.initialData?.linkedEquipmentBooking ?? null);
+const shouldShowEquipmentSection = computed(() => {
+  return props.mode === "create" || Boolean(linkedEquipmentBooking.value);
+});
+const isEquipmentReadonly = computed(() => {
+  return props.mode === "edit" && props.initialData?.equipmentReadonly === true;
+});
+const canEditLinkedEquipment = computed(() => {
+  return props.mode === "edit" && Boolean(linkedEquipmentBooking.value?.id) && !isEquipmentReadonly.value;
+});
+const equipmentReadonlyMessage = computed(() => {
+  return props.initialData?.equipmentReadonlyMessage || "本次只會更新場地預約。";
+});
+
 const selectedEquipmentIds = computed(() => {
   return new Set(formData.equipmentItems.map((item) => item.equipmentId));
+});
+
+const readonlyEquipmentItems = computed(() => {
+  return Array.isArray(linkedEquipmentBooking.value?.items) ? linkedEquipmentBooking.value.items : [];
+});
+
+const equipmentSelectionOptions = computed(() => {
+  const optionMap = new Map();
+
+  equipmentOptions.value.forEach((equipment) => {
+    if (!equipment?.id) return;
+    optionMap.set(equipment.id, { ...equipment });
+  });
+
+  readonlyEquipmentItems.value.forEach((item) => {
+    if (!item?.equipmentId || optionMap.has(item.equipmentId)) return;
+
+    optionMap.set(item.equipmentId, {
+      id: item.equipmentId,
+      name: item.equipmentName || `Equipment ${item.equipmentId}`,
+      totalQuantity: item.quantity || 1,
+    });
+  });
+
+  return Array.from(optionMap.values());
 });
 
 const isEquipmentSelected = (equipmentId) => {
@@ -281,10 +344,21 @@ const resetEquipmentSelection = () => {
   });
 };
 
+const applyInitialEquipmentSelection = (items = []) => {
+  resetEquipmentSelection();
+
+  items.forEach((item) => {
+    if (!item?.equipmentId) return;
+
+    formData.equipmentItems.push({
+      equipmentId: item.equipmentId,
+      quantity: item.quantity || 1,
+    });
+    equipmentQuantities[item.equipmentId] = item.quantity || 1;
+  });
+};
+
 const toggleEquipmentSelection = (equipmentId, checked) => {
-  // Keep the form state as an array because the backend accepts `equipmentItems`
-  // rather than the legacy `equipmentIds`. Quantities are stored separately for
-  // easier v-model binding and merged into the submit payload at the boundary.
   if (checked) {
     if (!isEquipmentSelected(equipmentId)) {
       formData.equipmentItems.push({ equipmentId, quantity: 1 });
@@ -298,7 +372,7 @@ const toggleEquipmentSelection = (equipmentId, checked) => {
 };
 
 const loadEquipmentOptions = async () => {
-  if (!props.venueInfo?.id || props.mode !== "create") {
+  if (!props.venueInfo?.id || !shouldShowEquipmentSection.value || isEquipmentReadonly.value) {
     equipmentOptions.value = [];
     return;
   }
@@ -307,51 +381,50 @@ const loadEquipmentOptions = async () => {
 
   try {
     const masters = normalizeEquipmentMasters(await listEquipments());
-
-    // The backend enforces venue rules on submit; filtering here is only a
-    // usability layer so users do not select equipment that the backend will
-    // predictably reject for the current venue.
     equipmentOptions.value = masters.filter((equipment) =>
       isEquipmentAllowedForVenue(equipment, props.venueInfo.id),
     );
   } catch (loadError) {
-    console.error("載入設備選項失敗:", loadError);
+    console.error("Failed to load equipment options:", loadError);
     equipmentOptions.value = [];
   } finally {
     isEquipmentLoading.value = false;
   }
 };
 
-// ✨ 資料回顯邏輯
 watch(
   () => props.visible,
-  (newVal) => {
+  (visible) => {
     isWithdrawConfirmVisible.value = false;
 
-    if (newVal && props.initialData) {
-      const initialSlots = props.initialData.slots ? [...props.initialData.slots] : [];
-      const sortedInitialSlots = [...new Set(initialSlots)].sort((a, b) => a - b);
+    if (!visible || !props.initialData) return;
 
-      Object.assign(formData, {
-        venueId: props.venueInfo?.id,
-        bookingDate: props.initialData.dateStr || "",
-        slots: sortedInitialSlots,
-        purpose: props.initialData.purpose || "",
-        participantCount: props.initialData.participantCount || 1,
-        contactInfo: props.initialData.contactInfo?.name
-          ? { ...props.initialData.contactInfo }
-          : {
-              name: "測試生",
-              email: "student@ncu.edu.tw",
-              phone: "0912345678",
-            },
-        equipmentItems: [],
-      });
-      resetEquipmentSelection();
-      slotRangeAnchor.value = sortedInitialSlots[0] ?? null;
-      formErrors.slots = false;
-      void loadEquipmentOptions();
-    }
+    const initialSlots = Array.isArray(props.initialData.slots) ? [...props.initialData.slots] : [];
+    const sortedInitialSlots = [...new Set(initialSlots)].sort((a, b) => a - b);
+    const initialEquipmentItems = Array.isArray(props.initialData.linkedEquipmentBooking?.items)
+      ? props.initialData.linkedEquipmentBooking.items
+      : [];
+
+    Object.assign(formData, {
+      venueId: props.venueInfo?.id ?? null,
+      bookingDate: props.initialData.dateStr || "",
+      slots: sortedInitialSlots,
+      purpose: props.initialData.purpose || "",
+      participantCount: props.initialData.participantCount || 1,
+      contactInfo: props.initialData.contactInfo?.name
+        ? { ...props.initialData.contactInfo }
+        : {
+            name: "測試生",
+            email: "student@ncu.edu.tw",
+            phone: "0912345678",
+          },
+      equipmentItems: [],
+    });
+
+    applyInitialEquipmentSelection(initialEquipmentItems);
+    slotRangeAnchor.value = sortedInitialSlots[0] ?? null;
+    formErrors.slots = false;
+    void loadEquipmentOptions();
   },
 );
 
@@ -359,7 +432,7 @@ watch(
   () => props.venueInfo?.id,
   () => {
     if (props.visible) {
-      resetEquipmentSelection();
+      formData.venueId = props.venueInfo?.id ?? null;
       void loadEquipmentOptions();
     }
   },
@@ -434,6 +507,11 @@ const confirmWithdraw = () => {
   emit("withdraw-booking", props.initialData.id);
 };
 
+const emitModalSuccess = (payload) => {
+  emit("success", payload);
+  emit("update:visible", false);
+};
+
 const handleSubmit = async () => {
   if (isBusy.value) return;
 
@@ -443,24 +521,26 @@ const handleSubmit = async () => {
   }
   formErrors.slots = false;
 
-  if (
-    !formData.purpose ||
-    !formData.contactInfo.name ||
-    !formData.contactInfo.phone
-  ) {
-    warning("請填寫所有必填欄位 (*)");
+  if (!formData.purpose || !formData.contactInfo.name || !formData.contactInfo.phone) {
+    warning("請填寫所有必填欄位。");
+    return;
+  }
+
+  if (canEditLinkedEquipment.value && formData.equipmentItems.length === 0) {
+    warning("請至少保留一項器材品項。");
     return;
   }
 
   isSubmitting.value = true;
+
   try {
     const bookingPayload = {
       venueId: formData.venueId,
       bookingDate: formData.bookingDate,
-      slots: formData.slots,
+      slots: [...formData.slots],
       purpose: formData.purpose,
       participantCount: formData.participantCount,
-      contactInfo: formData.contactInfo,
+      contactInfo: { ...formData.contactInfo },
     };
 
     const equipmentItems = buildEquipmentBookingItems(
@@ -471,9 +551,6 @@ const handleSubmit = async () => {
     );
 
     if (props.mode === "create") {
-      // The combined endpoint guarantees venue booking and equipment booking
-      // are created together. When no equipment is selected, the original venue
-      // endpoint remains the narrowest and most compatible request shape.
       if (equipmentItems.length > 0) {
         await createBookingWithEquipments({
           booking: bookingPayload,
@@ -482,19 +559,60 @@ const handleSubmit = async () => {
       } else {
         await createBooking(bookingPayload);
       }
-      success("申請已成功送出！");
-    } else {
-      // Editing related equipment is intentionally not bundled here because the
-      // backend currently exposes combined create, but not combined update.
-      await updateBooking(props.initialData.id, bookingPayload);
-      success("申請已成功修改！");
+
+      success("申請已成功送出。");
+      emitModalSuccess({
+        venueUpdated: true,
+        equipmentUpdated: equipmentItems.length > 0 ? true : null,
+        partial: false,
+      });
+      return;
     }
 
-    // ✨ 執行成功：發送成功通知並關閉彈窗
-    emit("success");
-    emit("update:visible", false);
-  } catch (error) {
-    showError(error.message || "操作失敗，請確認時段是否衝突");
+    await updateBooking(props.initialData.id, bookingPayload);
+
+    if (canEditLinkedEquipment.value && linkedEquipmentBooking.value?.id) {
+      try {
+        await updateEquipmentBooking(linkedEquipmentBooking.value.id, {
+          borrowDate: formData.bookingDate,
+          slots: [...formData.slots],
+          purpose: formData.purpose,
+          contactInfo: { ...formData.contactInfo },
+          relatedVenueBookingId: props.initialData.id,
+          items: equipmentItems,
+        });
+
+        success("場地與器材預約已成功修改。");
+        emitModalSuccess({
+          venueUpdated: true,
+          equipmentUpdated: true,
+          partial: false,
+        });
+        return;
+      } catch (equipmentError) {
+        warning(equipmentError.message || "場地已更新，但器材更新失敗。");
+        emitModalSuccess({
+          venueUpdated: true,
+          equipmentUpdated: false,
+          partial: true,
+        });
+        return;
+      }
+    }
+
+    if (isEquipmentReadonly.value) {
+      success("場地預約已成功修改，器材申請未變更。");
+    } else {
+      success("預約已成功修改。");
+    }
+
+    emitModalSuccess({
+      venueUpdated: true,
+      equipmentUpdated: null,
+      partial: false,
+    });
+  } catch (submitError) {
+    showError(submitError.message || "場地更新失敗，請確認時段是否衝突。");
   } finally {
     isSubmitting.value = false;
   }
@@ -504,78 +622,83 @@ const handleSubmit = async () => {
 <style lang="scss" scoped>
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.45);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  inset: 0;
   z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
 }
+
 .modal-container {
   position: relative;
-  background: var(--card);
-  width: 100%;
-  max-width: 1040px;
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(var(--blue-900-rgb), 0.08);
-  box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 1040px;
   max-height: 90vh;
   overflow: hidden;
+  background: var(--card);
+  border: 1px solid rgba(var(--blue-900-rgb), 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
 }
+
 .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+
   h2 {
     margin: 0;
-    font-size: var(--text-xl);
     color: var(--ink);
-  }
-  .close-btn {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--muted);
+    font-size: var(--text-xl);
   }
 }
+
+.close-btn {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
 .modal-body {
-  padding: 1.5rem 1.75rem;
   overflow-y: auto;
+  padding: 1.5rem 1.75rem;
   background: #fbfcfe;
 }
+
 .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
 }
+
 .modal-footer-actions {
   display: flex;
-  justify-content: flex-end;
-  margin-left: auto;
   gap: 1rem;
+  margin-left: auto;
 }
+
 .btn-icon {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 1rem;
   height: 1rem;
+  align-items: center;
+  justify-content: center;
 }
+
 .btn-danger {
-  border-color: rgba(185, 28, 28, 0.18);
   background: #fff5f5;
+  border-color: rgba(185, 28, 28, 0.18);
   color: #b91c1c;
 }
 
@@ -583,23 +706,24 @@ const handleSubmit = async () => {
   background: #b91c1c;
   color: #ffffff;
 }
+
 .confirm-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .confirm-dialog {
   width: min(100%, 360px);
+  padding: 1.25rem;
   background: #ffffff;
   border: 1px solid rgba(var(--blue-900-rgb), 0.08);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1.25rem;
 
   h3 {
     margin: 0 0 0.6rem;
@@ -641,30 +765,36 @@ const handleSubmit = async () => {
 .form-group {
   margin-bottom: 1.25rem;
 }
+
 .form-row {
   display: flex;
   gap: 1rem;
+
   .form-group {
     flex: 1;
   }
 }
+
 .form-section-title {
-  font-weight: 700;
-  color: var(--ink);
   margin: 1rem 0 0.5rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 700;
 }
+
 label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 500;
   color: var(--ink);
   font-size: var(--text-sm);
+  font-weight: 500;
 }
+
 .required {
   color: var(--danger);
 }
+
 input[type="text"],
 input[type="number"],
 input[type="tel"],
@@ -674,16 +804,19 @@ input[type="email"] {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: #ffffff;
+
   &:focus {
     outline: none;
     border-color: var(--accent);
   }
 }
+
 .disabled-input {
   background-color: var(--surface-muted);
   color: var(--muted);
   cursor: not-allowed;
 }
+
 .slots-grid {
   display: flex;
   flex-direction: column;
@@ -702,8 +835,8 @@ input[type="email"] {
   grid-template-columns: minmax(2.55rem, 0.28fr) minmax(0, 1fr);
   align-items: center;
   min-height: 2.55rem;
-  padding: 0 0.7rem;
   margin: 0;
+  padding: 0 0.7rem;
   border: 1px solid rgba(var(--blue-900-rgb), 0.18);
   border-radius: 8px;
   background: #ffffff;
@@ -715,7 +848,7 @@ input[type="email"] {
     border-color 0.2s ease,
     color 0.2s ease,
     box-shadow 0.2s ease,
-  transform 0.2s ease;
+    transform 0.2s ease;
 }
 
 .slot-checkbox::before {
@@ -771,8 +904,8 @@ input[type="email"] {
 }
 
 .slot-index {
-  text-align: center;
   color: var(--accent);
+  text-align: center;
   font-size: clamp(0.9rem, 1.05vw, 1.1rem);
 }
 
@@ -799,7 +932,8 @@ input[type="email"] {
   font-weight: 700;
 }
 
-.equipment-option {
+.equipment-option,
+.equipment-readonly-item {
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -811,12 +945,6 @@ input[type="email"] {
   color: var(--text);
   font-size: var(--text-sm);
   flex-wrap: wrap;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
 
   strong {
     color: var(--ink);
@@ -825,6 +953,15 @@ input[type="email"] {
   span {
     color: var(--muted);
   }
+}
+
+.equipment-option {
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .equipment-option:hover,
@@ -853,15 +990,28 @@ input[type="email"] {
   margin-left: auto;
 }
 
+.equipment-readonly-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.equipment-readonly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
 .equipment-helper {
   color: var(--muted);
   font-size: var(--text-sm);
 }
+
 .error-text {
+  display: block;
+  margin-top: 0.25rem;
   color: var(--danger);
   font-size: var(--text-sm);
-  margin-top: 0.25rem;
-  display: block;
 }
 
 @media (max-width: 900px) {
@@ -875,10 +1025,10 @@ input[type="email"] {
   }
 
   .booking-form-panel-details {
-    padding-left: 0;
-    border-left: 0;
-    border-top: 1px solid var(--line);
     padding-top: 1.25rem;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .slots-grid {
@@ -929,15 +1079,13 @@ input[type="email"] {
     padding: 0 0.55rem;
   }
 
-  .slot-index {
-    font-size: 0.88rem;
-  }
-
+  .slot-index,
   .slot-time {
     font-size: 0.88rem;
   }
 
-  .equipment-option {
+  .equipment-option,
+  .equipment-readonly-item {
     align-items: flex-start;
   }
 

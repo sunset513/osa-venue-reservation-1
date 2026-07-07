@@ -281,19 +281,30 @@
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  class="btn btn-secondary detail-toggle"
-                  :aria-label="expandedBookingId === booking.id ? '收起詳情' : '查看詳情'"
-                  :title="expandedBookingId === booking.id ? '收起詳情' : '查看詳情'"
-                  @click="toggleExpanded(booking.id)"
-                >
-                  <component
-                    :is="expandedBookingId === booking.id ? ChevronUp : ChevronDown"
-                    :size="15"
-                    aria-hidden="true"
-                  />
-                </button>
+                <div class="history-actions">
+                  <button
+                    v-if="booking.canEdit"
+                    type="button"
+                    class="btn btn-primary edit-booking-btn"
+                    :disabled="editingBookingId === booking.id"
+                    @click="openEditModal(booking)"
+                  >
+                    {{ editingBookingId === booking.id ? "載入中..." : "修改預約" }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary detail-toggle"
+                    :aria-label="expandedBookingId === booking.id ? '收起詳情' : '查看詳情'"
+                    :title="expandedBookingId === booking.id ? '收起詳情' : '查看詳情'"
+                    @click="toggleExpanded(booking.id)"
+                  >
+                    <component
+                      :is="expandedBookingId === booking.id ? ChevronUp : ChevronDown"
+                      :size="15"
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
               </div>
 
               <div v-if="expandedBookingId === booking.id" class="history-details">
@@ -358,6 +369,15 @@
         </section>
       </section>
     </template>
+    <BookingModal
+      v-model:visible="isModalVisible"
+      :mode="modalMode"
+      :initial-data="modalInitialData"
+      :venue-info="selectedVenueInfo"
+      :is-withdrawing="isWithdrawing"
+      @success="handleModalSuccess"
+      @withdraw-booking="handleWithdrawBooking"
+    />
   </div>
 </template>
 
@@ -375,21 +395,34 @@ import {
   RotateCcw,
 } from "lucide-vue-next";
 import { useRouter } from "vue-router";
-import { queryMyBookings } from "@/api/booking";
+import BookingModal from "@/components/booking/BookingModal.vue";
+import { queryMyBookings, withdrawBooking } from "@/api/booking";
+import { queryMyEquipmentBookings } from "@/api/equipment";
+import { fetchAllUnits, fetchVenuesByUnit } from "@/api/venue";
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
 import { buildBookingQueryPayload, normalizeBookingPage } from "@/utils/bookingQuery";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
+import { normalizeEquipmentBookingPage } from "@/utils/equipment";
 import {
   BACK_TO_UNIT_SELECTOR_LABEL,
   GO_TO_UNIT_SELECTOR_LABEL,
 } from "@/utils/navigationLabels";
+import { useToast } from "@/utils/useToast.js";
 import { normalizeVenueDisplayName } from "@/utils/venueLabels";
 
 const router = useRouter();
+const { error, warning } = useToast();
 const loading = ref(true);
 const loadError = ref("");
 const bookings = ref([]);
 const expandedBookingId = ref(null);
+const editingBookingId = ref(null);
+const isModalVisible = ref(false);
+const modalMode = ref("edit");
+const modalInitialData = ref({});
+const selectedVenueInfo = ref(null);
+const isWithdrawing = ref(false);
+const venueLookup = ref(null);
 const keywordFilter = ref("");
 const venueFilter = ref("");
 const statusFilter = ref("");
@@ -622,6 +655,8 @@ const historyItems = computed(() => {
         statusIcon: getStatusIcon(booking.status),
         contact: parseContactInfo(booking.contactInfo),
         equipments: Array.isArray(booking.equipments) ? booking.equipments : [],
+        canEdit: Number(booking.status) === 1,
+        canWithdraw: Number(booking.status) === 1,
       };
     });
 });
@@ -770,6 +805,127 @@ const clearFilters = () => {
   statusFilter.value = "";
   clearDateRange();
   datePickerOpen.value = false;
+};
+
+const getVenueLookupKey = (venueName) => {
+  return normalizeVenueDisplayName(venueName || "").trim();
+};
+
+const loadVenueLookup = async () => {
+  if (venueLookup.value) return venueLookup.value;
+
+  const lookup = new Map();
+  const units = await fetchAllUnits();
+  const venueGroups = await Promise.all(
+    units.map((unit) => fetchVenuesByUnit(unit.id)),
+  );
+
+  venueGroups.flat().forEach((venue) => {
+    const key = getVenueLookupKey(venue.name);
+    if (key && !lookup.has(key)) {
+      lookup.set(key, venue);
+    }
+  });
+
+  venueLookup.value = lookup;
+  return lookup;
+};
+
+const resolveVenueInfo = async (booking, linkedEquipmentBooking = null) => {
+  const directVenueId = Number(booking.venueId ?? linkedEquipmentBooking?.relatedVenueId);
+
+  if (Number.isFinite(directVenueId) && directVenueId > 0) {
+    return {
+      id: directVenueId,
+      name: booking.venueName,
+    };
+  }
+
+  const lookup = await loadVenueLookup();
+  const matchedVenue = lookup.get(getVenueLookupKey(booking.venueName));
+
+  if (!matchedVenue?.id) {
+    throw new Error("無法判斷此預約的場地 ID，請從場地月曆頁修改。");
+  }
+
+  return {
+    id: matchedVenue.id,
+    name: matchedVenue.name || booking.venueName,
+  };
+};
+
+const fetchLinkedEquipmentBooking = async (bookingId) => {
+  const equipmentPage = normalizeEquipmentBookingPage(
+    await queryMyEquipmentBookings({
+      relatedVenueBookingId: bookingId,
+      pageNo: 1,
+      pageSize: 10,
+    }),
+  );
+
+  if (equipmentPage.items.length > 1) {
+    throw new Error("此場地預約關聯了多筆器材申請，暫時無法在此頁直接修改。");
+  }
+
+  return equipmentPage.items[0] || null;
+};
+
+const openEditModal = async (booking) => {
+  if (!booking?.id || editingBookingId.value) return;
+
+  editingBookingId.value = booking.id;
+
+  try {
+    const linkedEquipmentBooking = await fetchLinkedEquipmentBooking(booking.id);
+    const venueInfo = await resolveVenueInfo(booking, linkedEquipmentBooking);
+    const equipmentReadonly = Boolean(
+      linkedEquipmentBooking && Number(linkedEquipmentBooking.status) !== 1,
+    );
+
+    selectedVenueInfo.value = venueInfo;
+
+    modalMode.value = "edit";
+    modalInitialData.value = {
+      id: booking.id,
+      dateStr: booking.bookingDate,
+      slots: Array.isArray(booking.slots) ? [...booking.slots] : [],
+      purpose: booking.purpose || "",
+      participantCount: booking.pCount || 1,
+      contactInfo: { ...booking.contact },
+      canWithdraw: booking.canWithdraw === true,
+      linkedEquipmentBooking,
+      equipmentReadonly,
+      equipmentReadonlyMessage: equipmentReadonly
+        ? "此筆器材申請目前不是審核中，本次只會更新場地預約。"
+        : "",
+    };
+    isModalVisible.value = true;
+  } catch (openError) {
+    error(openError.message || "載入可修改的器材資料失敗。");
+  } finally {
+    editingBookingId.value = null;
+  }
+};
+
+const handleModalSuccess = async () => {
+  isModalVisible.value = false;
+  await loadBookings();
+};
+
+const handleWithdrawBooking = async (bookingId) => {
+  if (!bookingId) return;
+
+  isWithdrawing.value = true;
+
+  try {
+    await withdrawBooking(bookingId);
+    isModalVisible.value = false;
+    await loadBookings();
+  } catch (withdrawError) {
+    warning(withdrawError.message || "撤回預約失敗。");
+  } finally {
+    isWithdrawing.value = false;
+  }
 };
 
 const fetchAllBookings = async () => {
@@ -1532,6 +1688,21 @@ watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter]
   gap: 0.4rem;
 }
 
+.history-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.edit-booking-btn {
+  min-height: 2.3rem;
+  padding: 0.55rem 0.95rem;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
 .history-details {
   margin-top: 1rem;
   padding-top: 1rem;
@@ -1586,7 +1757,9 @@ watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter]
     width: 100%;
   }
 
-  .detail-toggle {
+  .history-actions,
+  .detail-toggle,
+  .edit-booking-btn {
     width: 100%;
   }
 
