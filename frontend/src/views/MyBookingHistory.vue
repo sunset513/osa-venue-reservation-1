@@ -289,7 +289,8 @@
                     :disabled="editingBookingId === booking.id"
                     @click="openEditModal(booking)"
                   >
-                    {{ editingBookingId === booking.id ? "載入中..." : "修改預約" }}
+                    <Pencil :size="16" aria-hidden="true" />
+                    <span>{{ editingBookingId === booking.id ? "載入中..." : "修改預約" }}</span>
                   </button>
                   <button
                     type="button"
@@ -392,6 +393,7 @@ import {
   ChevronUp,
   Clock3,
   History,
+  Pencil,
   RotateCcw,
 } from "lucide-vue-next";
 import { useRouter } from "vue-router";

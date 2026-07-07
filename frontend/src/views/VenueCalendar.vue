@@ -107,6 +107,7 @@
     @success="handleModalSuccess"
     @withdraw-booking="handleWithdrawBooking"
   />
+
 </template>
 
 <script setup>
@@ -114,6 +115,8 @@ import BookingModal from "@/components/booking/BookingModal.vue";
 import DayScheduleModal from "@/components/booking/DayScheduleModal.vue";
 import { fetchCalendarMonth, queryMyBookings, withdrawBooking } from "@/api/booking";
 import { fetchVenueDetail, fetchVenuesByUnit } from "@/api/venue";
+import { queryMyEquipmentBookings } from "@/api/equipment";
+import { normalizeEquipmentBookingPage } from "@/utils/equipment";
 import {
   convertSlotsToTimeRange,
   formatSlotsAsTimeRange,
@@ -156,6 +159,7 @@ const selectedDayOfWeek = ref("");
 const suppressDatesSetLoad = ref(false);
 const routeCreateModalActive = ref(false);
 const handledCreateQueryKey = ref("");
+const editingBookingId = ref(null);
 
 let venueSyncToken = 0;
 let eventsRequestToken = 0;
@@ -351,23 +355,57 @@ const handleCreateQuery = () => {
   }
 };
 
-const openEditModal = (originalData) => {
-  modalMode.value = "edit";
+const fetchLinkedEquipmentBooking = async (bookingId) => {
+  const equipmentPage = normalizeEquipmentBookingPage(
+    await queryMyEquipmentBookings({
+      relatedVenueBookingId: bookingId,
+      pageNo: 1,
+      pageSize: 10,
+    }),
+  );
 
-  modalInitialData.value = {
-    id: originalData.id,
-    dateStr: originalData.bookingDate,
-    slots: originalData.slots,
-    purpose: originalData.purpose || "",
-    participantCount: originalData.pCount || 1,
-    contactInfo: parseContactInfo(originalData.contactInfo),
-    // Equipment edits are intentionally excluded here because the backend only
-    // provides combined creation, not combined venue/equipment update.
-    canWithdraw: originalData.canWithdraw === true,
-  };
+  if (equipmentPage.items.length > 1) {
+    throw new Error("此場地預約關聯了多筆器材申請，暫時無法在此頁直接修改。");
+  }
 
-  isDayModalVisible.value = false;
-  isModalVisible.value = true;
+  return equipmentPage.items[0] || null;
+};
+
+const openEditModal = async (originalData) => {
+  if (!originalData?.id || editingBookingId.value) return;
+
+  editingBookingId.value = originalData.id;
+
+  try {
+    const linkedEquipmentBooking = await fetchLinkedEquipmentBooking(originalData.id);
+    const equipmentReadonly = Boolean(
+      linkedEquipmentBooking && Number(linkedEquipmentBooking.status) !== 1
+    );
+
+    modalMode.value = "edit";
+
+    modalInitialData.value = {
+      id: originalData.id,
+      dateStr: originalData.bookingDate,
+      slots: originalData.slots,
+      purpose: originalData.purpose || "",
+      participantCount: originalData.pCount || 1,
+      contactInfo: parseContactInfo(originalData.contactInfo),
+      canWithdraw: originalData.canWithdraw === true,
+      linkedEquipmentBooking,
+      equipmentReadonly,
+      equipmentReadonlyMessage: equipmentReadonly
+        ? "此筆器材申請目前不是審核中，本次只會更新場地預約。"
+        : "",
+    };
+
+    isDayModalVisible.value = false;
+    isModalVisible.value = true;
+  } catch (err) {
+    error(err.message || "載入可修改的器材資料失敗。");
+  } finally {
+    editingBookingId.value = null;
+  }
 };
 
 // 月曆卡片用顏色拆出四種語意，避免使用者把「待審」誤會成「已佔用」：
