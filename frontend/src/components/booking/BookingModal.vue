@@ -10,6 +10,7 @@
         <form @submit.prevent="handleSubmit" class="booking-form">
           <div class="booking-form-layout">
             <section class="booking-form-panel booking-form-panel-times">
+          <div class="form-section-title">借用時間</div>
           <div class="form-group">
             <label>預約日期</label>
             <input
@@ -98,27 +99,33 @@
             <div v-else-if="equipmentOptions.length === 0" class="equipment-helper">
               此場地目前沒有可一併借用的設備。
             </div>
-            <div v-else class="equipments-flex">
-              <label v-for="eq in equipmentOptions" :key="eq.id" class="eq-checkbox">
-                <input
-                  type="checkbox"
-                  :value="eq.id"
-                  :checked="isEquipmentSelected(eq.id)"
-                  @change="toggleEquipmentSelection(eq.id, $event.target.checked)"
-                />
-                <span>{{ eq.name }}</span>
-                <input
-                  v-if="isEquipmentSelected(eq.id)"
-                  v-model.number="equipmentQuantities[eq.id]"
-                  class="equipment-quantity-input"
-                  type="number"
-                  min="1"
-                  :max="eq.totalQuantity"
-                  aria-label="設備借用數量"
-                />
-                <small v-if="isEquipmentSelected(eq.id)">可借總量 {{ eq.totalQuantity }}</small>
-              </label>
-            </div>
+            <template v-else>
+              <div class="equipment-list-heading">選擇設備</div>
+              <div class="equipment-list">
+                <label
+                  v-for="equipment in equipmentOptions"
+                  :key="equipment.id"
+                  class="equipment-option"
+                  :class="{ 'is-selected': isEquipmentSelected(equipment.id) }"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="isEquipmentSelected(equipment.id)"
+                    @change="toggleEquipmentSelection(equipment.id, $event.target.checked)"
+                  />
+                  <strong>{{ equipment.name }}</strong>
+                  <span>總數 {{ equipment.totalQuantity }}</span>
+                  <input
+                    v-if="isEquipmentSelected(equipment.id)"
+                    v-model.number="equipmentQuantities[equipment.id]"
+                    type="number"
+                    min="1"
+                    :max="equipment.totalQuantity"
+                    aria-label="設備借用數量"
+                  />
+                </label>
+              </div>
+            </template>
           </div>
             </section>
           </div>
@@ -779,27 +786,76 @@ input[type="email"] {
   color: var(--accent-hover);
 }
 
-.eq-checkbox {
+.equipment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.equipment-list-heading {
+  margin: 0 0 0.6rem;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.equipment-option {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
+  min-height: 2.35rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
   font-size: var(--text-sm);
-  cursor: pointer;
-  margin: 0;
-}
-.equipments-flex {
-  display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+
+  strong {
+    color: var(--ink);
+  }
+
+  span {
+    color: var(--muted);
+  }
 }
+
+.equipment-option:hover,
+.equipment-option:focus-within {
+  border-color: rgba(var(--blue-900-rgb), 0.24);
+  background: #f8fbff;
+  box-shadow: 0 0 0 3px rgba(var(--blue-900-rgb), 0.08);
+  transform: translateY(-1px);
+}
+
+.equipment-option.is-selected {
+  border-color: rgba(var(--blue-900-rgb), 0.36);
+  background: var(--accent-soft);
+  box-shadow: 0 6px 16px rgba(var(--blue-900-rgb), 0.08);
+}
+
+.equipment-option input[type="checkbox"] {
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.equipment-option input[type="number"] {
+  width: 5rem;
+  min-height: 2.2rem;
+  margin-left: auto;
+}
+
 .equipment-helper {
   color: var(--muted);
   font-size: var(--text-sm);
-}
-.equipment-quantity-input {
-  width: 4.5rem;
-  min-height: 2rem;
-  padding: 0.35rem 0.5rem;
 }
 .error-text {
   color: var(--danger);
@@ -879,6 +935,15 @@ input[type="email"] {
 
   .slot-time {
     font-size: 0.88rem;
+  }
+
+  .equipment-option {
+    align-items: flex-start;
+  }
+
+  .equipment-option input[type="number"] {
+    width: 100%;
+    margin-left: 0;
   }
 }
 </style>

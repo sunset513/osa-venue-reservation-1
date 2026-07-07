@@ -1,9 +1,17 @@
 <template>
   <div class="equipment-borrow-page page-enter">
     <header class="page-header equipment-borrow-header">
-      <button class="back-btn" type="button" @click="router.back()">← 返回上一頁</button>
+      <button class="back-btn" type="button" @click="router.back()">
+        <span class="btn-icon" aria-hidden="true">
+          <ArrowLeft :size="16" />
+        </span>
+        <span>返回上一頁</span>
+      </button>
       <p class="hero-eyebrow">Equipment Request</p>
-      <h1>設備借用申請</h1>
+      <h1 class="page-title">
+        <Wrench :size="28" aria-hidden="true" class="page-title-icon" />
+        <span>設備借用申請</span>
+      </h1>
       <p>填寫借用日期、時段與設備數量，送出後由審核者確認。</p>
     </header>
 
@@ -12,7 +20,12 @@
     <div v-else-if="loadError" class="empty-state equipment-feedback">
       <h3>目前無法載入設備資料</h3>
       <p>{{ loadError }}</p>
-      <button type="button" class="btn btn-secondary" @click="loadEquipments">重新載入</button>
+      <button type="button" class="btn btn-secondary" @click="loadEquipments">
+        <span class="btn-icon" aria-hidden="true">
+          <RotateCcw :size="16" />
+        </span>
+        <span>重新載入</span>
+      </button>
     </div>
 
     <form v-else class="borrow-form card" @submit.prevent="submitBorrowRequest">
@@ -33,11 +46,26 @@
               :key="slot.value"
               class="slot-checkbox"
               :class="{ 'is-selected': form.slots.includes(slot.value) }"
+              role="checkbox"
+              tabindex="0"
+              :aria-checked="form.slots.includes(slot.value)"
+              @click.prevent="handleSlotClick(slot.value)"
+              @keydown.enter.prevent="handleSlotClick(slot.value)"
+              @keydown.space.prevent="handleSlotClick(slot.value)"
             >
-              <input v-model="form.slots" type="checkbox" :value="slot.value" />
-              <span>{{ slot.label }}</span>
+              <input
+                class="slot-input"
+                type="checkbox"
+                :value="slot.value"
+                :checked="form.slots.includes(slot.value)"
+                tabindex="-1"
+                aria-hidden="true"
+              />
+              <span class="slot-index">{{ slot.label }}</span>
+              <span class="slot-time">{{ slot.timeRange }}</span>
             </label>
           </div>
+          <small v-if="formErrors.slots" class="error-text">請至少選擇一個借用時段</small>
         </div>
       </section>
 
@@ -48,6 +76,7 @@
           <input v-model.trim="form.purpose" type="text" required placeholder="例如：社團活動器材" />
         </label>
 
+        <div class="equipment-list-heading">選擇設備</div>
         <div class="equipment-list">
           <label v-for="equipment in equipmentOptions" :key="equipment.id" class="equipment-option">
             <input
@@ -86,9 +115,19 @@
       </section>
 
       <footer class="form-actions">
-        <button type="button" class="btn btn-secondary" :disabled="submitting" @click="router.back()">取消</button>
+        <button type="button" class="btn btn-secondary" :disabled="submitting" @click="router.back()">
+          <span class="btn-icon" aria-hidden="true">
+            <X :size="16" />
+          </span>
+          <span>取消</span>
+        </button>
         <button type="submit" class="btn btn-primary" :disabled="submitting">
-          {{ submitting ? "送出中..." : "送出設備借用" }}
+          <template v-if="!submitting">
+            <span class="btn-icon" aria-hidden="true">
+              <Send :size="16" />
+            </span>
+          </template>
+          <span>{{ submitting ? "送出中..." : "送出設備借用" }}</span>
         </button>
       </footer>
     </form>
@@ -98,6 +137,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { ArrowLeft, RotateCcw, Send, Wrench, X } from "lucide-vue-next";
 import { createEquipmentBooking, listEquipments } from "@/api/equipment";
 import {
   buildEquipmentBookingItems,
@@ -113,6 +153,8 @@ const loadError = ref("");
 const submitting = ref(false);
 const equipmentOptions = ref([]);
 const equipmentQuantities = reactive({});
+const slotRangeAnchor = ref(null);
+const formErrors = reactive({ slots: false });
 
 const form = reactive({
   borrowDate: new Date().toLocaleDateString("sv-SE"),
@@ -128,8 +170,45 @@ const form = reactive({
 
 const slotOptions = Array.from({ length: 24 }, (_, hour) => ({
   value: hour,
-  label: `${String(hour).padStart(2, "0")}:00 - ${String(hour + 1).padStart(2, "0")}:00`,
+  label: String(hour),
+  timeRange: `${String(hour).padStart(2, "0")}:00 - ${String(hour + 1).padStart(2, "0")}:00`,
 }));
+
+const buildSlotRange = (start, end) => {
+  const minSlot = Math.min(start, end);
+  const maxSlot = Math.max(start, end);
+  return Array.from({ length: maxSlot - minSlot + 1 }, (_, index) => minSlot + index);
+};
+
+const handleSlotClick = (slot) => {
+  const selectedSlots = [...new Set(form.slots)].sort((a, b) => a - b);
+
+  if (selectedSlots.length === 0) {
+    slotRangeAnchor.value = slot;
+    form.slots = [slot];
+    formErrors.slots = false;
+    return;
+  }
+
+  const currentStart = selectedSlots[0];
+  const currentEnd = selectedSlots[selectedSlots.length - 1];
+
+  if (selectedSlots.length >= 2 && slot >= currentStart && slot <= currentEnd) {
+    slotRangeAnchor.value = slot;
+    form.slots = [slot];
+  } else if (slot < currentStart) {
+    slotRangeAnchor.value = currentEnd;
+    form.slots = buildSlotRange(slot, currentEnd);
+  } else if (slot > currentEnd) {
+    slotRangeAnchor.value = currentStart;
+    form.slots = buildSlotRange(currentStart, slot);
+  } else {
+    slotRangeAnchor.value = slot;
+    form.slots = [slot];
+  }
+
+  formErrors.slots = false;
+};
 
 const selectedEquipmentIds = computed(() => new Set(form.equipmentItems.map((item) => item.equipmentId)));
 
@@ -171,9 +250,12 @@ const submitBorrowRequest = async () => {
   );
 
   if (form.slots.length === 0) {
+    formErrors.slots = true;
     toast.warning("請至少選擇一個借用時段");
     return;
   }
+
+  formErrors.slots = false;
 
   if (equipmentItems.length === 0) {
     toast.warning("請至少選擇一項設備");
@@ -220,6 +302,26 @@ onMounted(loadEquipments);
   font-size: var(--text-sm);
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.page-title-icon {
+  color: currentColor;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 .borrow-form {
@@ -274,18 +376,121 @@ input[type="number"] {
 }
 
 .slots-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
-  max-height: 25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  max-height: min(58vh, 540px);
   overflow-y: auto;
-  padding: 0.5rem;
+  padding: 0.42rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface-muted);
+  background: #f3f7fb;
 }
 
-.slot-checkbox,
+.slot-checkbox {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(2.55rem, 0.28fr) minmax(0, 1fr);
+  align-items: center;
+  min-height: 2.55rem;
+  padding: 0 0.7rem;
+  margin: 0;
+  border: 1px solid rgba(var(--blue-900-rgb), 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.slot-checkbox::before {
+  content: "";
+  position: absolute;
+  top: 0.4rem;
+  bottom: 0.4rem;
+  left: 0.35rem;
+  width: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    width 0.2s ease;
+}
+
+.slot-checkbox:hover,
+.slot-checkbox:focus-within {
+  border-color: rgba(var(--blue-900-rgb), 0.42);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(var(--blue-900-rgb), 0.12);
+  transform: translateY(-1px);
+}
+
+.slot-checkbox.is-selected {
+  border-color: rgba(var(--blue-900-rgb), 0.36);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  box-shadow: 0 6px 16px rgba(var(--blue-900-rgb), 0.1);
+}
+
+.slot-checkbox.is-selected::before {
+  width: 4px;
+  opacity: 1;
+}
+
+.slot-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slot-index,
+.slot-time {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.slot-index {
+  text-align: center;
+  color: var(--accent);
+  font-size: clamp(0.9rem, 1.05vw, 1.1rem);
+}
+
+.slot-time {
+  text-align: center;
+  font-size: clamp(0.9rem, 1.05vw, 1.1rem);
+}
+
+.slot-checkbox.is-selected .slot-index,
+.slot-checkbox.is-selected .slot-time {
+  color: var(--accent-hover);
+}
+
+.equipment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.equipment-list-heading {
+  margin: 0 0 0.6rem;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
 .equipment-option {
   display: flex;
   align-items: center;
@@ -297,21 +502,6 @@ input[type="number"] {
   background: #ffffff;
   color: var(--text);
   font-size: var(--text-sm);
-}
-
-.slot-checkbox.is-selected {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.equipment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  margin-bottom: 1rem;
-}
-
-.equipment-option {
   flex-wrap: wrap;
 
   strong {
@@ -345,6 +535,13 @@ input[type="number"] {
   text-align: center;
 }
 
+.error-text {
+  color: var(--danger);
+  font-size: var(--text-sm);
+  margin-top: 0.25rem;
+  display: block;
+}
+
 @media (max-width: 820px) {
   .borrow-form {
     grid-template-columns: 1fr;
@@ -356,11 +553,24 @@ input[type="number"] {
   }
 
   .slots-grid {
-    grid-template-columns: 1fr;
+    gap: 0.28rem;
+    max-height: 40vh;
+    padding: 0.35rem;
   }
 
   .form-actions {
     flex-direction: column-reverse;
+  }
+
+  .slot-checkbox {
+    grid-template-columns: minmax(2rem, 0.25fr) minmax(0, 1fr);
+    min-height: 2.35rem;
+    padding: 0 0.55rem;
+  }
+
+  .slot-index,
+  .slot-time {
+    font-size: 0.88rem;
   }
 }
 </style>
