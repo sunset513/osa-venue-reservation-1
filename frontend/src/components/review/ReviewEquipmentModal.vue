@@ -18,7 +18,7 @@
           <span class="status-pill" :class="statusMeta.className">
             {{ statusMeta.text }}
           </span>
-          <span class="status-strip-id">申請編號 #{{ booking.id }}</span>
+          <span class="status-strip-id">設備借用編號 #{{ booking.id }}</span>
         </section>
 
         <section class="summary-grid">
@@ -31,8 +31,15 @@
           <article class="summary-card">
             <span class="summary-label">借用型態</span>
             <strong>{{ booking.relatedVenueName || "單獨借用設備" }}</strong>
-            <span class="summary-subtle" v-if="booking.relatedVenueName">關聯場地</span>
-            <span class="summary-subtle" v-else>無綁定場地</span>
+            <span class="summary-subtle" v-if="booking.relatedVenueBookingId">
+              場地預約編號 #{{ booking.relatedVenueBookingId }}
+            </span>
+            <span class="summary-subtle" v-else-if="booking.relatedVenueName">
+              關聯場地
+            </span>
+            <span class="summary-subtle" v-else>
+              無綁定場地
+            </span>
           </article>
         </section>
 

@@ -20,7 +20,7 @@
           <span class="status-pill" :class="statusMeta.className">
             {{ statusMeta.text }}
           </span>
-          <span class="status-strip-id">申請編號 #{{ booking.id }}</span>
+          <span class="status-strip-id">場地預約編號 #{{ booking.id }}</span>
         </section>
 
         <section class="summary-grid">
@@ -72,7 +72,7 @@
                 <div class="equipment-review-content">
                   <strong>{{ equipmentBooking.itemSummary }}</strong>
                   <span class="detail-subtle">
-                    {{ equipmentBooking.timeRange }}｜{{ equipmentBooking.purpose }}
+                    設備借用編號 #{{ equipmentBooking.id }}｜{{ equipmentBooking.timeRange }}｜{{ equipmentBooking.purpose }}
                   </span>
                   <span class="detail-subtle">
                     {{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}｜

@@ -53,7 +53,7 @@
         <table class="borrow-table">
           <thead>
             <tr>
-              <th>申請編號</th>
+              <th>設備借用編號</th>
               <th>設備</th>
               <th>借用日期</th>
               <th>借用時段</th>

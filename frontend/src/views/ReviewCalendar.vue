@@ -179,7 +179,7 @@
                   <strong>{{ booking.purpose || "未填寫用途" }}</strong>
                 </div>
                 <div class="case-meta">
-                  <span>申請編號 #{{ booking.id }}</span>
+                  <span>場地預約編號 #{{ booking.id }}</span>
                   <span>{{ booking.venueName }}</span>
                   <span>{{ booking.contactName }}</span>
                   <span>{{ booking.participantCount }} 人</span>
@@ -257,7 +257,7 @@
                 <strong>{{ equipmentBooking.itemSummary }}</strong>
               </div>
               <div class="case-meta">
-                <span>申請編號 #{{ equipmentBooking.id }}</span>
+                <span>設備借用編號 #{{ equipmentBooking.id }}</span>
                 <span>{{ equipmentBooking.relatedVenueName || "單獨借用設備" }}</span>
                 <span>{{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}</span>
               </div>
