@@ -10,8 +10,8 @@
         <Activity :size="28" />
       </div>
       <div class="dashboard-entry-copy">
-        <h2 id="dashboard-entry-title">活動看板</h2>
-        <p>快速查看近期活動與場地借用整體概況。</p>
+        <h2 id="dashboard-entry-title">今日活動看板</h2>
+        <p>查看今日已核准且尚未結束的場地活動，包含進行中與即將開始的預約。</p>
       </div>
       <button class="btn btn-primary dashboard-entry-action" type="button" @click="goToActivityDashboard">
         前往看板

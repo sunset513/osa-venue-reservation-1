@@ -8,9 +8,8 @@
 
       <div class="dashboard-title-row">
         <div class="dashboard-title-content">
-          <h1 class="dashboard-title-visible">即時場地使用狀態</h1>
-          <p class="eyebrow">即時場地使用狀態</p>
-          <h1>活動資訊</h1>
+          <h1 class="dashboard-title-visible">今日場地活動看板</h1>
+          <p class="dashboard-description">顯示今日已核准且尚未結束的活動，包含進行中與即將開始的預約。</p>
         </div>
         <button
           class="btn btn-secondary refresh-btn"
@@ -52,12 +51,12 @@
     <section v-else-if="activeBookings.length === 0" class="empty-state dashboard-empty" aria-live="polite">
       <CalendarClock :size="30" />
       <div>
-        <h2>目前沒有進行中的場地活動</h2>
-        <p>系統會持續更新當前時段的已核准預約。</p>
+        <h2>目前沒有今日尚未結束的場地活動</h2>
+        <p>系統會持續更新今日已核准、且尚未結束的預約。</p>
       </div>
     </section>
 
-    <section v-else class="live-activity-grid" aria-label="目前進行中的活動">
+    <section v-else class="live-activity-grid" aria-label="今日尚未結束的活動">
       <article
         v-for="booking in activeBookings"
         :key="booking.key"
@@ -305,10 +304,10 @@ onBeforeUnmount(() => {
   display: flex;
   min-width: 0;
   flex-direction: column;
+  gap: 0.35rem;
 }
 
 .dashboard-title-visible {
-  order: 2;
   margin: 0;
   color: var(--ink);
   font-size: var(--text-4xl);
@@ -316,17 +315,11 @@ onBeforeUnmount(() => {
   line-height: var(--leading-tight);
 }
 
-.dashboard-title-content > h1:not(.dashboard-title-visible) {
-  display: none;
-}
-
-.eyebrow {
-  display: none;
-  order: 1;
-  margin: 0 0 0.25rem;
-  color: var(--accent);
-  font-size: var(--text-sm);
-  font-weight: 800;
+.dashboard-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
 }
 
 .refresh-btn {
