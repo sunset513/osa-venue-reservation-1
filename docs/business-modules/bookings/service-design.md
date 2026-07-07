@@ -13,7 +13,7 @@
 - 修改個人預約。
 - 撤回個人預約。
 - 查詢場地月、周、日曆視圖。
-- 查詢指定日期兩個場地的已通過預約。
+- 查詢指定日期三個場地的已通過預約。
 
 ## ReviewService 責任
 
@@ -112,13 +112,13 @@
 
 注意：`venueName` 目前暫以 `"場地 " + venueId` 表示。
 
-## 指定日期兩場地已通過預約
+## 指定日期三場地已通過預約
 
-`getApprovedBookingsForTwoVenues`：
+`getApprovedBookingsForThreeVenues`：
 
-- 驗證兩個場地 ID 與日期不可為空。
-- 兩個場地不可相同。
-- 檢查兩個場地是否存在。
+- 驗證三個場地 ID 與日期不可為空。
+- 三個場地不可相同。
+- 檢查三個場地是否存在。
 - 查詢指定日期 `status=2` 的預約。
 - 依場地分組回傳，每筆只包含 `bookingId`、`slots`、`purpose`。
 

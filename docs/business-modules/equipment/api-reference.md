@@ -461,6 +461,7 @@ Rules：
 - 若設備有限場地規則，相關場地預約必須已通過，日期與時段也需符合規則。
 - 成功後狀態改為 `approved(2)`，寫入 `reviewedBy` 與 `reviewedAt`。
 - 已撤回的設備借用申請 `withdrawn(0)` 不可由審核端重新啟用。
+- 成功核准後，後端會檢查其他同日期、時段重疊、設備有交集的 `pending(1)` 申請；若該 pending 申請因目前已核准數量而不可核准，會自動改為 `rejected(3)`。
 
 Returns：`data` 為 `null`。
 
@@ -481,6 +482,7 @@ Rules：
 - `status` 可為 `1(pending)`、`2(approved)`、`3(rejected)`。
 - 已撤回的設備借用申請 `withdrawn(0)` 不可由審核端重新啟用。
 - 目標狀態為 `approved(2)` 時，會重新檢查設備總量與場地規則。
+- 目標狀態為 `approved(2)` 且更新成功後，會自動拒絕因設備數量不足而不可核准的衝突 pending 設備申請。
 - 成功後寫入 `reviewedBy`、`reviewedAt`，並透過 `version` 做樂觀鎖檢查。
 - 不寫入拒絕原因；承辦人若需說明，會於系統外通知使用者。
 

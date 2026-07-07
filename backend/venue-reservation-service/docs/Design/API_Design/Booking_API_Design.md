@@ -132,14 +132,16 @@
       { "success": true, "message": "操作成功", "data": null }
       ```
 
-### 5. 查詢指定日期兩場地已通過預約
+### 5. 查詢指定日期三場地已通過預約
 - **方法：** `GET`
-- **路徑：** `/bookings/approved/two-venues`
-- **功能：** 取得指定日期兩個場地的已通過預約（status=2），依場地分組回傳。
+- **路徑：** `/bookings/approved/three-venues`
+- **功能：** 取得指定日期三個場地的已通過預約（status=2），依場地分組回傳。
 - **請求參數（Query）：**
   - `venueIdA` (Long，必填)
-  - `venueIdB` (Long，必填，且不可與 venueIdA 相同)
+  - `venueIdB` (Long，必填)
+  - `venueIdC` (Long，必填)
   - `date` (LocalDate，必填，YYYY-MM-DD)
+- **限制：** 三個場地 ID 不可重複。
 - **響應格式 (`Result<List<ApprovedBookingsByVenueVO>>`)：**
     - **成功 (200 OK)：**
       ```json
@@ -164,7 +166,7 @@
       ```
     - **業務錯誤 (200 OK)：**
       ```json
-      { "success": false, "message": "兩個場地不可相同", "data": null }
+      { "success": false, "message": "三個場地不可相同", "data": null }
       ```
 
 ---

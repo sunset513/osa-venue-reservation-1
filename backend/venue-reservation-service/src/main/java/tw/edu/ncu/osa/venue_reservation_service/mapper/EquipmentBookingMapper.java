@@ -74,6 +74,18 @@ public interface EquipmentBookingMapper {
             @Param("oldVersion") Integer oldVersion
     );
 
+    List<EquipmentBooking> selectPendingConflictingBookings(
+            @Param("approvedBookingId") Long approvedBookingId,
+            @Param("borrowDate") LocalDate borrowDate,
+            @Param("timeSlots") Integer timeSlots,
+            @Param("equipmentIds") List<Long> equipmentIds
+    );
+
+    int batchRejectPendingBookings(
+            @Param("ids") List<Long> ids,
+            @Param("reviewedBy") String reviewedBy
+    );
+
     int sumApprovedQuantityAtHour(
             @Param("equipmentId") Long equipmentId,
             @Param("borrowDate") LocalDate borrowDate,

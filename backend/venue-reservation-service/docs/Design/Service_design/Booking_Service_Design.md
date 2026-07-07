@@ -44,19 +44,19 @@
 * **異常處理**：
     * 若狀態不符（如已被拒絕），拋出 `RuntimeException` 說明原因。
 
-### 4. 公開查詢兩場地已通過預約 (`getApprovedBookingsForTwoVenues`)
+### 4. 公開查詢三場地已通過預約 (`getApprovedBookingsForThreeVenues`)
 
-* **功能描述**：在指定日期下，查詢兩個場地已通過（status=2）的預約，並依場地分組回傳。
-* **參數**：`venueIdA`、`venueIdB`、`date`。
+* **功能描述**：在指定日期下，查詢三個場地已通過（status=2）的預約，並依場地分組回傳。
+* **參數**：`venueIdA`、`venueIdB`、`venueIdC`、`date`。
 * **回傳**：`List<ApprovedBookingsByVenueVO>`。
 * **詳細邏輯流程**：
-    1. 驗證參數：場地 ID 不可為空、兩場地不可相同、日期不可為空。
+    1. 驗證參數：場地 ID 不可為空、三場地不可相同、日期不可為空。
     2. 查詢場地資訊以取得場地名稱。
-    3. 由 Mapper 取得指定日期與兩場地的已通過預約清單。
+    3. 由 Mapper 取得指定日期與三場地的已通過預約清單。
     4. 依場地分組，並使用 `BookingUtils.parseMaskToList` 轉換時段遮罩。
 * **異常處理**：
     * 場地 ID 或日期為空：拋出 `IllegalArgumentException`。
-    * 兩場地相同：拋出 `IllegalArgumentException`。
+    * 三場地相同：拋出 `IllegalArgumentException`。
     * 場地不存在：拋出 `RuntimeException("場地不存在")`。
 
 ## 三、 異常處理與事務策略

@@ -124,19 +124,21 @@ public interface BookingService {
     );
 
     // ==========================================
-    // 公開查詢：指定日期兩場地已通過預約
+    // 公開查詢：指定日期三場地已通過預約
     // ==========================================
 
     /**
-     * 查詢指定日期與兩個場地的已通過預約（公開 API）
+     * 查詢指定日期與三個場地的已通過預約（公開 API）
      * @param venueIdA 第一個場地 ID
      * @param venueIdB 第二個場地 ID
+     * @param venueIdC 第三個場地 ID
      * @param date 查詢日期
      * @return 依場地分組的已通過預約清單
      */
-    List<tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingsByVenueVO> getApprovedBookingsForTwoVenues(
+    List<tw.edu.ncu.osa.venue_reservation_service.model.vo.ApprovedBookingsByVenueVO> getApprovedBookingsForThreeVenues(
             Long venueIdA,
             Long venueIdB,
+            Long venueIdC,
             java.time.LocalDate date
     );
 }

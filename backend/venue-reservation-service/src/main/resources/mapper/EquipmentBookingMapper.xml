@@ -128,6 +128,36 @@
         WHERE id = #{id} AND version = #{oldVersion}
     </update>
 
+    <select id="selectPendingConflictingBookings" resultType="tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking">
+        SELECT DISTINCT eb.id, eb.user_id, eb.borrow_date, eb.time_slots, eb.status, eb.purpose,
+               eb.contact_info, eb.related_venue_booking_id, eb.reviewed_by, eb.reviewed_at,
+               eb.version, eb.created_at, eb.updated_at
+        FROM equipment_bookings eb
+        INNER JOIN equipment_booking_items ebi ON ebi.equipment_booking_id = eb.id
+        WHERE eb.status = 1
+          AND eb.id != #{approvedBookingId}
+          AND eb.borrow_date = #{borrowDate}
+          AND (eb.time_slots &amp; #{timeSlots}) != 0
+          AND ebi.equipment_id IN
+          <foreach item="equipmentId" collection="equipmentIds" open="(" separator="," close=")">
+              #{equipmentId}
+          </foreach>
+        ORDER BY eb.created_at ASC
+    </select>
+
+    <update id="batchRejectPendingBookings">
+        UPDATE equipment_bookings
+        SET status = 3,
+            reviewed_by = #{reviewedBy},
+            reviewed_at = NOW(),
+            version = version + 1
+        WHERE status = 1
+          AND id IN
+          <foreach item="id" collection="ids" open="(" separator="," close=")">
+              #{id}
+          </foreach>
+    </update>
+
     <select id="sumApprovedQuantityAtHour" resultType="int">
         SELECT COALESCE(SUM(ebi.quantity), 0)
         FROM equipment_booking_items ebi
