@@ -23,7 +23,7 @@
 
         <section class="summary-grid">
           <article class="summary-card">
-            <span class="summary-label">借用日期</span>
+            <span class="summary-label">借用時段</span>
             <strong>{{ formatDateDisplay(booking.borrowDate) }}</strong>
             <span class="summary-subtle">{{ booking.timeRange }}</span>
           </article>
@@ -61,7 +61,7 @@
                   <strong>{{ item.equipmentName }}</strong>
                 </div>
                 <div class="equipment-review-actions">
-                  <span class="status-pill is-pending">x {{ item.quantity }}</span>
+                  <span class="status-pill quantity-pill">x {{ item.quantity }}</span>
                 </div>
               </article>
             </div>

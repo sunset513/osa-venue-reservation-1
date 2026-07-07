@@ -168,34 +168,9 @@
   font-size: var(--text-sm);
 }
 
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2rem;
-  margin-top: 0.15rem;
-  padding: 0.35rem 0.8rem;
-  border-radius: 999px;
+.quantity-pill {
+  background: var(--accent);
   color: #ffffff;
-  font-size: var(--text-sm);
-  font-weight: 700;
-}
-
-.status-pill.is-pending {
-  background: var(--status-pending);
-  color: #2d3436;
-}
-
-.status-pill.is-approved {
-  background: var(--status-approved);
-}
-
-.status-pill.is-rejected {
-  background: var(--status-rejected);
-}
-
-.status-pill.is-withdrawn {
-  background: var(--status-occupied);
 }
 
 .equipment-list {
@@ -211,8 +186,9 @@
 
 .equipment-review-item {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
   padding: 0.65rem;
   border: 1px solid var(--line);
@@ -226,36 +202,6 @@
   gap: 0.35rem;
 }
 
-.equipment-status-pill {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  min-height: 1.75rem;
-  padding: 0.25rem 0.55rem;
-  border-radius: 999px;
-  font-size: var(--text-sm);
-  font-weight: 800;
-
-  &.is-pending {
-    background: rgba(217, 119, 6, 0.12);
-    color: #a15c00;
-  }
-
-  &.is-approved {
-    background: rgba(46, 139, 87, 0.12);
-    color: var(--status-approved);
-  }
-
-  &.is-rejected {
-    background: rgba(196, 69, 69, 0.1);
-    color: var(--danger);
-  }
-
-  &.is-withdrawn {
-    background: var(--surface-muted);
-    color: var(--muted-strong);
-  }
-}
 
 .equipment-review-actions {
   display: flex;

@@ -361,8 +361,7 @@ onMounted(loadBorrowHistory);
   font-size: var(--text-sm);
 }
 
-.time-chip,
-.status-pill {
+.time-chip {
   display: inline-flex;
   align-items: center;
   min-height: 2rem;
@@ -371,31 +370,8 @@ onMounted(loadBorrowHistory);
   font-size: var(--text-sm);
   font-weight: 800;
   white-space: nowrap;
-}
-
-.time-chip {
   background: var(--accent-soft);
   color: var(--accent);
-}
-
-.status-pill.is-pending {
-  background: rgba(217, 119, 6, 0.12);
-  color: #a15c00;
-}
-
-.status-pill.is-approved {
-  background: rgba(46, 139, 87, 0.12);
-  color: var(--status-approved);
-}
-
-.status-pill.is-rejected {
-  background: rgba(196, 69, 69, 0.1);
-  color: var(--danger);
-}
-
-.status-pill.is-withdrawn {
-  background: var(--surface-muted);
-  color: var(--muted-strong);
 }
 
 .page-btn {

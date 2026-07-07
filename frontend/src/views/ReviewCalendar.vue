@@ -175,7 +175,7 @@
             >
               <div class="case-main">
                 <div class="case-title-line">
-                  <span class="status-badge" :class="booking.statusClass">{{ booking.statusText }}</span>
+                  <span class="status-pill" :class="booking.statusClass">{{ booking.statusText }}</span>
                   <strong>{{ booking.purpose || "未填寫用途" }}</strong>
                 </div>
                 <div class="case-meta">
@@ -251,7 +251,7 @@
           >
             <div class="case-main">
               <div class="case-title-line">
-                <span class="status-badge" :class="getReviewEquipmentStatusMeta(equipmentBooking.status).className">
+                <span class="status-pill" :class="getReviewEquipmentStatusMeta(equipmentBooking.status).className">
                   {{ getReviewEquipmentStatusMeta(equipmentBooking.status).text }}
                 </span>
                 <strong>{{ equipmentBooking.itemSummary }}</strong>
@@ -2096,36 +2096,6 @@ onBeforeUnmount(() => {
     }
   }
 
-  .status-badge {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 1.75rem;
-    padding: 0.28rem 0.65rem;
-    border-radius: 999px;
-    color: #ffffff;
-    font-size: var(--text-sm);
-    font-weight: 800;
-    line-height: 1;
-
-    &.is-pending {
-      background: var(--status-pending);
-      color: #2d3436;
-    }
-
-    &.is-approved {
-      background: var(--status-approved);
-    }
-
-    &.is-rejected {
-      background: var(--status-rejected);
-    }
-
-    &.is-withdrawn {
-      background: var(--status-occupied);
-    }
-  }
 
   :deep(.fc) {
     min-width: 760px;

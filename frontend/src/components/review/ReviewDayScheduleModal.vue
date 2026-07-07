@@ -34,7 +34,7 @@
               <span class="time-range">{{ booking.timeRange }}</span>
 
               <div class="schedule-badges">
-                <span class="status-badge" :class="booking.statusClass">
+                <span class="status-pill" :class="booking.statusClass">
                   {{ booking.statusText }}
                 </span>
                 <span class="count-badge">{{ booking.participantCount }}人</span>
@@ -290,7 +290,6 @@ const closeModal = () => {
   align-self: flex-end;
 }
 
-.status-badge,
 .count-badge {
   display: inline-flex;
   align-items: center;
@@ -301,25 +300,6 @@ const closeModal = () => {
   font-size: var(--text-sm);
   font-weight: 700;
   line-height: 1;
-}
-
-.status-badge.is-pending {
-  background: var(--status-pending);
-}
-
-.status-badge.is-approved {
-  background: var(--status-approved);
-}
-
-.status-badge.is-rejected {
-  background: var(--status-rejected);
-}
-
-.status-badge.is-withdrawn {
-  background: var(--status-occupied);
-}
-
-.count-badge {
   background: var(--status-info);
 }
 

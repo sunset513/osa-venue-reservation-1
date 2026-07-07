@@ -51,7 +51,7 @@
 
       <footer class="modal-footer">
         <button class="btn btn-secondary" @click="closeModal">
-          <span class="btn-icon">
+          <span class="btn-icon btn-icon-plain">
             <X :size="16" />
           </span>
           <span>關閉</span>
@@ -357,6 +357,15 @@ const handleCardClick = (booking) => {
   font-size: 0.9rem;
   line-height: 1;
   font-weight: 700;
+}
+
+.btn-icon-plain {
+  width: 1rem;
+  height: 1rem;
+  border: none;
+  border-radius: 0;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 @media (max-width: 768px) {
