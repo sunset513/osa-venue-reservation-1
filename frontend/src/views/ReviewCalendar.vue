@@ -11,38 +11,45 @@
           <ClipboardCheck :size="28" aria-hidden="true" class="page-title-icon" />
           <span>審核工作台</span>
         </h1>
-        <p>以預約申請為中心處理場地借用，檢視狀態、比對時段，並從同一處完成核准或退回。</p>
+        <p>以預約申請為中心處理場地借用，檢視狀態、比對時段，並從同一處完成通過或退回。</p>
       </div>
 
-      <button
-        class="btn btn-secondary route-booking-btn"
-        type="button"
-        :disabled="!canNavigateToVenueBooking"
-        @click="navigateToVenueBooking()"
-      >
-        <ArrowRight :size="17" aria-hidden="true" />
-        <span>{{ bookingRouteLabel }}</span>
-      </button>
+      <div class="header-actions">
+        <div class="review-mode-toggle" role="group" aria-label="切換審核類型">
+          <button
+            class="view-toggle-btn badge-toggle-btn"
+            :class="{ 'is-active': activeReviewMode === 'venue' }"
+            type="button"
+            @click="activeReviewMode = 'venue'"
+          >
+            <Building2 :size="16" aria-hidden="true" />
+            <span>場地預約</span>
+            <span v-if="venuePendingCount > 0" class="pending-badge">
+              {{ venuePendingCount }}
+            </span>
+          </button>
+          <button
+            class="view-toggle-btn badge-toggle-btn"
+            :class="{ 'is-active': activeReviewMode === 'equipment' }"
+            type="button"
+            @click="activeReviewMode = 'equipment'"
+          >
+            <Wrench :size="16" aria-hidden="true" />
+            <span>設備借用</span>
+            <span v-if="standalonePendingCount > 0" class="pending-badge">
+              {{ standalonePendingCount }}
+            </span>
+          </button>
+        </div>
 
-      <div class="review-mode-toggle" role="group" aria-label="切換審核類型">
         <button
-          class="view-toggle-btn"
-          :class="{ 'is-active': activeReviewMode === 'venue' }"
+          class="btn btn-secondary route-booking-btn"
           type="button"
-          @click="activeReviewMode = 'venue'"
+          :disabled="!canNavigateToVenueBooking"
+          @click="navigateToVenueBooking()"
         >
-          場地預約
-        </button>
-        <button
-          class="view-toggle-btn badge-toggle-btn"
-          :class="{ 'is-active': activeReviewMode === 'equipment' }"
-          type="button"
-          @click="activeReviewMode = 'equipment'"
-        >
-          設備借用
-          <span v-if="standalonePendingCount > 0" class="pending-badge">
-            {{ standalonePendingCount }}
-          </span>
+          <ArrowRight :size="17" aria-hidden="true" />
+          <span>{{ bookingRouteLabel }}</span>
         </button>
       </div>
     </header>
@@ -189,64 +196,80 @@
       </section>
     </div>
 
-    <section v-else class="standalone-equipment-panel card">
-      <div class="panel-heading">
-        <div>
-          <p class="panel-kicker">設備借用</p>
-          <h2>設備審核清單</h2>
-        </div>
-        <button class="btn btn-secondary" type="button" @click="loadEquipmentReviews">
-          重新整理
-        </button>
-      </div>
-
-      <div v-if="equipmentReviewLoading" class="loading-state">載入設備申請中...</div>
-      <div v-else-if="equipmentReviewPage.items.length === 0" class="list-empty-state">
-        目前沒有設備借用申請。
-      </div>
-      <div v-else class="case-list">
-        <article
-          v-for="equipmentBooking in equipmentReviewPage.items"
-          :key="equipmentBooking.id"
-          class="case-row equipment-case-row"
-        >
-          <div class="case-main">
-            <div class="case-title-line">
-              <span class="status-badge" :class="getEquipmentBookingStatusMeta(equipmentBooking.status).className">
-                {{ getEquipmentBookingStatusMeta(equipmentBooking.status).text }}
-              </span>
-              <strong>{{ equipmentBooking.itemSummary }}</strong>
-            </div>
-            <div class="case-meta">
-              <span>申請編號 #{{ equipmentBooking.id }}</span>
-              <span>{{ equipmentBooking.contact.name || equipmentBooking.userId }}</span>
-              <span>{{ equipmentBooking.contact.phone || "未提供電話" }}</span>
-              <span>{{ equipmentBooking.contact.email || "未提供 Email" }}</span>
-              <span v-if="equipmentBooking.relatedVenueName">關聯場地：{{ equipmentBooking.relatedVenueName }}</span>
-              <span v-else>單獨借用</span>
-              <span>{{ equipmentBooking.purpose }}</span>
-            </div>
-          </div>
-          <div class="case-schedule">
-            <strong>{{ equipmentBooking.borrowDate }}</strong>
-            <span>{{ equipmentBooking.timeRange }}</span>
-          </div>
-          <div class="equipment-review-row-actions">
+    <div v-else class="workbench-layout">
+      <aside class="control-panel card">
+        <section class="panel-section status-filter-section equipment-status-filter-section" aria-label="設備申請狀態篩選">
+          <span class="section-label">申請狀態</span>
+          <div class="status-filter-list">
             <button
-              v-for="action in getEquipmentReviewActions(equipmentBooking)"
-              :key="action.key"
-              class="btn"
-              :class="action.buttonClass"
+              v-for="option in equipmentStatusFilterOptions"
+              :key="option.key"
+              class="status-filter-card"
+              :class="[option.className, { 'is-active': equipmentSelectedStatus === option.statusValue }]"
               type="button"
-              :disabled="equipmentProcessingId === equipmentBooking.id"
-              @click="handleEquipmentStatusUpdate(equipmentBooking.id, action.status)"
+              :aria-pressed="equipmentSelectedStatus === option.statusValue"
+              @click="selectEquipmentStatusFilter(option.statusValue)"
             >
-              {{ action.label }}
+              <span class="status-filter-icon">
+                <component :is="option.icon" :size="19" aria-hidden="true" />
+              </span>
+              <span class="status-filter-copy">
+                <strong>{{ option.label }}</strong>
+                <span>{{ option.helper }}</span>
+              </span>
+              <span class="status-filter-count">{{ option.value }}</span>
             </button>
           </div>
-        </article>
-      </div>
-    </section>
+        </section>
+      </aside>
+
+      <section class="calendar-panel standalone-equipment-panel card">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">設備借用</p>
+            <h2>設備審核清單</h2>
+          </div>
+          <button class="btn btn-secondary" type="button" @click="loadEquipmentReviews">
+            <span class="btn-icon">
+              <RefreshCw :size="16" aria-hidden="true" />
+            </span>
+            <span>重新整理</span>
+          </button>
+        </div>
+
+        <div v-if="equipmentReviewLoading" class="loading-state">載入設備申請中...</div>
+        <div v-else-if="filteredEquipmentReviewItems.length === 0" class="list-empty-state">
+          目前沒有設備借用申請。
+        </div>
+        <div v-else class="case-list">
+          <button
+            v-for="equipmentBooking in filteredEquipmentReviewItems"
+            :key="equipmentBooking.id"
+            class="case-row"
+            type="button"
+            @click="openEquipmentDetail(equipmentBooking.id)"
+          >
+            <div class="case-main">
+              <div class="case-title-line">
+                <span class="status-badge" :class="getReviewEquipmentStatusMeta(equipmentBooking.status).className">
+                  {{ getReviewEquipmentStatusMeta(equipmentBooking.status).text }}
+                </span>
+                <strong>{{ equipmentBooking.itemSummary }}</strong>
+              </div>
+              <div class="case-meta">
+                <span>申請編號 #{{ equipmentBooking.id }}</span>
+                <span>{{ equipmentBooking.relatedVenueName || "單獨借用設備" }}</span>
+                <span>{{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}</span>
+              </div>
+            </div>
+            <div class="case-schedule">
+              <strong>{{ formatEquipmentBorrowDateMeta(equipmentBooking.borrowDate) }}</strong>
+              <span>{{ equipmentBooking.timeRange || "未提供時段" }}</span>
+            </div>
+          </button>
+        </div>
+      </section>
+    </div>
   </div>
 
   <ReviewDayScheduleModal
@@ -275,6 +298,14 @@
     @reject-equipment="handleRejectEquipment"
     @update-equipment-status="handleEquipmentStatusUpdate"
   />
+
+  <ReviewEquipmentModal
+    :visible="isEquipmentDetailModalVisible"
+    :booking="selectedEquipmentBookingDetail"
+    :processing="equipmentProcessingId !== null"
+    @close="closeEquipmentDetailModal"
+    @update-status="handleEquipmentDetailStatusUpdate"
+  />
 </template>
 
 <script setup>
@@ -286,17 +317,23 @@ import interactionPlugin from "@fullcalendar/interaction";
 import {
   ArrowRight,
   BadgeCheck,
+  Building2,
   CalendarDays,
+  Check,
   ClipboardCheck,
   ClipboardList,
   Clock3,
   List,
+  RefreshCw,
+  RotateCcw,
   ShieldCheck,
+  Wrench,
   XCircle,
 } from "lucide-vue-next";
 
 import ReviewBookingModal from "@/components/review/ReviewBookingModal.vue";
 import ReviewDayScheduleModal from "@/components/review/ReviewDayScheduleModal.vue";
+import ReviewEquipmentModal from "@/components/review/ReviewEquipmentModal.vue";
 import { fetchVenuesByUnit } from "@/api/venue";
 import {
   approveReviewBooking,
@@ -337,8 +374,9 @@ const selectedVenueId = ref(ALL_VENUES_VALUE);
 const selectedStatus = ref("1");
 const pageLoading = ref(true);
 const isFetchingEvents = ref(false);
-const activeViewMode = ref("calendar");
+const activeViewMode = ref("list");
 const activeReviewMode = ref("venue");
+const equipmentSelectedStatus = ref("1");
 const isMonthPickerOpen = ref(false);
 const monthPickerValue = ref("");
 const monthPickerRef = ref(null);
@@ -360,6 +398,8 @@ const equipmentProcessingId = ref(null);
 const standalonePendingCount = ref(0);
 const equipmentReviewLoading = ref(false);
 const equipmentReviewPage = ref(normalizeEquipmentBookingPage());
+const isEquipmentDetailModalVisible = ref(false);
+const selectedEquipmentBookingDetail = ref(null);
 
 const isAllVenuesSelected = computed(() => selectedVenueId.value === ALL_VENUES_VALUE);
 const canNavigateToVenueBooking = computed(() => {
@@ -384,6 +424,20 @@ const bookingRouteLabel = computed(() => {
 });
 
 let calendarTitleElement = null;
+
+const formatEquipmentBorrowDateMeta = (value) => {
+  if (!value) return "未提供日期";
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).format(date);
+};
 
 const formatMonthPickerValue = (date) => {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
@@ -493,6 +547,8 @@ const statusCounts = computed(() => {
   );
 });
 
+const venuePendingCount = computed(() => statusCounts.value.pending);
+
 const statusFilterOptions = computed(() => [
   {
     key: "all",
@@ -515,7 +571,7 @@ const statusFilterOptions = computed(() => [
   {
     key: "approved",
     label: "已通過",
-    helper: "已核准使用",
+    helper: "已通過申請",
     value: statusCounts.value.approved,
     className: "is-approved",
     icon: BadgeCheck,
@@ -524,13 +580,81 @@ const statusFilterOptions = computed(() => [
   {
     key: "rejected",
     label: "已拒絕",
-    helper: "未核准申請",
+    helper: "未通過申請",
     value: statusCounts.value.rejected,
     className: "is-rejected",
     icon: XCircle,
     statusValue: "3",
   },
 ]);
+
+const equipmentStatusCounts = computed(() => {
+  return equipmentReviewPage.value.items.reduce(
+    (counts, booking) => {
+      counts.all += 1;
+
+      if (booking.status === 1) counts.pending += 1;
+      if (booking.status === 2) counts.approved += 1;
+      if (booking.status === 3) counts.rejected += 1;
+
+      return counts;
+    },
+    { all: 0, pending: 0, approved: 0, rejected: 0 },
+  );
+});
+
+const equipmentStatusFilterOptions = computed(() => [
+  {
+    key: "all",
+    label: "全部申請",
+    helper: "目前畫面所有設備申請",
+    value: equipmentStatusCounts.value.all,
+    className: "is-all",
+    icon: ClipboardList,
+    statusValue: "",
+  },
+  {
+    key: "pending",
+    label: "待審核",
+    helper: "等待處理的設備申請",
+    value: equipmentStatusCounts.value.pending,
+    className: "is-pending",
+    icon: Clock3,
+    statusValue: "1",
+  },
+  {
+    key: "approved",
+    label: "已通過",
+    helper: "已通過的設備申請",
+    value: equipmentStatusCounts.value.approved,
+    className: "is-approved",
+    icon: BadgeCheck,
+    statusValue: "2",
+  },
+  {
+    key: "rejected",
+    label: "已拒絕",
+    helper: "未通過的設備申請",
+    value: equipmentStatusCounts.value.rejected,
+    className: "is-rejected",
+    icon: XCircle,
+    statusValue: "3",
+  },
+]);
+
+const getReviewEquipmentStatusMeta = (status) => {
+  const meta = getEquipmentBookingStatusMeta(status);
+  return {
+    ...meta,
+    text: meta.text === "審核中" ? "待審核" : meta.text,
+  };
+};
+
+const filteredEquipmentReviewItems = computed(() => {
+  return equipmentSelectedStatus.value === ""
+    ? equipmentReviewPage.value.items
+    : equipmentReviewPage.value.items.filter((booking) => booking.status === Number(equipmentSelectedStatus.value));
+});
 
 const selectedDayBookings = computed(() => {
   if (!selectedDate.value) return [];
@@ -589,17 +713,17 @@ const getEquipmentReviewActions = (equipmentBooking) => {
   switch (equipmentBooking?.status) {
     case 1:
       return [
-        { key: "reject", label: "拒絕", buttonClass: "btn-danger", status: 3 },
-        { key: "approve", label: "核准", buttonClass: "btn-primary", status: 2 },
+        { key: "reject", label: "拒絕申請", icon: XCircle, buttonClass: "btn-danger", status: 3 },
+        { key: "approve", label: "通過申請", icon: Check, buttonClass: "btn-primary", status: 2 },
       ];
     case 2:
       return [
-        { key: "reject-approved", label: "改為拒絕", buttonClass: "btn-danger", status: 3 },
+        { key: "reject-approved", label: "改為拒絕", icon: XCircle, buttonClass: "btn-danger", status: 3 },
       ];
     case 3:
       return [
-        { key: "pending-rejected", label: "改為審核中", buttonClass: "btn-secondary", status: 1 },
-        { key: "approve-rejected", label: "改為核准", buttonClass: "btn-primary", status: 2 },
+        { key: "pending-rejected", label: "改為待審核", icon: RotateCcw, buttonClass: "btn-secondary-alt", status: 1 },
+        { key: "approve-rejected", label: "改為通過", icon: Check, buttonClass: "btn-primary", status: 2 },
       ];
     default:
       return [];
@@ -884,6 +1008,12 @@ const selectStatusFilter = async (statusValue) => {
   await handleFilterChange();
 };
 
+const selectEquipmentStatusFilter = (statusValue) => {
+  if (equipmentSelectedStatus.value === statusValue) return;
+
+  equipmentSelectedStatus.value = statusValue;
+};
+
 watch(activeViewMode, (nextMode) => {
   if (nextMode === "calendar") {
     void refreshCalendarLayout();
@@ -1022,6 +1152,29 @@ const handleRejectEquipment = async (equipmentBookingId) => {
   await handleEquipmentStatusUpdate(equipmentBookingId, 3);
 };
 
+const openEquipmentDetail = (id) => {
+  const booking = equipmentReviewPage.value.items.find((b) => b.id === id);
+  if (booking) {
+    selectedEquipmentBookingDetail.value = booking;
+    isEquipmentDetailModalVisible.value = true;
+  }
+};
+
+const closeEquipmentDetailModal = () => {
+  isEquipmentDetailModalVisible.value = false;
+  selectedEquipmentBookingDetail.value = null;
+};
+
+const handleEquipmentDetailStatusUpdate = async (id, status) => {
+  await handleEquipmentStatusUpdate(id, status);
+  if (selectedEquipmentBookingDetail.value?.id === id) {
+    const updated = equipmentReviewPage.value.items.find((b) => b.id === id);
+    if (updated) {
+      selectedEquipmentBookingDetail.value = updated;
+    }
+  }
+};
+
 const handleEquipmentStatusUpdate = async (equipmentBookingId, status) => {
   if (!equipmentBookingId) return;
 
@@ -1078,7 +1231,7 @@ onBeforeUnmount(() => {
     margin-bottom: 1.25rem;
     padding: 1.35rem 1.45rem;
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
     border: 1px solid var(--review-line);
@@ -1092,6 +1245,7 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.45rem;
+    flex: 1 1 auto;
 
     h1,
     p {
@@ -1108,6 +1262,15 @@ onBeforeUnmount(() => {
     }
   }
 
+  .header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.85rem;
+    margin-left: auto;
+    align-self: stretch;
+  }
+
   .page-title {
     display: inline-flex;
     align-items: center;
@@ -1116,6 +1279,30 @@ onBeforeUnmount(() => {
 
   .page-title-icon {
     flex-shrink: 0;
+    color: var(--accent);
+  }
+
+  .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  .btn-danger {
+    background: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    box-shadow: 0 8px 18px rgba(196, 69, 69, 0.22);
+  }
+
+  .btn-secondary-alt {
+    background: #f3f6fb;
+    border-color: rgba(var(--blue-900-rgb), 0.12);
     color: var(--accent);
   }
 
@@ -1146,6 +1333,7 @@ onBeforeUnmount(() => {
 
   .route-booking-btn {
     flex-shrink: 0;
+    margin-top: auto;
   }
 
   .review-mode-toggle {
@@ -1593,22 +1781,273 @@ onBeforeUnmount(() => {
     border-color: var(--review-line);
   }
 
+  .equipment-status-filter-section {
+    margin-bottom: 0;
+  }
+
+  .equipment-case-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
   .equipment-case-row {
-    grid-template-columns: minmax(0, 1fr) minmax(12rem, auto) auto;
+    grid-template-columns: minmax(0, 1.8fr) minmax(10.5rem, 12rem) minmax(7.25rem, 8.5rem);
+    gap: 1rem;
+    align-items: start;
+    padding: 1rem 1.1rem;
+    border: 1px solid rgba(var(--blue-900-rgb), 0.12);
+    border-radius: calc(var(--radius-sm) + 4px);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 252, 0.98));
+    box-shadow: 0 12px 28px rgba(20, 35, 58, 0.06);
     cursor: default;
 
     &:hover,
     &:focus-visible {
-      background: #ffffff;
-      box-shadow: none;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(247, 250, 252, 1));
+      box-shadow: 0 16px 34px rgba(20, 35, 58, 0.08);
     }
   }
 
-  .equipment-review-row-actions {
+  .equipment-case-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title meta"
+      "facts facts"
+      "purpose purpose"
+      "contact contact";
+    gap: 0.7rem 1rem;
+  }
+
+  .equipment-title-line {
+    grid-area: title;
+    align-items: flex-start;
+    margin: 0;
+
+    strong {
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+  }
+
+  .equipment-card-meta {
+    grid-area: meta;
+    justify-self: end;
+    align-self: start;
+  }
+
+  .equipment-card-id {
     display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
+    min-height: 1.9rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(var(--blue-900-rgb), 0.06);
+    color: var(--review-muted);
+    font-size: var(--text-xs);
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .equipment-key-facts {
+    grid-area: facts;
+    display: grid;
     gap: 0.55rem;
+  }
+
+  .equipment-fact {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+    column-gap: 0.85rem;
+    row-gap: 0.2rem;
+    align-items: start;
+
+    strong,
+    .equipment-fact-value {
+      color: var(--review-ink);
+      font-size: 0.98rem;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .equipment-fact-full {
+    padding: 0;
+  }
+
+  .equipment-fact-label,
+  .equipment-schedule-label {
+    color: var(--review-muted);
+    font-size: var(--text-xs);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .equipment-fact-label {
+    grid-column: 1;
+    padding-top: 0.18rem;
+  }
+
+  .equipment-fact > strong,
+  .equipment-fact > .equipment-fact-value,
+  .equipment-fact > .equipment-context-chip,
+  .equipment-fact > .equipment-fact-value-stack {
+    grid-column: 2;
+  }
+
+  .equipment-fact-value-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.28rem;
+    min-width: 0;
+  }
+
+  .equipment-context-chip {
+    width: fit-content;
+    min-height: 1.7rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xs);
+    font-weight: 800;
+    line-height: 1;
+
+    &.is-linked {
+      background: rgba(var(--blue-900-rgb), 0.1);
+      color: var(--accent);
+    }
+
+    &.is-standalone {
+      background: rgba(97, 117, 138, 0.12);
+      color: #4d5e71;
+    }
+  }
+
+  .equipment-fact-value-group {
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .equipment-purpose {
+    grid-area: purpose;
+    margin: 0;
+  }
+
+  .equipment-contact-list {
+    grid-area: contact;
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .equipment-contact-row {
+    display: grid;
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+    column-gap: 0.85rem;
+    align-items: start;
+  }
+
+  .equipment-secondary-meta {
+    display: none;
+  }
+
+  .equipment-schedule {
+    min-width: 0;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid rgba(var(--blue-900-rgb), 0.16);
+    border-radius: var(--radius-sm);
+    background:
+      linear-gradient(135deg, rgba(39, 94, 168, 0.14), rgba(255, 255, 255, 0.96) 52%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(39, 94, 168, 0.08));
+    box-shadow: 0 8px 20px rgba(39, 94, 168, 0.08);
+    align-self: start;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    text-align: left;
+
+    strong {
+      line-height: 1.3;
+    }
+  }
+
+  .equipment-schedule-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.45rem;
+    width: 100%;
+    text-align: left;
+  }
+
+  .equipment-schedule-badge {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 1.95rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--accent);
+    font-size: var(--text-sm);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .equipment-schedule-date {
+    display: block;
+    color: var(--review-ink);
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    width: 100%;
+    text-align: left;
+  }
+
+  .equipment-time-pill {
+    width: fit-content;
+    max-width: 100%;
+    min-height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--accent);
+    font-size: var(--text-sm);
+    font-weight: 800;
+    line-height: 1.3;
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  .equipment-review-row-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.55rem;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+      min-height: 2.5rem;
+      padding-inline: 0.85rem;
+    }
   }
 
   .case-main,
@@ -1882,6 +2321,22 @@ onBeforeUnmount(() => {
     .status-filter-section {
       grid-column: 1 / -1;
     }
+
+    .equipment-case-row {
+      grid-template-columns: minmax(0, 1fr) minmax(9.5rem, 11rem);
+    }
+
+    .equipment-review-row-actions {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      justify-content: flex-start;
+
+      .btn {
+        width: auto;
+        min-width: 7.5rem;
+      }
+    }
+
   }
 
   @media (max-width: 760px) {
@@ -1894,6 +2349,11 @@ onBeforeUnmount(() => {
     .panel-heading-actions {
       align-items: stretch;
       flex-direction: column;
+    }
+
+    .header-actions {
+      align-items: stretch;
+      margin-left: 0;
     }
 
     .view-toggle {
@@ -1922,11 +2382,38 @@ onBeforeUnmount(() => {
       grid-template-columns: 1fr;
     }
 
+    .equipment-case-main {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "title"
+        "meta"
+        "facts"
+        "purpose"
+        "contact";
+    }
+
+    .equipment-card-meta {
+      justify-self: start;
+    }
+
     .case-schedule {
       align-items: flex-start;
 
       span {
         text-align: left;
+      }
+    }
+
+    .equipment-schedule {
+      min-width: 0;
+    }
+
+    .equipment-review-row-actions {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+
+      .btn {
+        width: 100%;
       }
     }
   }
