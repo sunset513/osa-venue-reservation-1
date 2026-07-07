@@ -96,7 +96,15 @@ export const convertSlotsToTimeRange = (dateStr, slots) => {
  */
 export const getEventColorConfig = (status, isMine = false) => {
   if (!isMine) {
-    // 他人的預約 (僅顯示已佔用)
+    if (status === 1) {
+      return {
+        backgroundColor: "#e5e7eb",
+        borderColor: "#94a3b8",
+        textColor: "#334155",
+      };
+    }
+
+    // 他人的已通過預約代表時段已確定佔用。
     return {
       backgroundColor: "#4A9A57",
       borderColor: "#3d8148",

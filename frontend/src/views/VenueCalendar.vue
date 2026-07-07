@@ -45,6 +45,10 @@
               審核中
             </span>
             <span class="legend-item">
+              <span class="legend-dot others-pending"></span>
+              他人審核中
+            </span>
+            <span class="legend-item">
               <span class="legend-dot others"></span>
               已佔用時段
             </span>
@@ -366,6 +370,43 @@ const openEditModal = (originalData) => {
   isModalVisible.value = true;
 };
 
+// 月曆卡片用顏色拆出四種語意，避免使用者把「待審」誤會成「已佔用」：
+// 1. 我的審核中：黃色，可編輯/撤回。
+// 2. 我的已通過：藍色，此頁只能查看，取消需聯絡管理單位。
+// 3. 他人審核中：灰色實線，只代表有人申請中，尚未確定佔用。
+// 4. 他人已通過：綠色，代表該時段已確定佔用。
+const getEventDisplayTitle = (booking) => {
+  if (booking.isMine === true) {
+    return booking.status === 2 ? "我的預約" : "審核中";
+  }
+
+  if (booking.status === 1) {
+    return "他人審核中";
+  }
+
+  return "已佔用";
+};
+
+const getEventClickWarning = (booking) => {
+  if (booking?.isMine === true && booking?.status === 2) {
+    return "這是你已通過的預約。如需取消，請聯絡管理單位。";
+  }
+
+  if (booking?.status === 1) {
+    return "這個時段已有其他申請正在審核，尚未確定佔用。";
+  }
+
+  return "這個時段已被他人預約，請改選其他時間。";
+};
+
+const getEventClassNames = (booking) => {
+  if (booking.isMine === false && booking.status === 1) {
+    return ["is-other-pending"];
+  }
+
+  return [];
+};
+
 const rebuildEventsFromBookings = (bookings) => {
   const rebuiltEvents = [];
 
@@ -382,7 +423,7 @@ const rebuildEventsFromBookings = (bookings) => {
       if (!timeRange) return;
 
       rebuiltEvents.push({
-        title: isMine ? "審核中" : "已佔用",
+        title: getEventDisplayTitle(booking),
         start: timeRange.start,
         end: timeRange.end,
         display: "block",
@@ -391,6 +432,7 @@ const rebuildEventsFromBookings = (bookings) => {
           canWithdraw,
           originalData: booking,
         },
+        classNames: getEventClassNames(booking),
         ...getEventColorConfig(booking.status, isMine),
       });
     });
@@ -407,7 +449,7 @@ const handleWithdrawBooking = async (bookingId) => {
   if (!targetBooking) return;
 
   if (targetBooking.canWithdraw !== true) {
-    warning("只能撤回自己的審核中申請。");
+    warning("這筆預約已經通過，不能在這裡撤回。若要取消，請聯絡管理單位。");
     return;
   }
 
@@ -495,7 +537,9 @@ const getVisibleDateRange = (view) => {
   };
 };
 
-const fetchMyPendingBookingIds = async (targetVenueId, view) => {
+// 查詢自己的審核中與已通過預約，才能把「我的已通過」維持為藍色；
+// 不在這個集合內的已通過預約，才會被視為他人已佔用並顯示為綠色。
+const fetchMyCalendarBookingIds = async (targetVenueId, view) => {
   const { startDate, endDate } = getVisibleDateRange(view);
 
   if (!targetVenueId || !startDate || !endDate) {
@@ -505,7 +549,7 @@ const fetchMyPendingBookingIds = async (targetVenueId, view) => {
   const pageSize = 100;
   const filters = {
     venueId: targetVenueId,
-    statusList: [1],
+    statusList: [1, 2],
     startDate,
     endDate,
     pageSize,
@@ -535,22 +579,23 @@ const loadEvents = async (view, targetVenueId = venueInfo.value?.id) => {
 
   try {
     const monthQueries = getVisibleMonthQueries(view);
-    const [monthResponses, myPendingBookingIds] = await Promise.all([
+    const [monthResponses, myCalendarBookingIds] = await Promise.all([
       Promise.all(
         monthQueries.map(({ year, month }) => fetchCalendarMonth(targetVenueId, year, month)),
       ),
-      fetchMyPendingBookingIds(targetVenueId, view),
+      fetchMyCalendarBookingIds(targetVenueId, view),
     ]);
 
     if (requestToken !== eventsRequestToken) return;
 
     monthlyBookings.value = monthResponses.flatMap((apiData) => apiData?.bookings || [])
       .map((booking) => {
-        const isMine = myPendingBookingIds.has(Number(booking.id));
+        const isMine = myCalendarBookingIds.has(Number(booking.id));
 
         return {
           ...booking,
           isMine,
+          // 可撤回條件比「我的預約」更窄：只有我的審核中申請能在此頁編輯或撤回。
           canWithdraw: isMine && booking.status === 1,
         };
       });
@@ -686,7 +731,7 @@ const calendarOptions = ref({
     if (canWithdraw && originalData) {
       openEditModal(originalData);
     } else {
-      warning("只能撤回自己的審核中申請。");
+      warning(getEventClickWarning(originalData));
     }
   },
 });
@@ -861,11 +906,16 @@ watch(isModalVisible, (visible) => {
 
   .legend-dot {
     &.my-approved {
-      background-color: var(--status-info);
+      background-color: #0984e3;
     }
 
     &.my-pending {
       background-color: var(--status-pending);
+    }
+
+    &.others-pending {
+      background-color: #e5e7eb;
+      border: 1px solid #94a3b8;
     }
 
     &.others {
