@@ -4,13 +4,13 @@
       <header class="modal-header">
         <div class="modal-heading">
           <p class="modal-eyebrow">Equipment Master</p>
-          <h2 id="equipment-master-edit-title">編輯設備</h2>
+          <h2 id="equipment-master-edit-title">{{ modalTitle }}</h2>
           <p class="modal-subtitle">{{ equipmentTitle }}</p>
         </div>
         <button
           class="close-btn"
           type="button"
-          aria-label="關閉編輯設備視窗"
+          :aria-label="`關閉${modalTitle}視窗`"
           :disabled="isSaving"
           @click="closeModal"
         >
@@ -119,11 +119,14 @@
 
         <footer class="modal-footer">
           <button class="btn btn-secondary" type="button" :disabled="isSaving" @click="closeModal">
-            取消
+            <span class="btn-icon">
+              <X :size="16" aria-hidden="true" />
+            </span>
+            <span>取消</span>
           </button>
           <button class="btn btn-primary" type="submit" :disabled="isSaving || isLoading">
             <Save v-if="!isSaving" :size="16" aria-hidden="true" />
-            <span>{{ isSaving ? "儲存中..." : "儲存變更" }}</span>
+            <span>{{ isSaving ? "儲存中..." : submitLabel }}</span>
           </button>
         </footer>
       </form>
@@ -134,7 +137,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import { Save, X } from "lucide-vue-next";
-import { getEquipment, updateEquipment } from "@/api/equipment";
+import { createEquipment, getEquipment, updateEquipment } from "@/api/equipment";
 import { fetchAllUnits, fetchVenuesByUnit } from "@/api/venue";
 import { buildEquipmentMasterPayload, normalizeEquipmentMaster } from "@/utils/equipment";
 import { useToast } from "@/utils/useToast.js";
@@ -170,9 +173,15 @@ const form = reactive({
   venueRules: [],
 });
 
+const isCreateMode = computed(() => !props.equipmentId);
+
+const modalTitle = computed(() => (isCreateMode.value ? "新增設備" : "編輯設備"));
+
 const equipmentTitle = computed(() => {
-  return currentEquipment.value?.name || props.equipmentName || "Equipment";
+  return currentEquipment.value?.name || props.equipmentName || (isCreateMode.value ? "建立新的設備主檔" : "Equipment");
 });
+
+const submitLabel = computed(() => (isCreateMode.value ? "新增設備" : "儲存變更"));
 
 const selectedVenueIds = computed(() => {
   return new Set(
@@ -245,13 +254,17 @@ const loadEquipmentDetail = async () => {
 };
 
 const initializeModal = async () => {
-  if (!props.equipmentId) return;
-
   isLoading.value = true;
   loadError.value = "";
 
   try {
-    await Promise.all([loadVenueCatalog(), loadEquipmentDetail()]);
+    if (isCreateMode.value) {
+      resetForm();
+      currentEquipment.value = null;
+      await loadVenueCatalog();
+    } else {
+      await Promise.all([loadVenueCatalog(), loadEquipmentDetail()]);
+    }
   } catch (error) {
     loadError.value = error.message || "Failed to load equipment details.";
   } finally {
@@ -301,7 +314,7 @@ const updateVenueRuleNote = (venueId, ruleNote) => {
 };
 
 const handleSubmit = async () => {
-  if (isSaving.value || !props.equipmentId) return;
+  if (isSaving.value) return;
 
   if (!form.name.trim()) {
     toast.warning("Please enter an equipment name.");
@@ -321,22 +334,23 @@ const handleSubmit = async () => {
   isSaving.value = true;
 
   try {
-    await updateEquipment(
-      props.equipmentId,
-      buildEquipmentMasterPayload({
-        name: form.name,
-        totalQuantity: form.totalQuantity,
-        description: form.description,
-        borrowNote: form.borrowNote,
-        venueRules: form.venueRestricted ? form.venueRules : [],
-      }),
-    );
+    const payload = buildEquipmentMasterPayload({
+      name: form.name,
+      totalQuantity: form.totalQuantity,
+      description: form.description,
+      borrowNote: form.borrowNote,
+      venueRules: form.venueRestricted ? form.venueRules : [],
+    });
 
-    toast.success("Equipment updated.");
-    emit("saved");
+    const savedEquipmentId = isCreateMode.value
+      ? await createEquipment(payload)
+      : await updateEquipment(props.equipmentId, payload);
+
+    toast.success(isCreateMode.value ? "設備已新增。" : "Equipment updated.");
+    emit("saved", savedEquipmentId || props.equipmentId);
     emit("update:visible", false);
   } catch (error) {
-    toast.error(error.message || "Failed to update equipment.");
+    toast.error(error.message || (isCreateMode.value ? "新增設備失敗。" : "Failed to update equipment."));
   } finally {
     isSaving.value = false;
   }
@@ -345,12 +359,17 @@ const handleSubmit = async () => {
 watch(
   () => [props.visible, props.equipmentId],
   async ([visible, equipmentId]) => {
-    if (!visible || !equipmentId) {
+    if (!visible) {
       if (!visible) {
         loadError.value = "";
         currentEquipment.value = null;
         resetForm();
       }
+      return;
+    }
+
+    if (!equipmentId) {
+      await initializeModal();
       return;
     }
 
@@ -645,6 +664,15 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 @media (max-width: 860px) {

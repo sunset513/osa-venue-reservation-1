@@ -29,11 +29,21 @@
         </span>
         <span>重新查詢</span>
       </button>
-      <button type="button" class="btn btn-primary" @click="router.push({ name: 'EquipmentBorrowForm' })">
+      <button type="button" class="btn btn-secondary admin-create-btn" @click="openCreateModal">
         <span class="btn-icon" aria-hidden="true">
-          <Plus :size="16" />
+          <PackagePlus :size="16" />
         </span>
-        <span>新增設備借用</span>
+        <span>創建設備</span>
+      </button>
+      <button
+        type="button"
+        class="btn btn-secondary route-borrow-link"
+        @click="router.push({ name: 'EquipmentBorrowForm' })"
+      >
+        <span class="btn-icon" aria-hidden="true">
+          <ArrowRight :size="16" />
+        </span>
+        <span>前往設備借用</span>
       </button>
     </section>
 
@@ -73,11 +83,6 @@
                     :disabled="equipment.activeBookings.length === 0"
                     @click="toggleExpanded(equipment.equipmentId)"
                   >
-                    <ChevronDown
-                      :size="16"
-                      aria-hidden="true"
-                      :class="{ 'is-collapsed': !isExpanded(equipment.equipmentId) }"
-                    />
                     <strong>{{ equipment.equipmentName }}</strong>
                   </button>
                 </td>
@@ -147,11 +152,11 @@
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import {
+  ArrowRight,
   ArrowLeft,
-  ChevronDown,
   History,
+  PackagePlus,
   PencilLine,
-  Plus,
   RefreshCw,
   Trash2,
 } from "lucide-vue-next";
@@ -196,6 +201,12 @@ const borrowHistoryRoute = (equipment) => ({
     equipmentName: equipment.equipmentName,
   },
 });
+
+const openCreateModal = () => {
+  editingEquipmentId.value = null;
+  editingEquipmentName.value = "";
+  isEditModalVisible.value = true;
+};
 
 const openEditModal = (equipment) => {
   editingEquipmentId.value = equipment.equipmentId;
@@ -323,6 +334,23 @@ onMounted(loadStatuses);
   flex-shrink: 0;
 }
 
+.admin-create-btn {
+  border: 1px solid rgba(36, 63, 107, 0.16);
+  background: linear-gradient(135deg, rgba(243, 247, 252, 0.98), rgba(232, 240, 250, 0.96));
+  color: #243f6b;
+  box-shadow: 0 10px 22px rgba(36, 63, 107, 0.12);
+
+  &:hover:not(:disabled) {
+    border-color: rgba(36, 63, 107, 0.28);
+    box-shadow: 0 12px 26px rgba(36, 63, 107, 0.18);
+    transform: translateY(-1px);
+  }
+}
+
+.route-borrow-link {
+  flex-shrink: 0;
+}
+
 .equipment-content {
   display: flex;
   flex-direction: column;
@@ -360,7 +388,6 @@ onMounted(loadStatuses);
 .row-title-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
   padding: 0;
   border: 0;
   background: transparent;
@@ -369,10 +396,6 @@ onMounted(loadStatuses);
 
   &:disabled {
     cursor: default;
-  }
-
-  .is-collapsed {
-    transform: rotate(-90deg);
   }
 }
 
@@ -403,6 +426,7 @@ onMounted(loadStatuses);
   flex-wrap: wrap;
   align-items: center;
   gap: 0.7rem;
+  width: 100%;
 }
 
 .history-url-link,
@@ -416,15 +440,29 @@ onMounted(loadStatuses);
 }
 
 .history-url-link {
+  margin-right: auto;
   text-decoration: underline;
   text-underline-offset: 0.18rem;
 }
 
 .action-btn {
-  padding: 0;
-  border: 0;
-  background: transparent;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(var(--blue-900-rgb), 0.14);
+  border-radius: 999px;
+  background: #ffffff;
   cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: rgba(var(--blue-900-rgb), 0.24);
+    background: rgba(var(--blue-900-rgb), 0.03);
+    box-shadow: 0 6px 16px rgba(var(--blue-900-rgb), 0.08);
+  }
 
   &:disabled {
     opacity: 0.55;
@@ -434,6 +472,14 @@ onMounted(loadStatuses);
 
 .action-btn-danger {
   color: var(--danger);
+  border-color: rgba(196, 69, 69, 0.26);
+  background: rgba(196, 69, 69, 0.04);
+
+  &:hover:not(:disabled) {
+    border-color: rgba(196, 69, 69, 0.42);
+    background: rgba(196, 69, 69, 0.08);
+    box-shadow: 0 6px 16px rgba(196, 69, 69, 0.12);
+  }
 }
 
 .active-booking-row td {
@@ -477,7 +523,11 @@ onMounted(loadStatuses);
 
   .action-buttons {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
+  }
+
+  .history-url-link {
+    margin-right: 0;
   }
 }
 </style>
