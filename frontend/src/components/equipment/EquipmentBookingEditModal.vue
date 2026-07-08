@@ -114,6 +114,9 @@
 
         <footer class="modal-footer">
           <button class="btn btn-secondary" type="button" :disabled="isSubmitting" @click="closeModal">
+            <span class="btn-icon" aria-hidden="true">
+              <X :size="16" />
+            </span>
             取消
           </button>
           <button class="btn btn-primary" type="submit" :disabled="isSubmitting || isEquipmentLoading">
@@ -577,11 +580,25 @@ input[type="number"] {
   font-size: var(--text-sm);
   flex-wrap: wrap;
   cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.equipment-option:hover,
+.equipment-option:focus-within {
+  border-color: rgba(var(--blue-900-rgb), 0.24);
+  background: #f8fbff;
+  box-shadow: 0 0 0 3px rgba(var(--blue-900-rgb), 0.08);
+  transform: translateY(-1px);
 }
 
 .equipment-option.is-selected {
   border-color: rgba(var(--blue-900-rgb), 0.36);
   background: var(--accent-soft);
+  box-shadow: 0 6px 16px rgba(var(--blue-900-rgb), 0.08);
 }
 
 .equipment-option.is-disabled {
@@ -597,6 +614,13 @@ input[type="number"] {
 
 .equipment-option strong {
   color: var(--ink);
+}
+
+.equipment-option input[type="checkbox"] {
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
 }
 
 .equipment-option span,

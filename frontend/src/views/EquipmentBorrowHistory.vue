@@ -56,8 +56,7 @@
               <th>借用編號</th>
               <th>設備</th>
               <th>關聯場地預約編號</th>
-              <th>借用日期</th>
-              <th>借用時段</th>
+              <th>借用日期 / 時段</th>
               <th>狀態</th>
               <th>用途</th>
               <th>操作</th>
@@ -79,8 +78,12 @@
                 </span>
                 <span v-else class="row-subtle">單獨借用</span>
               </td>
-              <td>{{ formatDateLabel(record.borrowDate) }}</td>
-              <td><span class="time-chip">{{ record.timeRange }}</span></td>
+              <td>
+                <div class="schedule-cell">
+                  <span class="schedule-date">{{ formatDateLabel(record.borrowDate) }}</span>
+                  <span class="time-chip">{{ record.timeRange }}</span>
+                </div>
+              </td>
               <td>
                 <span class="status-pill" :class="getEquipmentBookingStatusMeta(record.status).className">
                   {{ getEquipmentBookingStatusMeta(record.status).text }}
@@ -94,7 +97,10 @@
                   class="page-btn action-btn"
                   @click="openEquipmentEditModal(record)"
                 >
-                  修改
+                  <span class="btn-icon" aria-hidden="true">
+                    <FilePenLine :size="16" />
+                  </span>
+                  <span>修改</span>
                 </button>
                 <button
                   v-else-if="getEditTarget(record) === 'venue'"
@@ -102,7 +108,10 @@
                   class="page-btn action-btn"
                   @click="goToVenueBookingEdit(record)"
                 >
-                  至場地預約修改
+                  <span class="btn-icon" aria-hidden="true">
+                    <FilePenLine :size="16" />
+                  </span>
+                  <span>至場地預約修改</span>
                 </button>
               </td>
             </tr>
@@ -141,6 +150,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { FilePenLine } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
 import EquipmentBookingEditModal from "@/components/equipment/EquipmentBookingEditModal.vue";
 import { queryMyEquipmentBookings } from "@/api/equipment";
@@ -438,6 +448,25 @@ onMounted(loadBorrowHistory);
   color: var(--accent);
 }
 
+.schedule-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.schedule-date {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .page-btn {
   min-width: 5rem;
   min-height: 2.35rem;
@@ -457,6 +486,9 @@ onMounted(loadBorrowHistory);
 }
 
 .action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   white-space: nowrap;
 }
 

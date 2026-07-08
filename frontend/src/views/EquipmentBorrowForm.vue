@@ -542,6 +542,12 @@ input[type="number"] {
   color: var(--text);
   font-size: var(--text-sm);
   flex-wrap: wrap;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 
   strong {
     color: var(--ink);
@@ -555,6 +561,14 @@ input[type="number"] {
     width: 5rem;
     margin-left: auto;
   }
+}
+
+.equipment-option:hover,
+.equipment-option:focus-within {
+  border-color: rgba(var(--blue-900-rgb), 0.24);
+  background: #f8fbff;
+  box-shadow: 0 0 0 3px rgba(var(--blue-900-rgb), 0.08);
+  transform: translateY(-1px);
 }
 
 .equipment-option.is-selected {
