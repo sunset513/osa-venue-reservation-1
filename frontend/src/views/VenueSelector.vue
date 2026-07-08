@@ -124,7 +124,7 @@ const openEquipmentBorrowForm = () => {
 
 .section-kicker {
   margin: 0;
-  color: var(--accent);
+  color: var(--muted);
   font-size: var(--text-sm);
   font-weight: 700;
 }

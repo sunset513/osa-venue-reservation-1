@@ -220,6 +220,33 @@ export const buildEquipmentBookingItems = (items = []) => {
     .filter((item) => item.equipmentId && item.quantity > 0);
 };
 
+export const getEquipmentBookingEditTarget = (record = {}) => {
+  if (Number(record.status) !== 1) return null;
+
+  return toNumberOrNull(record.relatedVenueBookingId) ? "venue" : "equipment";
+};
+
+export const canEditEquipmentBookingOnHistoryPage = (record = {}) => {
+  return getEquipmentBookingEditTarget(record) === "equipment";
+};
+
+export const buildEquipmentBookingUpdatePayload = (form = {}) => ({
+  borrowDate: toText(form.borrowDate || form.bookingDate),
+  slots: Array.isArray(form.slots)
+    ? [...new Set(form.slots.map(Number).filter((slot) =>
+        Number.isInteger(slot) && slot >= 0 && slot <= 23,
+      ))].sort((left, right) => left - right)
+    : [],
+  purpose: toText(form.purpose).trim(),
+  contactInfo: {
+    name: toText(form.contactInfo?.name).trim(),
+    phone: toText(form.contactInfo?.phone).trim(),
+    email: toText(form.contactInfo?.email).trim(),
+  },
+  relatedVenueBookingId: toNumberOrNull(form.relatedVenueBookingId),
+  items: buildEquipmentBookingItems(form.items ?? form.equipmentItems),
+});
+
 // Backward-compatible helpers retained for older components while their data
 // source moves from the removed grouped endpoint to the new equipment module.
 export const normalizeEquipmentItem = (item = {}) => ({

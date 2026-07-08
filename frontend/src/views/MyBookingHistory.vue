@@ -396,7 +396,7 @@ import {
   Pencil,
   RotateCcw,
 } from "lucide-vue-next";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import BookingModal from "@/components/booking/BookingModal.vue";
 import { queryMyBookings, withdrawBooking } from "@/api/booking";
 import { queryMyEquipmentBookings } from "@/api/equipment";
@@ -412,6 +412,7 @@ import {
 import { useToast } from "@/utils/useToast.js";
 import { normalizeVenueDisplayName } from "@/utils/venueLabels";
 
+const route = useRoute();
 const router = useRouter();
 const { error, warning } = useToast();
 const loading = ref(true);
@@ -434,6 +435,7 @@ const currentPage = ref(1);
 const datePickerOpen = ref(false);
 const dateRangePickerRef = ref(null);
 const dateRangePopoverRef = ref(null);
+const handledEditBookingId = ref(null);
 
 const BOOKING_PAGE_SIZE = 10;
 const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
@@ -909,6 +911,36 @@ const openEditModal = async (booking) => {
   }
 };
 
+const getRequestedEditBookingId = () => {
+  const rawValue = Array.isArray(route.query.editBookingId)
+    ? route.query.editBookingId[0]
+    : route.query.editBookingId;
+  const bookingId = Number(rawValue);
+
+  return Number.isFinite(bookingId) && bookingId > 0 ? bookingId : null;
+};
+
+const openRequestedEditBooking = async () => {
+  const bookingId = getRequestedEditBookingId();
+
+  if (!bookingId || handledEditBookingId.value === bookingId) return;
+
+  const booking = historyItems.value.find((item) => Number(item.id) === bookingId);
+  handledEditBookingId.value = bookingId;
+
+  if (!booking) {
+    warning("找不到要修改的場地預約。");
+    return;
+  }
+
+  if (!booking.canEdit) {
+    warning("這筆場地預約目前無法修改。只有待審核的預約可以自行修改；若預約已通過、退回或撤回，請重新送出申請或聯絡管理單位協助。");
+    return;
+  }
+
+  await openEditModal(booking);
+};
+
 const handleModalSuccess = async () => {
   isModalVisible.value = false;
   await loadBookings();
@@ -964,6 +996,7 @@ const loadBookings = async () => {
 onMounted(async () => {
   document.addEventListener("click", handleDocumentClick);
   await loadBookings();
+  await openRequestedEditBooking();
 });
 
 onBeforeUnmount(() => {
@@ -973,6 +1006,16 @@ onBeforeUnmount(() => {
 watch([keywordFilter, venueFilter, statusFilter, startDateFilter, endDateFilter], () => {
   setCurrentPage(1);
 });
+
+watch(
+  () => route.query.editBookingId,
+  async () => {
+    handledEditBookingId.value = null;
+    if (!loading.value) {
+      await openRequestedEditBooking();
+    }
+  },
+);
 </script>
 
 <style lang="scss" scoped>

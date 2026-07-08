@@ -2,11 +2,11 @@
   <div class="equipment-history-page page-enter">
     <header class="page-header equipment-history-header">
       <button class="back-btn" type="button" @click="router.push({ name: 'EquipmentStatus' })">
-        ← 返回設備狀態管理
+        返回設備狀態
       </button>
       <p class="hero-eyebrow">Equipment Records</p>
-      <h1>我的設備借用紀錄</h1>
-      <p>查看單獨設備借用與場地預約關聯設備的申請狀態。</p>
+      <h1>我的設備借用記錄</h1>
+      <p>查看設備借用申請狀態，待審核的獨立設備借用可在此修改。</p>
     </header>
 
     <section class="history-toolbar">
@@ -31,14 +31,14 @@
         </span>
       </div>
       <button type="button" class="page-btn filter-clear-btn" @click="clearFilters">
-        全部記錄
+        清除篩選
       </button>
     </section>
 
     <div v-if="loading" class="loading-state">載入設備借用記錄中...</div>
 
     <div v-else-if="loadError" class="empty-state history-feedback">
-      <h3>目前無法載入借用記錄</h3>
+      <h3>無法載入設備借用記錄</h3>
       <p>{{ loadError }}</p>
       <button type="button" class="btn btn-secondary" @click="loadBorrowHistory">重新載入</button>
     </div>
@@ -46,19 +46,21 @@
     <section v-else class="borrow-record-section">
       <div v-if="borrowPage.items.length === 0" class="empty-state history-feedback">
         <h3>目前沒有設備借用記錄</h3>
-        <p>送出的設備借用申請會顯示在這裡。</p>
+        <p>送出設備借用申請後，就可以在這裡追蹤狀態。</p>
       </div>
 
       <div v-else class="borrow-table-wrap">
         <table class="borrow-table">
           <thead>
             <tr>
-              <th>設備借用編號</th>
+              <th>借用編號</th>
               <th>設備</th>
+              <th>關聯場地預約編號</th>
               <th>借用日期</th>
               <th>借用時段</th>
               <th>狀態</th>
               <th>用途</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -69,7 +71,13 @@
                 <p v-if="record.relatedVenueName" class="row-subtle">
                   關聯場地：{{ record.relatedVenueName }}
                 </p>
-                <p v-else class="row-subtle">單獨設備借用</p>
+                <p v-else class="row-subtle">獨立設備借用</p>
+              </td>
+              <td>
+                <span v-if="record.relatedVenueBookingId" class="venue-booking-id">
+                  #{{ record.relatedVenueBookingId }}
+                </span>
+                <span v-else class="row-subtle">獨立借用</span>
               </td>
               <td>{{ formatDateLabel(record.borrowDate) }}</td>
               <td><span class="time-chip">{{ record.timeRange }}</span></td>
@@ -79,6 +87,24 @@
                 </span>
               </td>
               <td>{{ record.purpose }}</td>
+              <td>
+                <button
+                  v-if="getEditTarget(record) === 'equipment'"
+                  type="button"
+                  class="page-btn action-btn"
+                  @click="openEquipmentEditModal(record)"
+                >
+                  修改
+                </button>
+                <button
+                  v-else-if="getEditTarget(record) === 'venue'"
+                  type="button"
+                  class="page-btn action-btn"
+                  @click="goToVenueBookingEdit(record)"
+                >
+                  至場地預約修改
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -104,15 +130,22 @@
         </button>
       </footer>
     </section>
+
+    <EquipmentBookingEditModal
+      v-model:visible="isEditModalVisible"
+      :booking="editingRecord"
+      @success="handleEquipmentEditSuccess"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { ClipboardList } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
+import EquipmentBookingEditModal from "@/components/equipment/EquipmentBookingEditModal.vue";
 import { queryMyEquipmentBookings } from "@/api/equipment";
 import {
+  getEquipmentBookingEditTarget,
   getEquipmentBookingStatusMeta,
   normalizeEquipmentBookingPage,
 } from "@/utils/equipment";
@@ -125,6 +158,8 @@ const loadError = ref("");
 const pageNo = ref(1);
 const pageSize = ref(10);
 const borrowPage = ref(normalizeEquipmentBookingPage());
+const editingRecord = ref(null);
+const isEditModalVisible = ref(false);
 
 const displayTotalPages = computed(() => Math.max(borrowPage.value.totalPages, 1));
 
@@ -145,7 +180,7 @@ const activeFilters = computed(() => ({
 
 const hasActiveFilters = computed(() => Boolean(activeFilters.value.equipmentId));
 
-const activeFilterLabel = computed(() => (hasActiveFilters.value ? "篩選筆數" : "總筆數"));
+const activeFilterLabel = computed(() => (hasActiveFilters.value ? "篩選結果" : "全部記錄"));
 
 const formatDateLabel = (value) => {
   if (!value) return "未提供日期";
@@ -162,8 +197,6 @@ const formatDateLabel = (value) => {
 };
 
 const buildQueryPayload = () => {
-  // The backend now supports equipmentId filtering directly, so the page no
-  // longer needs to fetch every page and filter records locally.
   const payload = {
     pageNo: pageNo.value,
     pageSize: pageSize.value,
@@ -186,7 +219,7 @@ const loadBorrowHistory = async () => {
     );
   } catch (error) {
     console.error("載入設備借用記錄失敗:", error);
-    loadError.value = error.message || "請稍後再試一次。";
+    loadError.value = error.message || "請稍後再試，或聯絡系統管理員。";
   } finally {
     loading.value = false;
   }
@@ -202,6 +235,29 @@ const goToPage = async (targetPage) => {
   await loadBorrowHistory();
 };
 
+const getEditTarget = (record) => getEquipmentBookingEditTarget(record);
+
+const openEquipmentEditModal = (record) => {
+  if (getEditTarget(record) !== "equipment") return;
+
+  editingRecord.value = record;
+  isEditModalVisible.value = true;
+};
+
+const goToVenueBookingEdit = async (record) => {
+  if (getEditTarget(record) !== "venue" || !record.relatedVenueBookingId) return;
+
+  await router.push({
+    name: "MyBookingHistory",
+    query: { editBookingId: record.relatedVenueBookingId },
+  });
+};
+
+const handleEquipmentEditSuccess = async () => {
+  editingRecord.value = null;
+  await loadBorrowHistory();
+};
+
 watch(pageSize, async () => {
   pageNo.value = 1;
   await loadBorrowHistory();
@@ -214,6 +270,12 @@ watch(
     await loadBorrowHistory();
   },
 );
+
+watch(isEditModalVisible, (visible) => {
+  if (!visible) {
+    editingRecord.value = null;
+  }
+});
 
 onMounted(loadBorrowHistory);
 </script>
@@ -235,17 +297,6 @@ onMounted(loadBorrowHistory);
   font-size: var(--text-sm);
   font-weight: 800;
   text-transform: uppercase;
-}
-
-.page-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
-}
-
-.page-title-icon {
-  flex-shrink: 0;
-  color: var(--accent);
 }
 
 .history-toolbar,
@@ -333,7 +384,7 @@ onMounted(loadBorrowHistory);
 
 .borrow-table {
   width: 100%;
-  min-width: 820px;
+  min-width: 1080px;
   border-collapse: collapse;
 
   th,
@@ -359,6 +410,19 @@ onMounted(loadBorrowHistory);
   margin: 0.25rem 0 0;
   color: var(--muted);
   font-size: var(--text-sm);
+}
+
+.venue-booking-id {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(var(--blue-900-rgb), 0.06);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .time-chip {
@@ -390,6 +454,10 @@ onMounted(loadBorrowHistory);
     cursor: not-allowed;
     opacity: 0.6;
   }
+}
+
+.action-btn {
+  white-space: nowrap;
 }
 
 .page-indicator {

@@ -43,6 +43,16 @@
         </div>
 
         <button
+          v-if="isReviewer"
+          class="btn admin-equipment-btn"
+          type="button"
+          @click="navigateToEquipmentStatus"
+        >
+          <Wrench :size="17" aria-hidden="true" />
+          <span>設備狀態管理</span>
+        </button>
+
+        <button
           class="btn btn-secondary route-booking-btn"
           type="button"
           :disabled="!canNavigateToVenueBooking"
@@ -361,10 +371,12 @@ import {
   normalizeEquipmentBooking,
   normalizeEquipmentBookingPage,
 } from "@/utils/equipment";
+import { useAuthSessionStore } from "@/stores/authSession";
 import { useToast } from "@/utils/useToast";
 
 const { success, error } = useToast();
 const router = useRouter();
+const authSession = useAuthSessionStore();
 const ALL_VENUES_VALUE = "all";
 const REVIEW_UNIT_ID = "1";
 
@@ -401,6 +413,7 @@ const equipmentReviewPage = ref(normalizeEquipmentBookingPage());
 const isEquipmentDetailModalVisible = ref(false);
 const selectedEquipmentBookingDetail = ref(null);
 
+const isReviewer = computed(() => authSession.isReviewer);
 const isAllVenuesSelected = computed(() => selectedVenueId.value === ALL_VENUES_VALUE);
 const canNavigateToVenueBooking = computed(() => {
   if (isAllVenuesSelected.value) return venues.value.length > 0;
@@ -1060,6 +1073,12 @@ const navigateToVenueBooking = (dateStr) => {
   });
 };
 
+const navigateToEquipmentStatus = () => {
+  if (!isReviewer.value) return;
+
+  router.push({ name: "EquipmentStatus" });
+};
+
 const openBookingDetail = async (bookingId) => {
   isDayModalVisible.value = false;
   selectedBookingId.value = bookingId;
@@ -1334,6 +1353,20 @@ onBeforeUnmount(() => {
   .route-booking-btn {
     flex-shrink: 0;
     margin-top: auto;
+  }
+
+  .admin-equipment-btn {
+    flex-shrink: 0;
+    border: 1px solid rgba(36, 63, 107, 0.16);
+    background: linear-gradient(135deg, rgba(243, 247, 252, 0.98), rgba(232, 240, 250, 0.96));
+    color: #243f6b;
+    box-shadow: 0 10px 22px rgba(36, 63, 107, 0.12);
+
+    &:hover:not(:disabled) {
+      border-color: rgba(36, 63, 107, 0.28);
+      box-shadow: 0 12px 26px rgba(36, 63, 107, 0.18);
+      transform: translateY(-1px);
+    }
   }
 
   .review-mode-toggle {

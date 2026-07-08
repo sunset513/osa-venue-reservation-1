@@ -87,6 +87,19 @@ describe("validateRouteAccess", () => {
     expect(result).toEqual(redirectToNotFound());
   });
 
+  it("redirects equipment status management to 404 for non-reviewers", async () => {
+    const result = await validateRouteAccess(
+      createRoute({
+        name: "EquipmentStatus",
+        path: "/equipment-status",
+        fullPath: "/equipment-status",
+        meta: { requiresReviewer: true },
+      }),
+    );
+
+    expect(result).toEqual(redirectToNotFound());
+  });
+
   it("redirects invalid unit params to 404", async () => {
     mockStore.hasAcceptedConsent = false;
 
