@@ -1,5 +1,5 @@
 <template>
-  <div class="review-page page-enter">
+  <div ref="reviewPageRef" class="review-page page-enter">
     <header class="workbench-header">
       <div class="header-copy">
         <span class="mode-pill">
@@ -54,63 +54,60 @@
           <span>設備狀態管理</span>
         </button>
 
-        <button
-          class="btn btn-secondary route-booking-btn"
-          type="button"
-          :disabled="!canNavigateToVenueBooking"
-          @click="navigateToVenueBooking()"
-        >
-          <ArrowRight :size="17" aria-hidden="true" />
-          <span>{{ bookingRouteLabel }}</span>
-        </button>
       </div>
     </header>
 
     <div v-if="pageLoading" class="loading-state">載入場地與審核資料中...</div>
 
-    <div v-else-if="activeReviewMode === 'venue'" class="workbench-layout">
-      <aside class="control-panel card">
-        <section class="panel-section">
-          <label for="review-venue">審核場地</label>
-          <select id="review-venue" v-model="selectedVenueId" @change="handleFilterChange">
-            <option :value="ALL_VENUES_VALUE">全部場地</option>
-            <option v-for="venue in venues" :key="venue.id" :value="venue.id">
-              {{ venue.name }}
-            </option>
-          </select>
-        </section>
-
-        <section class="panel-section status-filter-section" aria-label="申請狀態篩選">
-          <span class="section-label">申請狀態</span>
-          <div class="status-filter-list">
+    <div v-if="!pageLoading && activeReviewMode === 'venue'">
+      <div ref="reviewStickyStackRef" class="review-sticky-stack" :class="{ 'is-stuck': isReviewStickyPinned }">
+        <div class="review-mode-toggle-row">
+          <div class="review-mode-toggle" role="group" aria-label="切換審核類型">
             <button
-              v-for="option in statusFilterOptions"
-              :key="option.key"
-              class="status-filter-card"
-              :class="[option.className, { 'is-active': selectedStatus === option.statusValue }]"
+              class="view-toggle-btn badge-toggle-btn"
+              :class="{ 'is-active': activeReviewMode === 'venue' }"
               type="button"
-              :aria-pressed="selectedStatus === option.statusValue"
-              @click="selectStatusFilter(option.statusValue)"
+              @click="activeReviewMode = 'venue'"
             >
-              <span class="status-filter-icon">
-                <component :is="option.icon" :size="19" aria-hidden="true" />
+              <Building2 :size="16" aria-hidden="true" />
+              <span>場地預約</span>
+              <span v-if="venuePendingCount > 0" class="pending-badge">
+                {{ venuePendingCount }}
               </span>
-              <span class="status-filter-copy">
-                <strong>{{ option.label }}</strong>
-                <span>{{ option.helper }}</span>
-              </span>
-              <span class="status-filter-count">{{ option.value }}</span>
+            </button>
+            <button
+              class="view-toggle-btn badge-toggle-btn"
+              :class="{ 'is-active': activeReviewMode === 'equipment' }"
+              type="button"
+              @click="activeReviewMode = 'equipment'"
+            >
+              <Wrench :size="16" aria-hidden="true" />
+              <span>設備借用</span>
+              <span
+                v-if="equipmentPendingCount > 0"
+                class="pending-badge pending-badge--dot"
+                aria-hidden="true"
+              ></span>
             </button>
           </div>
-        </section>
+        </div>
 
-      </aside>
-
-      <section class="calendar-panel">
         <div class="panel-heading">
           <div>
             <p class="panel-kicker">目前場地</p>
             <h2>{{ selectedVenueName }}</h2>
+            <p class="panel-note">通過關聯場地預約申請時，系統也會一併通過該筆設備借用申請。</p>
+            <div style="margin-top: 12px;">
+              <button
+                class="btn btn-secondary route-booking-btn"
+                type="button"
+                :disabled="!canNavigateToVenueBooking"
+                @click="navigateToVenueBooking()"
+              >
+                <ArrowRight :size="17" aria-hidden="true" />
+                <span>{{ bookingRouteLabel }}</span>
+              </button>
+            </div>
           </div>
           <div class="panel-heading-actions">
             <div class="view-toggle" role="group" aria-label="切換預約申請檢視">
@@ -135,161 +132,251 @@
                 <span>列表</span>
               </button>
             </div>
-            <label class="quick-status-filter" for="review-status-quick">
-              <span>目前篩選</span>
-              <select id="review-status-quick" v-model="selectedStatus" :disabled="isFetchingEvents" @change="handleFilterChange">
-                <option value="">全部申請</option>
-                <option value="1">待審核</option>
-                <option value="2">已通過</option>
-                <option value="3">已拒絕</option>
+            <label class="quick-status-filter" for="review-sort-quick">
+              <span>排序方式</span>
+              <select id="review-sort-quick" v-model="selectedSort" :disabled="isFetchingEvents" @change="handleSortChange">
+                <option v-for="option in reviewSortOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
               </select>
             </label>
           </div>
         </div>
+      </div>
 
-        <div
-          v-show="activeViewMode === 'calendar'"
-          class="calendar-shell"
-          :class="{ 'is-loading': isFetchingEvents }"
-          @keydown.esc="closeMonthPicker"
-        >
-          <div v-if="isMonthPickerOpen" class="month-picker-popover" role="dialog" aria-label="選擇月份">
-            <label for="review-month-picker">選擇月份</label>
-            <input
-              id="review-month-picker"
-              ref="monthPickerRef"
-              v-model="monthPickerValue"
-              type="month"
-              @keyup.enter="goToSelectedMonth"
-            />
-            <button class="month-picker-action is-primary" type="button" @click="goToSelectedMonth">
-              套用
-            </button>
-            <button class="month-picker-action" type="button" @click="closeMonthPicker">
-              取消
-            </button>
+      <div class="workbench-layout">
+        <aside class="control-panel card">
+          <section class="panel-section">
+            <label for="review-venue">審核場地</label>
+            <select id="review-venue" v-model="selectedVenueId" @change="handleFilterChange">
+              <option :value="ALL_VENUES_VALUE">全部場地</option>
+              <option v-for="venue in venues" :key="venue.id" :value="venue.id">
+                {{ venue.name }}
+              </option>
+            </select>
+          </section>
+
+          <section class="panel-section status-filter-section" aria-label="申請狀態篩選">
+            <span class="section-label">申請狀態</span>
+            <div class="status-filter-list">
+              <button
+                v-for="option in statusFilterOptions"
+                :key="option.key"
+                class="status-filter-card"
+                :class="[option.className, { 'is-active': selectedStatus === option.statusValue }]"
+                type="button"
+                :aria-pressed="selectedStatus === option.statusValue"
+                @click="selectStatusFilter(option.statusValue)"
+              >
+                <span class="status-filter-icon">
+                  <component :is="option.icon" :size="19" aria-hidden="true" />
+                </span>
+                <span class="status-filter-copy">
+                  <strong>{{ option.label }}</strong>
+                  <span>{{ option.helper }}</span>
+                </span>
+                <span class="status-filter-count">{{ option.value }}</span>
+              </button>
+            </div>
+          </section>
+        </aside>
+
+        <section class="calendar-panel">
+          <div
+            v-show="activeViewMode === 'calendar'"
+            class="calendar-shell"
+            :class="{ 'is-loading': isFetchingEvents }"
+            @keydown.esc="closeMonthPicker"
+          >
+            <div v-if="isMonthPickerOpen" class="month-picker-popover" role="dialog" aria-label="選擇月份">
+              <label for="review-month-picker">選擇月份</label>
+              <input
+                id="review-month-picker"
+                ref="monthPickerRef"
+                v-model="monthPickerValue"
+                type="month"
+                @keyup.enter="goToSelectedMonth"
+              />
+              <button class="month-picker-action is-primary" type="button" @click="goToSelectedMonth">
+                套用
+              </button>
+              <button class="month-picker-action" type="button" @click="closeMonthPicker">
+                取消
+              </button>
+            </div>
+            <FullCalendar ref="calendarRef" :options="calendarOptions" />
           </div>
-          <FullCalendar ref="calendarRef" :options="calendarOptions" />
-        </div>
 
-        <div v-show="activeViewMode === 'list'" class="list-shell" :class="{ 'is-loading': isFetchingEvents }">
-          <div v-if="reviewListBookings.length === 0" class="list-empty-state">
-            目前篩選條件下沒有預約申請。
-          </div>
+          <div v-show="activeViewMode === 'list'" class="list-shell" :class="{ 'is-loading': isFetchingEvents }">
+            <div v-if="reviewListBookings.length === 0" class="list-empty-state">
+              目前篩選條件下沒有預約申請。
+            </div>
 
-          <div v-else class="case-list">
-            <button
-              v-for="booking in reviewListBookings"
-              :key="booking.id"
-              class="case-row"
-              type="button"
-              @click="openBookingDetail(booking.id)"
-            >
-              <div class="case-main">
-                <div class="case-title-line">
-                  <span class="status-pill" :class="booking.statusClass">{{ booking.statusText }}</span>
-                  <strong>{{ booking.purpose || "未填寫用途" }}</strong>
+            <div v-else class="case-list">
+              <button
+                v-for="booking in reviewListBookings"
+                :key="booking.id"
+                class="case-row"
+                type="button"
+                @click="openBookingDetail(booking.id)"
+              >
+                <div class="case-main">
+                  <div class="case-title-line">
+                    <span class="status-pill" :class="booking.statusClass">{{ booking.statusText }}</span>
+                    <strong>{{ booking.purpose || "未填寫用途" }}</strong>
+                  </div>
+                  <div class="case-meta">
+                    <span class="case-id-pill">場地預約編號 #{{ booking.id }}</span>
+                    <span>{{ booking.venueName }}</span>
+                    <span>{{ booking.contactName }}</span>
+                    <span>{{ booking.participantCount }} 人</span>
+                  </div>
                 </div>
-                <div class="case-meta">
-                  <span class="case-id-pill">場地預約編號 #{{ booking.id }}</span>
-                  <span>{{ booking.venueName }}</span>
-                  <span>{{ booking.contactName }}</span>
-                  <span>{{ booking.participantCount }} 人</span>
+
+                <div class="case-schedule">
+                  <strong>{{ booking.bookingDate }}</strong>
+                  <span>{{ booking.timeRange || "未提供時段" }}</span>
                 </div>
-              </div>
-
-              <div class="case-schedule">
-                <strong>{{ booking.bookingDate }}</strong>
-                <span>{{ booking.timeRange || "未提供時段" }}</span>
-              </div>
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <div v-else class="workbench-layout">
-      <aside class="control-panel card">
-        <section class="panel-section status-filter-section equipment-status-filter-section" aria-label="設備申請狀態篩選">
-          <span class="section-label">申請狀態</span>
-          <div class="status-filter-list">
-            <button
-              v-for="option in equipmentStatusFilterOptions"
-              :key="option.key"
-              class="status-filter-card"
-              :class="[option.className, { 'is-active': equipmentSelectedStatus === option.statusValue }]"
-              type="button"
-              :aria-pressed="equipmentSelectedStatus === option.statusValue"
-              @click="selectEquipmentStatusFilter(option.statusValue)"
-            >
-              <span class="status-filter-icon">
-                <component :is="option.icon" :size="19" aria-hidden="true" />
-              </span>
-              <span class="status-filter-copy">
-                <strong>{{ option.label }}</strong>
-                <span>{{ option.helper }}</span>
-              </span>
-              <span class="status-filter-count">{{ option.value }}</span>
-            </button>
+              </button>
+            </div>
           </div>
         </section>
-      </aside>
+      </div>
+    </div>
 
-      <section class="calendar-panel standalone-equipment-panel card">
+    <div v-else-if="!pageLoading && activeReviewMode === 'equipment'">
+      <div ref="reviewStickyStackRef" class="review-sticky-stack" :class="{ 'is-stuck': isReviewStickyPinned }">
+        <div class="review-mode-toggle-row">
+          <div class="review-mode-toggle" role="group" aria-label="切換審核類型">
+            <button
+              class="view-toggle-btn badge-toggle-btn"
+              :class="{ 'is-active': activeReviewMode === 'venue' }"
+              type="button"
+              @click="activeReviewMode = 'venue'"
+            >
+              <Building2 :size="16" aria-hidden="true" />
+              <span>場地預約</span>
+              <span v-if="venuePendingCount > 0" class="pending-badge">
+                {{ venuePendingCount }}
+              </span>
+            </button>
+            <button
+              class="view-toggle-btn badge-toggle-btn"
+              :class="{ 'is-active': activeReviewMode === 'equipment' }"
+              type="button"
+              @click="activeReviewMode = 'equipment'"
+            >
+              <Wrench :size="16" aria-hidden="true" />
+              <span>設備借用</span>
+              <span
+                v-if="equipmentPendingCount > 0"
+                class="pending-badge pending-badge--dot"
+                aria-hidden="true"
+              ></span>
+            </button>
+          </div>
+        </div>
+
         <div class="panel-heading">
           <div>
             <p class="panel-kicker">設備借用</p>
             <h2>設備審核清單</h2>
             <p class="panel-note">通過關聯場地預約申請時，系統也會一併通過該筆設備借用申請。</p>
+            <div style="margin-top: 12px;">
+              <button
+                class="btn btn-secondary route-booking-btn"
+                type="button"
+                :disabled="!canNavigateToVenueBooking"
+                @click="navigateToVenueBooking()"
+              >
+                <ArrowRight :size="17" aria-hidden="true" />
+                <span>{{ bookingRouteLabel }}</span>
+              </button>
+            </div>
           </div>
-          <button class="btn btn-secondary" type="button" @click="loadEquipmentReviews">
-            <span class="btn-icon">
-              <RefreshCw :size="16" aria-hidden="true" />
-            </span>
-            <span>重新整理</span>
-          </button>
+          <div class="panel-heading-actions">
+            <label class="quick-status-filter" for="equipment-sort-quick">
+              <span>排序方式</span>
+              <select id="equipment-sort-quick" v-model="equipmentSelectedSort" :disabled="equipmentReviewLoading">
+                <option v-for="option in reviewSortOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+          </div>
         </div>
+      </div>
 
-        <div v-if="equipmentReviewLoading" class="loading-state">載入設備申請中...</div>
-        <div v-else-if="filteredEquipmentReviewItems.length === 0" class="list-empty-state">
-          目前沒有設備借用申請。
-        </div>
-        <div v-else class="case-list">
-          <button
-            v-for="equipmentBooking in filteredEquipmentReviewItems"
-            :key="equipmentBooking.id"
-            class="case-row"
-            type="button"
-            @click="openEquipmentReviewTarget(equipmentBooking)"
-          >
-            <div class="case-main">
-              <div class="case-title-line">
-                <span class="status-pill" :class="getReviewEquipmentStatusMeta(equipmentBooking.status).className">
-                  {{ getReviewEquipmentStatusMeta(equipmentBooking.status).text }}
+      <div class="workbench-layout">
+        <aside class="control-panel card">
+          <section class="panel-section status-filter-section equipment-status-filter-section" aria-label="設備申請狀態篩選">
+            <span class="section-label">申請狀態</span>
+            <div class="status-filter-list">
+              <button
+                v-for="option in equipmentStatusFilterOptions"
+                :key="option.key"
+                class="status-filter-card"
+                :class="[option.className, { 'is-active': equipmentSelectedStatus === option.statusValue }]"
+                type="button"
+                :aria-pressed="equipmentSelectedStatus === option.statusValue"
+                @click="selectEquipmentStatusFilter(option.statusValue)"
+              >
+                <span class="status-filter-icon">
+                  <component :is="option.icon" :size="19" aria-hidden="true" />
                 </span>
-                <strong>{{ equipmentBooking.itemSummary }}</strong>
-              </div>
-              <div class="case-meta">
-                <span class="case-type-pill" :class="getEquipmentBookingTypeMeta(equipmentBooking).className">
-                  {{ getEquipmentBookingTypeMeta(equipmentBooking).text }}
+                <span class="status-filter-copy">
+                  <strong>{{ option.label }}</strong>
+                  <span>{{ option.helper }}</span>
                 </span>
-                <span class="case-id-pill">設備借用編號 #{{ equipmentBooking.id }}</span>
+                <span class="status-filter-count">{{ option.value }}</span>
+              </button>
+            </div>
+          </section>
+        </aside>
+
+        <section class="calendar-panel standalone-equipment-panel card">
+          <div v-if="equipmentReviewLoading" class="loading-state">載入設備申請中...</div>
+          <div v-else-if="filteredEquipmentReviewItems.length === 0" class="list-empty-state">
+            目前沒有設備借用申請。
+          </div>
+          <div v-else class="case-list">
+            <button
+              v-for="equipmentBooking in filteredEquipmentReviewItems"
+              :key="equipmentBooking.id"
+              class="case-row"
+              type="button"
+              @click="openEquipmentReviewTarget(equipmentBooking)"
+            >
+              <div class="case-main">
+                <div class="case-title-line">
+                  <span class="status-pill" :class="getReviewEquipmentStatusMeta(equipmentBooking.status).className">
+                    {{ getReviewEquipmentStatusMeta(equipmentBooking.status).text }}
+                  </span>
+                  <strong>{{ equipmentBooking.itemSummary }}</strong>
+                </div>
                 <template v-if="equipmentBooking.relatedVenueBookingId">
-                  <span class="case-id-pill">場地預約編號 #{{ equipmentBooking.relatedVenueBookingId }}</span>
-                  <strong class="case-meta-strong">{{ equipmentBooking.relatedVenueBookingTitle || "未填寫用途" }}</strong>
-                  <span>{{ equipmentBooking.relatedVenueName || "未提供場地" }}</span>
+                  <div class="case-related-booking">
+                    <span class="case-id-pill">場地預約編號 #{{ equipmentBooking.relatedVenueBookingId }}</span>
+                    <span class="case-related-booking-icon" aria-hidden="true">
+                      <Building2 :size="14" />
+                    </span>
+                    <strong class="case-meta-strong">{{ equipmentBooking.relatedVenueBookingTitle || "未填寫用途" }}</strong>
+                  </div>
                 </template>
-                <span v-else>單獨借用設備</span>
-                <span>{{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}</span>
+                <div class="case-meta">
+                  <span class="case-id-pill case-id-pill--equipment">設備借用編號 #{{ equipmentBooking.id }}</span>
+                  <span>{{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}</span>
+                </div>
               </div>
-            </div>
-            <div class="case-schedule">
-              <strong>{{ formatEquipmentBorrowDateMeta(equipmentBooking.borrowDate) }}</strong>
-              <span>{{ equipmentBooking.timeRange || "未提供時段" }}</span>
-            </div>
-          </button>
-        </div>
-      </section>
+
+              <div class="case-schedule">
+                <strong>{{ formatEquipmentBorrowDateMeta(equipmentBooking.borrowDate) }}</strong>
+                <span>{{ equipmentBooking.timeRange || "未提供時段" }}</span>
+              </div>
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 
@@ -341,7 +428,6 @@ import {
   ClipboardList,
   Clock3,
   List,
-  RefreshCw,
   RotateCcw,
   ShieldCheck,
   Wrench,
@@ -386,16 +472,26 @@ const router = useRouter();
 const authSession = useAuthSessionStore();
 const ALL_VENUES_VALUE = "all";
 const REVIEW_UNIT_ID = "1";
+const reviewSortOptions = [
+  { value: "date-desc", label: "日期由新到舊" },
+  { value: "date-asc", label: "日期由舊到新" },
+  { value: "id-desc", label: "編號由新到舊" },
+  { value: "id-asc", label: "編號由舊到新" },
+];
 
 const calendarRef = ref(null);
+const reviewPageRef = ref(null);
+const reviewStickyStackRef = ref(null);
 const venues = ref([]);
 const selectedVenueId = ref(ALL_VENUES_VALUE);
 const selectedStatus = ref("1");
+const selectedSort = ref("date-desc");
 const pageLoading = ref(true);
 const isFetchingEvents = ref(false);
 const activeViewMode = ref("list");
 const activeReviewMode = ref("venue");
 const equipmentSelectedStatus = ref("1");
+const equipmentSelectedSort = ref("date-desc");
 const isMonthPickerOpen = ref(false);
 const monthPickerValue = ref("");
 const monthPickerRef = ref(null);
@@ -419,6 +515,7 @@ const equipmentReviewLoading = ref(false);
 const equipmentReviewPage = ref(normalizeEquipmentBookingPage());
 const isEquipmentDetailModalVisible = ref(false);
 const selectedEquipmentBookingDetail = ref(null);
+const isReviewStickyPinned = ref(false);
 
 const isReviewer = computed(() => authSession.isReviewer);
 const isAllVenuesSelected = computed(() => selectedVenueId.value === ALL_VENUES_VALUE);
@@ -442,6 +539,48 @@ const bookingRouteLabel = computed(() => {
 
   return `前往「${selectedVenueName.value}」預約`;
 });
+
+const getNavbarHeight = () => {
+  const navbarHeight = document.querySelector(".navbar")?.getBoundingClientRect().height;
+  if (navbarHeight) return navbarHeight;
+
+  const headerHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-height")) || 0;
+  return headerHeight + 18;
+};
+
+const updateReviewStickyState = () => {
+  const reviewPage = reviewPageRef.value;
+  const stickyStack = reviewStickyStackRef.value;
+
+  if (!reviewPage || !stickyStack) {
+    reviewPage?.style.setProperty("--review-sticky-stack-height", "0px");
+    isReviewStickyPinned.value = false;
+    return;
+  }
+
+  const stickyStackRect = stickyStack.getBoundingClientRect();
+  const stickyStackMarginBottom = Number.parseFloat(window.getComputedStyle(stickyStack).marginBottom) || 0;
+
+  reviewPage.style.setProperty(
+    "--review-sticky-stack-height",
+    `${stickyStackRect.height + stickyStackMarginBottom}px`,
+  );
+  isReviewStickyPinned.value = stickyStackRect.top <= getNavbarHeight() + 1;
+};
+
+let reviewStickyResizeObserver = null;
+
+const reconnectReviewStickyObserver = () => {
+  reviewStickyResizeObserver?.disconnect();
+  reviewStickyResizeObserver = null;
+
+  if (typeof ResizeObserver === "undefined" || !reviewStickyStackRef.value) return;
+
+  reviewStickyResizeObserver = new ResizeObserver(() => {
+    updateReviewStickyState();
+  });
+  reviewStickyResizeObserver.observe(reviewStickyStackRef.value);
+};
 
 let calendarTitleElement = null;
 
@@ -546,11 +685,127 @@ const getReviewStatusText = (status) => {
   return statusMeta.text === "審核中" ? "待審核" : statusMeta.text;
 };
 
-const selectedStatusLabel = computed(() => {
-  return selectedStatus.value === ""
-    ? "顯示全部申請"
-    : `目前篩選：${getReviewStatusText(Number(selectedStatus.value))}`;
-});
+const getReviewBookingDateValue = (booking) => String(booking?.bookingDate || "");
+
+const getReviewBookingEarliestSlot = (booking) => {
+  const validSlots = Array.isArray(booking?.slots)
+    ? booking.slots.map(Number).filter(Number.isFinite)
+    : [];
+
+  return validSlots.length ? Math.min(...validSlots) : Number.POSITIVE_INFINITY;
+};
+
+const getReviewBookingIdValue = (booking) => {
+  const numericId = Number(booking?.id);
+  if (Number.isFinite(numericId)) return numericId;
+
+  return Number.POSITIVE_INFINITY;
+};
+
+const compareReviewBookingsByDate = (left, right, direction = "asc") => {
+  const dateComparison = direction === "desc"
+    ? getReviewBookingDateValue(right).localeCompare(getReviewBookingDateValue(left))
+    : getReviewBookingDateValue(left).localeCompare(getReviewBookingDateValue(right));
+
+  if (dateComparison !== 0) return dateComparison;
+
+  const timeComparison = direction === "desc"
+    ? getReviewBookingEarliestSlot(right) - getReviewBookingEarliestSlot(left)
+    : getReviewBookingEarliestSlot(left) - getReviewBookingEarliestSlot(right);
+
+  if (timeComparison !== 0) return timeComparison;
+
+  return getReviewBookingIdValue(left) - getReviewBookingIdValue(right);
+};
+
+const compareReviewBookings = (left, right) => {
+  if (selectedSort.value === "date-desc") {
+    return compareReviewBookingsByDate(left, right, "desc");
+  }
+
+  if (selectedSort.value === "id-desc") {
+    const idComparison = getReviewBookingIdValue(right) - getReviewBookingIdValue(left);
+
+    if (idComparison !== 0) return idComparison;
+
+    return compareReviewBookingsByDate(left, right, "desc");
+  }
+
+  if (selectedSort.value === "id-asc") {
+    const idComparison = getReviewBookingIdValue(left) - getReviewBookingIdValue(right);
+
+    if (idComparison !== 0) return idComparison;
+
+    return compareReviewBookingsByDate(left, right, "asc");
+  }
+
+  return compareReviewBookingsByDate(left, right, "asc");
+};
+
+const getSortedReviewBookings = (bookings) => {
+  return [...bookings].sort(compareReviewBookings);
+};
+
+const getEquipmentBookingDateValue = (booking) => String(booking?.borrowDate || "");
+
+const getEquipmentBookingEarliestSlot = (booking) => {
+  const validSlots = Array.isArray(booking?.slots)
+    ? booking.slots.map(Number).filter(Number.isFinite)
+    : [];
+
+  return validSlots.length ? Math.min(...validSlots) : Number.POSITIVE_INFINITY;
+};
+
+const getEquipmentBookingIdValue = (booking) => {
+  const numericId = Number(booking?.id);
+  if (Number.isFinite(numericId)) return numericId;
+
+  return Number.POSITIVE_INFINITY;
+};
+
+const compareEquipmentReviewBookingsByDate = (left, right, direction = "asc") => {
+  const dateComparison = direction === "desc"
+    ? getEquipmentBookingDateValue(right).localeCompare(getEquipmentBookingDateValue(left))
+    : getEquipmentBookingDateValue(left).localeCompare(getEquipmentBookingDateValue(right));
+
+  if (dateComparison !== 0) return dateComparison;
+
+  const timeComparison = direction === "desc"
+    ? getEquipmentBookingEarliestSlot(right) - getEquipmentBookingEarliestSlot(left)
+    : getEquipmentBookingEarliestSlot(left) - getEquipmentBookingEarliestSlot(right);
+
+  if (timeComparison !== 0) return timeComparison;
+
+  return getEquipmentBookingIdValue(left) - getEquipmentBookingIdValue(right);
+};
+
+const compareEquipmentReviewBookings = (left, right) => {
+  if (equipmentSelectedSort.value === "date-desc") {
+    return compareEquipmentReviewBookingsByDate(left, right, "desc");
+  }
+
+  if (equipmentSelectedSort.value === "id-desc") {
+    const idComparison = getEquipmentBookingIdValue(right) - getEquipmentBookingIdValue(left);
+
+    if (idComparison !== 0) return idComparison;
+
+    return compareEquipmentReviewBookingsByDate(left, right, "desc");
+  }
+
+  if (equipmentSelectedSort.value === "id-asc") {
+    const idComparison = getEquipmentBookingIdValue(left) - getEquipmentBookingIdValue(right);
+
+    if (idComparison !== 0) return idComparison;
+
+    return compareEquipmentReviewBookingsByDate(left, right, "asc");
+  }
+
+  return compareEquipmentReviewBookingsByDate(left, right, "asc");
+};
+
+const getSortedEquipmentReviewBookings = (bookings) => {
+  return [...bookings].sort(compareEquipmentReviewBookings);
+};
 
 const statusCounts = computed(() => {
   return allMonthlyBookings.value.reduce(
@@ -670,32 +925,21 @@ const getReviewEquipmentStatusMeta = (status) => {
   };
 };
 
-const getEquipmentBookingTypeMeta = (equipmentBooking) => {
-  if (equipmentBooking?.relatedVenueBookingId) {
-    return {
-      text: "關聯場地",
-      className: "is-venue-linked",
-    };
-  }
-
-  return {
-    text: "單獨借用設備",
-    className: "is-standalone",
-  };
-};
-
 const filteredEquipmentReviewItems = computed(() => {
-  return equipmentSelectedStatus.value === ""
+  const filteredBookings = equipmentSelectedStatus.value === ""
     ? equipmentReviewPage.value.items
     : equipmentReviewPage.value.items.filter((booking) => booking.status === Number(equipmentSelectedStatus.value));
+
+  return getSortedEquipmentReviewBookings(filteredBookings);
 });
+
+const sortedMonthlyBookings = computed(() => getSortedReviewBookings(monthlyBookings.value));
 
 const selectedDayBookings = computed(() => {
   if (!selectedDate.value) return [];
 
-  return monthlyBookings.value
+  return sortedMonthlyBookings.value
     .filter((booking) => booking.bookingDate === selectedDate.value)
-    .sort((a, b) => Math.min(...(a.slots || [Infinity])) - Math.min(...(b.slots || [Infinity])))
     .map((booking) => {
       const parsedContact = parseContactInfo(booking.contactInfo);
       const statusMeta = getBookingStatusMeta(booking.status);
@@ -714,14 +958,7 @@ const selectedDayBookings = computed(() => {
 });
 
 const reviewListBookings = computed(() => {
-  return [...monthlyBookings.value]
-    .sort((a, b) => {
-      const dateComparison = String(a.bookingDate || "").localeCompare(String(b.bookingDate || ""));
-
-      if (dateComparison !== 0) return dateComparison;
-
-      return Math.min(...(a.slots || [Infinity])) - Math.min(...(b.slots || [Infinity]));
-    })
+  return sortedMonthlyBookings.value
     .map((booking) => {
       const parsedContact = parseContactInfo(booking.contactInfo);
       const statusMeta = getBookingStatusMeta(booking.status);
@@ -946,7 +1183,7 @@ const loadEvents = async (view) => {
 
     allMonthlyBookings.value = allBookings;
     monthlyBookings.value = filteredBookings;
-    events.value = mapBookingsToEvents(filteredBookings);
+    events.value = mapBookingsToEvents(getSortedReviewBookings(filteredBookings));
   } catch (loadError) {
     allMonthlyBookings.value = [];
     monthlyBookings.value = [];
@@ -1084,6 +1321,10 @@ const selectStatusFilter = async (statusValue) => {
   await handleFilterChange();
 };
 
+const handleSortChange = () => {
+  events.value = mapBookingsToEvents(sortedMonthlyBookings.value);
+};
+
 const selectEquipmentStatusFilter = (statusValue) => {
   if (equipmentSelectedStatus.value === statusValue) return;
 
@@ -1109,6 +1350,14 @@ watch(activeReviewMode, (nextMode) => {
     void reloadCurrentView();
     void loadEquipmentPendingCount();
   }
+
+  void nextTick(updateReviewStickyState);
+});
+
+watch(reviewStickyStackRef, async () => {
+  await nextTick();
+  reconnectReviewStickyObserver();
+  updateReviewStickyState();
 });
 
 const navigateToVenueBooking = (dateStr) => {
@@ -1340,6 +1589,8 @@ const handleEquipmentStatusUpdate = async (equipmentBookingId, status) => {
 
 onMounted(async () => {
   document.addEventListener("click", handleMonthPickerOutsideClick);
+  window.addEventListener("scroll", updateReviewStickyState, { passive: true });
+  window.addEventListener("resize", updateReviewStickyState);
 
   try {
     const fetchedVenues = await fetchVenuesByUnit(1);
@@ -1359,10 +1610,17 @@ onMounted(async () => {
     error(venueError.message || "取得場地清單失敗");
     pageLoading.value = false;
   }
+
+  await nextTick();
+  reconnectReviewStickyObserver();
+  updateReviewStickyState();
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleMonthPickerOutsideClick);
+  window.removeEventListener("scroll", updateReviewStickyState);
+  window.removeEventListener("resize", updateReviewStickyState);
+  reviewStickyResizeObserver?.disconnect();
   clearCalendarTitleInteraction();
 });
 </script>
@@ -1373,9 +1631,12 @@ onBeforeUnmount(() => {
   --review-line: #d7dde5;
   --review-ink: #202936;
   --review-muted: #5f6b7a;
+  --review-sticky-top: calc(var(--header-height) + 18px);
+  --review-sticky-stack-height: 0px;
+  --review-sticky-secondary-top: calc(var(--review-sticky-top) + var(--review-sticky-stack-height));
 
   .workbench-header {
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.75rem;
     padding: 1.35rem 1.45rem;
     display: flex;
     align-items: flex-start;
@@ -1416,6 +1677,10 @@ onBeforeUnmount(() => {
     gap: 0.85rem;
     margin-left: auto;
     align-self: stretch;
+  }
+
+  .header-actions > .review-mode-toggle {
+    display: none;
   }
 
   .page-title {
@@ -1478,11 +1743,6 @@ onBeforeUnmount(() => {
     line-height: 1;
   }
 
-  .route-booking-btn {
-    flex-shrink: 0;
-    margin-top: auto;
-  }
-
   .admin-equipment-btn {
     flex-shrink: 0;
     border: 1px solid rgba(36, 63, 107, 0.16);
@@ -1505,6 +1765,33 @@ onBeforeUnmount(() => {
     border: 1px solid var(--review-line);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.78);
+  }
+
+  .review-sticky-stack {
+    position: sticky;
+    top: var(--review-sticky-top);
+    z-index: 20;
+    width: 100%;
+    padding: 0.75rem 0 0.85rem;
+    background: #f3f6fb;
+    margin-bottom: 1.25rem;
+    transition: background 0.2s ease;
+  }
+
+  .review-sticky-stack.is-stuck {
+    background: linear-gradient(
+      180deg,
+      rgba(243, 246, 251, 0.98) 0%,
+      rgba(243, 246, 251, 0.94) 72%,
+      rgba(243, 246, 251, 0) 100%
+    );
+  }
+
+  .review-mode-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    margin-bottom: 0.85rem;
   }
 
   .badge-toggle-btn {
@@ -1543,13 +1830,20 @@ onBeforeUnmount(() => {
 
   .control-panel {
     position: sticky;
-    top: calc(var(--header-height) + 1rem);
+    top: var(--review-sticky-secondary-top);
+    z-index: 5;
     padding: 1.15rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
     background: #f9fafb;
     border-color: var(--review-line);
+  }
+
+  .calendar-panel {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
   }
 
   .panel-section,
@@ -1717,7 +2011,8 @@ onBeforeUnmount(() => {
   }
 
   .panel-heading {
-    margin-bottom: 0.8rem;
+    margin-bottom: 0;
+    padding: 0;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
@@ -1742,6 +2037,11 @@ onBeforeUnmount(() => {
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 0.75rem;
+  }
+
+  .route-booking-btn {
+    flex-shrink: 0;
+    margin-top: auto;
   }
 
   .view-toggle {
@@ -2260,6 +2560,26 @@ onBeforeUnmount(() => {
     font-weight: 800;
   }
 
+  .case-related-booking {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.8rem;
+  }
+
+  .case-related-booking-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--blue-900-rgb), 0.08);
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
   .case-id-pill {
     width: fit-content;
     min-height: 1.75rem;
@@ -2276,31 +2596,8 @@ onBeforeUnmount(() => {
     white-space: nowrap;
   }
 
-  .case-type-pill {
-    width: fit-content;
-    min-height: 1.75rem;
-    padding: 0.18rem 0.6rem;
-    border: 1px solid transparent;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--text-xs);
-    font-weight: 800;
-    line-height: 1.2;
-    white-space: nowrap;
-
-    &.is-standalone {
-      border-color: rgba(var(--blue-900-rgb), 0.12);
-      background: #ffffff;
-      color: var(--review-ink);
-    }
-
-    &.is-venue-linked {
-      border-color: rgba(var(--blue-900-rgb), 0.18);
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
+  .case-id-pill--equipment {
+    background: #ffffff;
   }
 
   .case-schedule {
@@ -2498,6 +2795,13 @@ onBeforeUnmount(() => {
   }
 
   @media (max-width: 1024px) {
+    .review-sticky-stack {
+      position: static;
+      top: auto;
+      padding: 0;
+      background: transparent;
+    }
+
     .workbench-layout {
       grid-template-columns: 1fr;
     }

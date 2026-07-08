@@ -1,6 +1,6 @@
 <template>
   <div v-if="visible" class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-container">
+    <div class="modal-container equipment-modal-container">
       <header class="modal-header">
         <div class="modal-title-group">
           <span class="modal-title-icon">
@@ -170,4 +170,49 @@ const actions = computed(() => {
 
 <style scoped>
 @import "@/assets/styles/_modal.scss";
+
+.equipment-modal-container {
+  position: relative;
+  background: linear-gradient(180deg, #e4e8ed 0%, #edf0f4 100%);
+  border-left-color: #c4ccd6;
+  box-shadow:
+    inset 0 0 0 1px rgba(108, 122, 137, 0.08),
+    -20px 0 36px rgba(15, 23, 42, 0.18);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 6px;
+    background: linear-gradient(180deg, #8b96a3 0%, #697586 100%);
+  }
+
+  .modal-header {
+    background: #dbe1e8;
+    border-bottom-color: #c4ccd6;
+  }
+
+  .modal-body {
+    background: linear-gradient(180deg, #eef2f5 0%, #f5f7f9 100%);
+  }
+
+  .modal-footer {
+    background: #e4e8ed;
+    border-top-color: #c4ccd6;
+  }
+
+  .loading-panel {
+    background: #eef2f5;
+  }
+
+  .modal-title-icon {
+    border-radius: 14px;
+    background: rgba(88, 101, 117, 0.12);
+    color: #536172;
+  }
+
+  .eyebrow {
+    color: #5f6b7a;
+  }
+}
 </style>

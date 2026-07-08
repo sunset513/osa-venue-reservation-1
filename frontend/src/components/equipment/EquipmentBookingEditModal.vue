@@ -57,22 +57,34 @@
 
             <div class="equipment-list-heading">設備品項 <b class="required">*</b></div>
             <div v-if="isEquipmentLoading" class="equipment-helper">載入設備資料中...</div>
-            <div v-else class="equipment-list">
+            <p v-else class="equipment-list-helper">
+              綁定特定場地的設備需從對應場地的場地借用流程一併申請，無法在此視窗單獨修改。
+            </p>
+            <div v-if="!isEquipmentLoading" class="equipment-list">
               <label
                 v-for="equipment in equipmentSelectionOptions"
                 :key="equipment.id"
                 class="equipment-option"
-                :class="{ 'is-selected': isEquipmentSelected(equipment.id) }"
+                :class="{
+                  'is-selected': isEquipmentSelected(equipment.id),
+                  'is-disabled': isStandaloneRestricted(equipment),
+                }"
               >
                 <input
                   type="checkbox"
+                  :disabled="isStandaloneRestricted(equipment)"
                   :checked="isEquipmentSelected(equipment.id)"
                   @change="toggleEquipment(equipment.id, $event.target.checked)"
                 />
-                <strong>{{ equipment.name }}</strong>
+                <div class="equipment-copy">
+                  <strong>{{ equipment.name }}</strong>
+                  <span v-if="getEquipmentBoundVenueText(equipment)" class="equipment-bound-venues">
+                    {{ getEquipmentBoundVenueText(equipment) }}
+                  </span>
+                </div>
                 <span>總數 {{ equipment.totalQuantity }}</span>
                 <input
-                  v-if="isEquipmentSelected(equipment.id)"
+                  v-if="isEquipmentSelected(equipment.id) && !isStandaloneRestricted(equipment)"
                   v-model.number="equipmentQuantities[equipment.id]"
                   type="number"
                   min="1"
@@ -120,6 +132,8 @@ import { Save, X } from "lucide-vue-next";
 import { listEquipments, updateEquipmentBooking } from "@/api/equipment";
 import {
   buildEquipmentBookingUpdatePayload,
+  canBorrowEquipmentStandalone,
+  formatEquipmentBoundVenueText,
   normalizeEquipmentMasters,
 } from "@/utils/equipment";
 import { useToast } from "@/utils/useToast.js";
@@ -187,6 +201,10 @@ const equipmentSelectionOptions = computed(() => {
 });
 
 const isEquipmentSelected = (equipmentId) => selectedEquipmentIds.value.has(equipmentId);
+
+const isStandaloneRestricted = (equipment) => !canBorrowEquipmentStandalone(equipment);
+
+const getEquipmentBoundVenueText = (equipment) => formatEquipmentBoundVenueText(equipment);
 
 const resetEquipmentSelection = () => {
   form.equipmentItems = [];
@@ -276,6 +294,11 @@ const handleSlotClick = (slot) => {
 };
 
 const toggleEquipment = (equipmentId, checked) => {
+  const equipment = equipmentSelectionOptions.value.find((option) => option.id === equipmentId);
+  if (equipment && isStandaloneRestricted(equipment)) {
+    return;
+  }
+
   if (checked) {
     if (!isEquipmentSelected(equipmentId)) {
       form.equipmentItems.push({ equipmentId, quantity: 1 });
@@ -308,10 +331,15 @@ const handleSubmit = async () => {
     purpose: form.purpose,
     contactInfo: form.contactInfo,
     relatedVenueBookingId: null,
-    equipmentItems: form.equipmentItems.map((item) => ({
-      equipmentId: item.equipmentId,
-      quantity: equipmentQuantities[item.equipmentId] || item.quantity,
-    })),
+    equipmentItems: form.equipmentItems
+      .map((item) => ({
+        equipmentId: item.equipmentId,
+        quantity: equipmentQuantities[item.equipmentId] || item.quantity,
+      }))
+      .filter((item) => {
+        const equipment = equipmentSelectionOptions.value.find((option) => option.id === item.equipmentId);
+        return Boolean(equipment) && canBorrowEquipmentStandalone(equipment);
+      }),
   });
 
   if (payload.items.length === 0) {
@@ -529,6 +557,13 @@ input[type="number"] {
   font-weight: 700;
 }
 
+.equipment-list-helper {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
 .equipment-option {
   display: flex;
   align-items: center;
@@ -549,6 +584,17 @@ input[type="number"] {
   background: var(--accent-soft);
 }
 
+.equipment-option.is-disabled {
+  background: #f6f8fb;
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.equipment-option.is-disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
 .equipment-option strong {
   color: var(--ink);
 }
@@ -556,6 +602,20 @@ input[type="number"] {
 .equipment-option span,
 .equipment-helper {
   color: var(--muted);
+}
+
+.equipment-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.equipment-bound-venues {
+  color: var(--muted-strong);
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .equipment-option input[type="number"] {
