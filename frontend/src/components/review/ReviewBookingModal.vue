@@ -20,7 +20,7 @@
           <span class="status-pill" :class="statusMeta.className">
             {{ statusMeta.text }}
           </span>
-          <span class="status-strip-id">場地預約編號 #{{ booking.id }}</span>
+          <span class="status-strip-id review-id-pill">場地預約編號 #{{ booking.id }}</span>
         </section>
 
         <section class="summary-grid">
@@ -71,8 +71,10 @@
               >
                 <div class="equipment-review-content">
                   <strong>{{ equipmentBooking.itemSummary }}</strong>
-                  <span class="detail-subtle">
-                    設備借用編號 #{{ equipmentBooking.id }}｜{{ equipmentBooking.timeRange }}｜{{ equipmentBooking.purpose }}
+                  <span class="detail-subtle equipment-booking-meta">
+                    <span class="review-id-pill">設備借用編號 #{{ equipmentBooking.id }}</span>
+                    <span>{{ equipmentBooking.timeRange }}</span>
+                    <span>{{ equipmentBooking.purpose }}</span>
                   </span>
                   <span class="detail-subtle">
                     {{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}｜
@@ -85,25 +87,6 @@
                   >
                     {{ getReviewEquipmentStatusMeta(equipmentBooking.status).text }}
                   </span>
-                </div>
-                <div
-                  v-if="getEquipmentReviewActions(equipmentBooking).length"
-                  class="equipment-review-actions"
-                >
-                  <button
-                    v-for="action in getEquipmentReviewActions(equipmentBooking)"
-                    :key="action.key"
-                    type="button"
-                    class="btn equipment-action-btn"
-                    :class="action.variant"
-                    :disabled="equipmentProcessingId === equipmentBooking.id"
-                    @click="$emit('update-equipment-status', equipmentBooking.id, action.status)"
-                  >
-                    <span class="btn-icon">
-                      <component :is="action.icon" :size="14" />
-                    </span>
-                    {{ action.label }}
-                  </button>
                 </div>
               </article>
             </div>
@@ -158,19 +141,12 @@ const props = defineProps({
     default: () => [],
   },
   equipmentLoading: Boolean,
-  equipmentProcessingId: {
-    type: [Number, String],
-    default: null,
-  },
 });
 
 const emit = defineEmits([
   "close",
   "approve",
   "update-status",
-  "approve-equipment",
-  "reject-equipment",
-  "update-equipment-status",
 ]);
 
 const statusMeta = computed(() => {
@@ -226,31 +202,6 @@ const actions = computed(() => {
       return [];
   }
 });
-
-const getEquipmentReviewActions = (equipmentBooking) => {
-  // Equipment review records can now move between pending, approved, and
-  // rejected states after the first decision. Keeping the available transitions
-  // close to the display logic makes each review row explain what the reviewer
-  // can do next without introducing another modal-level state machine.
-  switch (equipmentBooking?.status) {
-    case 1:
-      return [
-        { key: "reject", label: "拒絕申請", icon: XCircle, variant: "btn-danger", status: 3 },
-        { key: "approve", label: "通過申請", icon: Check, variant: "btn-primary", status: 2 },
-      ];
-    case 2:
-      return [
-        { key: "reject-approved", label: "改為拒絕", icon: XCircle, variant: "btn-danger", status: 3 },
-      ];
-    case 3:
-      return [
-        { key: "pending-rejected", label: "改為待審核", icon: Clock3, variant: "btn-secondary-alt", status: 1 },
-        { key: "approve-rejected", label: "改為通過", icon: Check, variant: "btn-primary", status: 2 },
-      ];
-    default:
-      return [];
-  }
-};
 
 const formatDateDisplay = (dateString) => {
   if (!dateString) return "未提供";

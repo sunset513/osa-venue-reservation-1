@@ -189,7 +189,7 @@
                   <strong>{{ booking.purpose || "未填寫用途" }}</strong>
                 </div>
                 <div class="case-meta">
-                  <span>場地預約編號 #{{ booking.id }}</span>
+                  <span class="case-id-pill">場地預約編號 #{{ booking.id }}</span>
                   <span>{{ booking.venueName }}</span>
                   <span>{{ booking.contactName }}</span>
                   <span>{{ booking.participantCount }} 人</span>
@@ -267,7 +267,7 @@
                 <strong>{{ equipmentBooking.itemSummary }}</strong>
               </div>
               <div class="case-meta">
-                <span>設備借用編號 #{{ equipmentBooking.id }}</span>
+                <span class="case-id-pill">設備借用編號 #{{ equipmentBooking.id }}</span>
                 <span>{{ equipmentBooking.relatedVenueName || "單獨借用設備" }}</span>
                 <span>{{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}</span>
               </div>
@@ -300,13 +300,9 @@
     :processing="detailProcessing"
     :equipment-bookings="selectedEquipmentBookings"
     :equipment-loading="equipmentDetailLoading"
-    :equipment-processing-id="equipmentProcessingId"
     @close="closeDetailModal"
     @approve="handleApprove"
     @update-status="handleStatusUpdate"
-    @approve-equipment="handleApproveEquipment"
-    @reject-equipment="handleRejectEquipment"
-    @update-equipment-status="handleEquipmentStatusUpdate"
   />
 
   <ReviewEquipmentModal
@@ -1114,14 +1110,23 @@ const handleApprove = async () => {
   if (!selectedBookingId.value) return;
 
   detailProcessing.value = true;
+  let venueStatusUpdated = false;
 
   try {
     await approveReviewBooking(selectedBookingId.value);
+    venueStatusUpdated = true;
+    await syncLinkedEquipmentReviewStatus(2);
     success("申請已通過");
     closeDetailModal();
     await reloadCurrentView();
   } catch (approveError) {
-    error(approveError.message || "通過申請失敗");
+    if (venueStatusUpdated) {
+      error(approveError.message || "場地已通過，但關聯設備同步失敗，畫面已重新載入");
+      closeDetailModal();
+      await reloadCurrentView();
+    } else {
+      error(approveError.message || "通過申請失敗");
+    }
   } finally {
     detailProcessing.value = false;
   }
@@ -1131,17 +1136,58 @@ const handleStatusUpdate = async (status) => {
   if (!selectedBookingId.value) return;
 
   detailProcessing.value = true;
+  let venueStatusUpdated = false;
 
   try {
     await updateReviewBookingStatus(selectedBookingId.value, status);
+    venueStatusUpdated = true;
+    await syncLinkedEquipmentReviewStatus(status);
     success(`申請狀態已更新為${getReviewStatusText(status)}`);
     closeDetailModal();
     await reloadCurrentView();
   } catch (updateError) {
-    error(updateError.message || "更新申請狀態失敗");
+    if (venueStatusUpdated) {
+      error(updateError.message || "場地狀態已更新，但關聯設備同步失敗，畫面已重新載入");
+      closeDetailModal();
+      await reloadCurrentView();
+    } else {
+      error(updateError.message || "更新申請狀態失敗");
+    }
   } finally {
     detailProcessing.value = false;
   }
+};
+
+const isVenueEquipmentSyncStatus = (status) => {
+  return Number(status) === 2 || Number(status) === 3;
+};
+
+const isReviewableEquipmentStatus = (status) => {
+  return [1, 2, 3].includes(Number(status));
+};
+
+const syncLinkedEquipmentReviewStatus = async (status) => {
+  if (!selectedBookingId.value || !isVenueEquipmentSyncStatus(status)) return;
+
+  const equipmentBookings = await getEquipmentReviewsByVenueBooking(selectedBookingId.value);
+  const normalizedBookings = Array.isArray(equipmentBookings)
+    ? equipmentBookings.map(normalizeEquipmentBooking)
+    : [];
+
+  selectedEquipmentBookings.value = normalizedBookings;
+
+  const targetStatus = Number(status);
+  const syncTargets = normalizedBookings.filter((equipmentBooking) => {
+    return (
+      equipmentBooking.id &&
+      isReviewableEquipmentStatus(equipmentBooking.status) &&
+      Number(equipmentBooking.status) !== targetStatus
+    );
+  });
+
+  await Promise.all(
+    syncTargets.map((equipmentBooking) => updateEquipmentReviewStatus(equipmentBooking.id, targetStatus)),
+  );
 };
 
 const refreshEquipmentReviewState = async () => {
@@ -1161,14 +1207,6 @@ const refreshEquipmentReviewState = async () => {
       ? equipmentBookings.map(normalizeEquipmentBooking)
       : [];
   }
-};
-
-const handleApproveEquipment = async (equipmentBookingId) => {
-  await handleEquipmentStatusUpdate(equipmentBookingId, 2);
-};
-
-const handleRejectEquipment = async (equipmentBookingId) => {
-  await handleEquipmentStatusUpdate(equipmentBookingId, 3);
 };
 
 const openEquipmentDetail = (id) => {
@@ -2112,6 +2150,22 @@ onBeforeUnmount(() => {
     color: var(--review-muted);
     font-size: var(--text-sm);
     font-weight: 700;
+  }
+
+  .case-id-pill {
+    width: fit-content;
+    min-height: 1.75rem;
+    padding: 0.18rem 0.6rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--blue-900-rgb), 0.08);
+    color: var(--review-ink);
+    font-size: var(--text-xs);
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
   }
 
   .case-schedule {

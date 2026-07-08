@@ -7,6 +7,15 @@
       </header>
 
       <div class="modal-body">
+        <section v-if="shouldShowBookingIdentifiers" class="booking-identifier-strip">
+          <span v-if="venueBookingId" class="booking-identifier-pill">
+            場地預約編號 #{{ venueBookingId }}
+          </span>
+          <span v-if="equipmentBookingId" class="booking-identifier-pill">
+            設備借用編號 #{{ equipmentBookingId }}
+          </span>
+        </section>
+
         <form class="booking-form" @submit.prevent="handleSubmit">
           <div class="booking-form-layout">
             <section class="booking-form-panel booking-form-panel-times">
@@ -291,6 +300,15 @@ const formData = reactive({
 const isBusy = computed(() => isSubmitting.value || props.isWithdrawing);
 const canWithdraw = computed(() => props.mode === "edit" && props.initialData?.canWithdraw === true);
 const linkedEquipmentBooking = computed(() => props.initialData?.linkedEquipmentBooking ?? null);
+const venueBookingId = computed(() => {
+  return props.mode === "edit" ? props.initialData?.id ?? null : null;
+});
+const equipmentBookingId = computed(() => {
+  return props.mode === "edit" ? linkedEquipmentBooking.value?.id ?? null : null;
+});
+const shouldShowBookingIdentifiers = computed(() => {
+  return Boolean(venueBookingId.value || equipmentBookingId.value);
+});
 const shouldShowEquipmentSection = computed(() => {
   return props.mode === "create" || Boolean(linkedEquipmentBooking.value);
 });
@@ -673,6 +691,27 @@ const handleSubmit = async () => {
   background: #fbfcfe;
 }
 
+.booking-identifier-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.booking-identifier-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(var(--blue-900-rgb), 0.06);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .modal-footer {
   display: flex;
   align-items: center;
@@ -1043,6 +1082,10 @@ input[type="email"] {
 
   .modal-body {
     padding: 1rem;
+  }
+
+  .booking-identifier-strip {
+    gap: 0.6rem;
   }
 
   .form-row {
