@@ -3,7 +3,9 @@
     <div class="modal-container">
       <header class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-title-icon">審</span>
+          <span class="modal-title-icon">
+            <component :is="headerIcon" :size="44" aria-hidden="true" />
+          </span>
           <div>
             <p class="eyebrow">設備借用審核</p>
             <h2>{{ booking?.itemSummary || "設備預約申請詳情" }}</h2>
@@ -104,7 +106,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { Check, Clock3, RotateCcw, X, XCircle } from "lucide-vue-next";
+import { Wrench, Check, Clock3, RotateCcw, X, XCircle } from "lucide-vue-next";
 import { getEquipmentBookingStatusMeta } from "@/utils/equipment";
 
 const props = defineProps({
@@ -120,6 +122,8 @@ const emit = defineEmits([
   "close",
   "update-status",
 ]);
+
+const headerIcon = Wrench;
 
 const statusMeta = computed(() => {
   const meta = getEquipmentBookingStatusMeta(props.booking?.status);

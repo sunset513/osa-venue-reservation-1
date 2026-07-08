@@ -77,7 +77,7 @@
                 <span v-if="record.relatedVenueBookingId" class="venue-booking-id">
                   #{{ record.relatedVenueBookingId }}
                 </span>
-                <span v-else class="row-subtle">獨立借用</span>
+                <span v-else class="row-subtle">單獨借用</span>
               </td>
               <td>{{ formatDateLabel(record.borrowDate) }}</td>
               <td><span class="time-chip">{{ record.timeRange }}</span></td>

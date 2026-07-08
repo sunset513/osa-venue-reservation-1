@@ -55,15 +55,15 @@
 }
 
 .modal-title-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 12px;
+  width: 2.75rem;
+  height: 2.75rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #202936;
-  color: #ffffff;
-  font-size: 1.15rem;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1.25rem;
   font-weight: 800;
 }
 

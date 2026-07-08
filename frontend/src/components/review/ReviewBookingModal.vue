@@ -3,9 +3,11 @@
     <div class="modal-container">
       <header class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-title-icon">審</span>
+          <span class="modal-title-icon">
+            <component :is="headerIcon" :size="44" aria-hidden="true" />
+          </span>
           <div>
-            <p class="eyebrow">申請審核</p>
+            <p class="eyebrow">場地預約審核</p>
             <h2>{{ booking?.purpose || "預約申請詳情" }}</h2>
           </div>
         </div>
@@ -123,7 +125,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { Check, Clock3, RotateCcw, X, XCircle } from "lucide-vue-next";
+import { Building2, Check, Clock3, RotateCcw, X, XCircle } from "lucide-vue-next";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
 import { getBookingStatusMeta } from "@/utils/bookingMeta";
 import { getEquipmentBookingStatusMeta } from "@/utils/equipment";
@@ -148,6 +150,8 @@ const emit = defineEmits([
   "approve",
   "update-status",
 ]);
+
+const headerIcon = Building2;
 
 const statusMeta = computed(() => {
   const meta = getBookingStatusMeta(props.booking?.status);

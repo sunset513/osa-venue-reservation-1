@@ -37,7 +37,7 @@
             <Wrench :size="16" aria-hidden="true" />
             <span>設備借用</span>
             <span
-              v-if="standalonePendingCount > 0"
+              v-if="equipmentPendingCount > 0"
               class="pending-badge pending-badge--dot"
               aria-hidden="true"
             ></span>
@@ -240,6 +240,7 @@
           <div>
             <p class="panel-kicker">設備借用</p>
             <h2>設備審核清單</h2>
+            <p class="panel-note">通過關聯場地預約申請時，系統也會一併通過該筆設備借用申請。</p>
           </div>
           <button class="btn btn-secondary" type="button" @click="loadEquipmentReviews">
             <span class="btn-icon">
@@ -259,7 +260,7 @@
             :key="equipmentBooking.id"
             class="case-row"
             type="button"
-            @click="openEquipmentDetail(equipmentBooking.id)"
+            @click="openEquipmentReviewTarget(equipmentBooking)"
           >
             <div class="case-main">
               <div class="case-title-line">
@@ -269,8 +270,16 @@
                 <strong>{{ equipmentBooking.itemSummary }}</strong>
               </div>
               <div class="case-meta">
+                <span class="case-type-pill" :class="getEquipmentBookingTypeMeta(equipmentBooking).className">
+                  {{ getEquipmentBookingTypeMeta(equipmentBooking).text }}
+                </span>
                 <span class="case-id-pill">設備借用編號 #{{ equipmentBooking.id }}</span>
-                <span>{{ equipmentBooking.relatedVenueName || "單獨借用設備" }}</span>
+                <template v-if="equipmentBooking.relatedVenueBookingId">
+                  <span class="case-id-pill">場地預約編號 #{{ equipmentBooking.relatedVenueBookingId }}</span>
+                  <strong class="case-meta-strong">{{ equipmentBooking.relatedVenueBookingTitle || "未填寫用途" }}</strong>
+                  <span>{{ equipmentBooking.relatedVenueName || "未提供場地" }}</span>
+                </template>
+                <span v-else>單獨借用設備</span>
                 <span>{{ equipmentBooking.contact.name || equipmentBooking.userId || "未提供申請人" }}</span>
               </div>
             </div>
@@ -351,7 +360,6 @@ import {
 } from "@/api/review";
 import {
   getEquipmentReviewsByVenueBooking,
-  getStandaloneEquipmentPendingCount,
   queryEquipmentReviews,
   updateEquipmentReviewStatus,
 } from "@/api/equipment";
@@ -366,6 +374,7 @@ import { formatDateKey, getDailyEventCount, renderMoreLinkContent } from "@/util
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
 import {
   getEquipmentBookingStatusMeta,
+  getEquipmentReviewOpenTarget,
   normalizeEquipmentBooking,
   normalizeEquipmentBookingPage,
 } from "@/utils/equipment";
@@ -405,7 +414,7 @@ const selectedBookingDetail = ref(null);
 const selectedEquipmentBookings = ref([]);
 const equipmentDetailLoading = ref(false);
 const equipmentProcessingId = ref(null);
-const standalonePendingCount = ref(0);
+const equipmentPendingCount = ref(0);
 const equipmentReviewLoading = ref(false);
 const equipmentReviewPage = ref(normalizeEquipmentBookingPage());
 const isEquipmentDetailModalVisible = ref(false);
@@ -658,6 +667,20 @@ const getReviewEquipmentStatusMeta = (status) => {
   return {
     ...meta,
     text: meta.text === "審核中" ? "待審核" : meta.text,
+  };
+};
+
+const getEquipmentBookingTypeMeta = (equipmentBooking) => {
+  if (equipmentBooking?.relatedVenueBookingId) {
+    return {
+      text: "關聯場地",
+      className: "is-venue-linked",
+    };
+  }
+
+  return {
+    text: "單獨借用設備",
+    className: "is-standalone",
   };
 };
 
@@ -947,12 +970,50 @@ const reloadCurrentView = async () => {
   }
 };
 
-const loadStandalonePendingCount = async () => {
+const enrichEquipmentReviewItemsWithVenueBookingName = async (bookings) => {
+  const relatedVenueBookingIds = [...new Set(
+    bookings.map((booking) => booking.relatedVenueBookingId).filter(Boolean),
+  )];
+
+  if (relatedVenueBookingIds.length === 0) return bookings;
+
+  const bookingTitles = Object.fromEntries(
+    await Promise.all(
+      relatedVenueBookingIds.map(async (bookingId) => {
+        try {
+          const bookingDetail = await fetchReviewBookingDetail(bookingId);
+          return [bookingId, bookingDetail?.purpose?.trim() || "未填寫用途"];
+        } catch (loadError) {
+          console.error(`取得場地預約 ${bookingId} 名稱失敗:`, loadError);
+          return [bookingId, null];
+        }
+      }),
+    ),
+  );
+
+  return bookings.map((booking) => {
+    if (!booking.relatedVenueBookingId) return booking;
+
+    const bookingTitle = bookingTitles[booking.relatedVenueBookingId] || null;
+
+    return {
+      ...booking,
+      relatedVenueBookingTitle: bookingTitle,
+    };
+  });
+};
+
+const loadEquipmentPendingCount = async () => {
   try {
-    standalonePendingCount.value = Number(await getStandaloneEquipmentPendingCount()) || 0;
+    const pendingPage = await queryEquipmentReviews({
+      statusList: [1],
+      pageNo: 1,
+      pageSize: 1,
+    });
+    equipmentPendingCount.value = Number(pendingPage?.total) || 0;
   } catch (countError) {
-    console.error("取得單獨設備待審數失敗:", countError);
-    standalonePendingCount.value = 0;
+    console.error("取得設備待審數失敗:", countError);
+    equipmentPendingCount.value = 0;
   }
 };
 
@@ -961,16 +1022,20 @@ const loadEquipmentReviews = async () => {
 
   try {
     // The equipment tab is a reviewer-facing list for every equipment request,
-    // including standalone requests and requests linked to venue bookings. The
-    // badge still uses the standalone pending-count endpoint so reviewers can
-    // spot requests that will not appear inside a venue booking detail modal.
-    equipmentReviewPage.value = normalizeEquipmentBookingPage(
+    // including standalone requests and requests linked to venue bookings.
+    const equipmentReviewPageData = normalizeEquipmentBookingPage(
       await queryEquipmentReviews({
         pageNo: 1,
         pageSize: 100,
       }),
     );
-    await loadStandalonePendingCount();
+    const enrichedItems = await enrichEquipmentReviewItemsWithVenueBookingName(equipmentReviewPageData.items);
+    equipmentReviewPage.value = {
+      ...equipmentReviewPageData,
+      items: enrichedItems,
+      data: enrichedItems,
+    };
+    await loadEquipmentPendingCount();
   } catch (standaloneError) {
     equipmentReviewPage.value = normalizeEquipmentBookingPage();
     error(standaloneError.message || "取得設備申請失敗");
@@ -1042,7 +1107,7 @@ watch(activeReviewMode, (nextMode) => {
     void loadEquipmentReviews();
   } else {
     void reloadCurrentView();
-    void loadStandalonePendingCount();
+    void loadEquipmentPendingCount();
   }
 });
 
@@ -1108,6 +1173,15 @@ const closeDetailModal = () => {
   closeTransientUi();
 };
 
+const refreshAfterVenueReviewUpdate = async () => {
+  if (activeReviewMode.value === "equipment") {
+    await refreshEquipmentReviewState();
+    return;
+  }
+
+  await reloadCurrentView();
+};
+
 const handleApprove = async () => {
   if (!selectedBookingId.value) return;
 
@@ -1120,12 +1194,12 @@ const handleApprove = async () => {
     await syncLinkedEquipmentReviewStatus(2);
     success("申請已通過");
     closeDetailModal();
-    await reloadCurrentView();
+    await refreshAfterVenueReviewUpdate();
   } catch (approveError) {
     if (venueStatusUpdated) {
       error(approveError.message || "場地已通過，但關聯設備同步失敗，畫面已重新載入");
       closeDetailModal();
-      await reloadCurrentView();
+      await refreshAfterVenueReviewUpdate();
     } else {
       error(approveError.message || "通過申請失敗");
     }
@@ -1146,12 +1220,12 @@ const handleStatusUpdate = async (status) => {
     await syncLinkedEquipmentReviewStatus(status);
     success(`申請狀態已更新為${getReviewStatusText(status)}`);
     closeDetailModal();
-    await reloadCurrentView();
+    await refreshAfterVenueReviewUpdate();
   } catch (updateError) {
     if (venueStatusUpdated) {
       error(updateError.message || "場地狀態已更新，但關聯設備同步失敗，畫面已重新載入");
       closeDetailModal();
-      await reloadCurrentView();
+      await refreshAfterVenueReviewUpdate();
     } else {
       error(updateError.message || "更新申請狀態失敗");
     }
@@ -1161,7 +1235,7 @@ const handleStatusUpdate = async (status) => {
 };
 
 const isVenueEquipmentSyncStatus = (status) => {
-  return Number(status) === 2 || Number(status) === 3;
+  return [1, 2, 3].includes(Number(status));
 };
 
 const isReviewableEquipmentStatus = (status) => {
@@ -1196,7 +1270,7 @@ const refreshEquipmentReviewState = async () => {
   // Refresh only the data source that is currently visible. This avoids forcing
   // a full venue calendar reload when the reviewer is processing standalone
   // equipment requests, while still keeping modal equipment details current.
-  await loadStandalonePendingCount();
+  await loadEquipmentPendingCount();
 
   if (activeReviewMode.value === "equipment") {
     await loadEquipmentReviews();
@@ -1217,6 +1291,20 @@ const openEquipmentDetail = (id) => {
     selectedEquipmentBookingDetail.value = booking;
     isEquipmentDetailModalVisible.value = true;
   }
+};
+
+const openEquipmentReviewTarget = async (equipmentBooking) => {
+  const target = getEquipmentReviewOpenTarget(equipmentBooking);
+  if (!target) return;
+
+  closeEquipmentDetailModal();
+
+  if (target.type === "venue") {
+    await openBookingDetail(target.id);
+    return;
+  }
+
+  openEquipmentDetail(target.id);
 };
 
 const closeEquipmentDetailModal = () => {
@@ -1266,7 +1354,7 @@ onMounted(async () => {
       pageLoading.value = false;
       error("目前沒有可供審核的場地");
     }
-    await loadStandalonePendingCount();
+    await loadEquipmentPendingCount();
   } catch (venueError) {
     error(venueError.message || "取得場地清單失敗");
     pageLoading.value = false;
@@ -1639,6 +1727,13 @@ onBeforeUnmount(() => {
       margin: 0;
       color: var(--review-ink);
     }
+  }
+
+  .panel-note {
+    margin: 0.35rem 0 0;
+    color: var(--review-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
   }
 
   .panel-heading-actions {
@@ -2160,6 +2255,11 @@ onBeforeUnmount(() => {
     font-weight: 700;
   }
 
+  .case-meta-strong {
+    color: var(--review-ink);
+    font-weight: 800;
+  }
+
   .case-id-pill {
     width: fit-content;
     min-height: 1.75rem;
@@ -2174,6 +2274,33 @@ onBeforeUnmount(() => {
     font-weight: 800;
     line-height: 1.2;
     white-space: nowrap;
+  }
+
+  .case-type-pill {
+    width: fit-content;
+    min-height: 1.75rem;
+    padding: 0.18rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xs);
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+
+    &.is-standalone {
+      border-color: rgba(var(--blue-900-rgb), 0.12);
+      background: #ffffff;
+      color: var(--review-ink);
+    }
+
+    &.is-venue-linked {
+      border-color: rgba(var(--blue-900-rgb), 0.18);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
   }
 
   .case-schedule {

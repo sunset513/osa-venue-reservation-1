@@ -3,7 +3,9 @@
     <div class="modal-container">
       <header class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-title-icon">審</span>
+          <span class="modal-title-icon">
+            <component :is="headerIcon" :size="44" aria-hidden="true" />
+          </span>
           <h2>{{ formattedTitle }}</h2>
         </div>
         <button class="close-btn" type="button" @click="closeModal">✕</button>
@@ -67,7 +69,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { ArrowRight } from "lucide-vue-next";
+import { ArrowRight, Building2 } from "lucide-vue-next";
 
 const props = defineProps({
   visible: Boolean,
@@ -90,6 +92,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close", "open-detail", "create-booking"]);
+
+const headerIcon = Building2;
 
 const formattedTitle = computed(() => {
   if (!props.selectedDate) return "申請活動詳情";
@@ -151,12 +155,12 @@ const closeModal = () => {
 .modal-title-icon {
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: 16px;
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f4d37b 0%, #efd28a 100%);
-  color: #684b00;
+  background: transparent;
+  color: var(--accent);
   font-size: 1.15rem;
   font-weight: 800;
 }

@@ -172,6 +172,20 @@ export const normalizeEquipmentBookingPage = (page = {}) => {
   };
 };
 
+export const getEquipmentReviewOpenTarget = (record = {}) => {
+  const relatedVenueBookingId = toNumberOrNull(record.relatedVenueBookingId);
+  if (relatedVenueBookingId) {
+    return { type: "venue", id: relatedVenueBookingId };
+  }
+
+  const equipmentBookingId = toNumberOrNull(record.id);
+  if (equipmentBookingId) {
+    return { type: "equipment", id: equipmentBookingId };
+  }
+
+  return null;
+};
+
 export const getEquipmentStatusMeta = (isInUse) => {
   if (isInUse) {
     return { text: "使用中", className: "is-in-use" };
