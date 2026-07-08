@@ -78,6 +78,20 @@ export const isEquipmentAllowedForVenue = (equipment, venueId) => {
   return equipment.allowedVenues.some((venue) => venue.venueId === normalizedVenueId);
 };
 
+export const canBorrowEquipmentStandalone = (equipment = {}) => {
+  const allowedVenues = Array.isArray(equipment.allowedVenues) ? equipment.allowedVenues : [];
+  return !Boolean(equipment.venueRestricted || allowedVenues.length > 0);
+};
+
+export const formatEquipmentBoundVenueText = (equipment = {}) => {
+  if (canBorrowEquipmentStandalone(equipment)) return "";
+
+  const venueNames = (Array.isArray(equipment.allowedVenues) ? equipment.allowedVenues : [])
+    .map((venue) => toText(venue?.venueName, "未提供場地").trim() || "未提供場地");
+
+  return `綁定場地：${venueNames.length > 0 ? venueNames.join("、") : "未提供場地"}`;
+};
+
 export const normalizeEquipmentStatus = (item = {}) => {
   const activeBookings = Array.isArray(item.activeBookings)
     ? item.activeBookings.map((booking) => ({

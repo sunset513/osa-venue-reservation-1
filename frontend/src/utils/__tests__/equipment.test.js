@@ -3,6 +3,8 @@ import {
   buildEquipmentBookingUpdatePayload,
   buildEquipmentPayload,
   canEditEquipmentBookingOnHistoryPage,
+  canBorrowEquipmentStandalone,
+  formatEquipmentBoundVenueText,
   flattenEquipmentGroups,
   getEquipmentBookingEditTarget,
   getEquipmentStatusMeta,
@@ -203,5 +205,46 @@ describe("buildEquipmentPayload", () => {
 
   it("defaults quantity to 1", () => {
     expect(buildEquipmentPayload({ equipmentName: "Projector", venueId: 1 }).quantity).toBe(1);
+  });
+});
+
+describe("standalone equipment helpers", () => {
+  it("marks venue-restricted equipment as unavailable for standalone borrowing", () => {
+    expect(
+      canBorrowEquipmentStandalone({
+        venueRestricted: true,
+        allowedVenues: [{ venueId: 1, venueName: "Venue A" }],
+      }),
+    ).toBe(false);
+  });
+
+  it("allows unrestricted equipment to be borrowed standalone", () => {
+    expect(
+      canBorrowEquipmentStandalone({
+        venueRestricted: false,
+        allowedVenues: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("formats bound venue names for restricted equipment", () => {
+    expect(
+      formatEquipmentBoundVenueText({
+        venueRestricted: true,
+        allowedVenues: [
+          { venueId: 1, venueName: "Venue A" },
+          { venueId: 2, venueName: "Venue B" },
+        ],
+      }),
+    ).toBe("綁定場地：Venue A、Venue B");
+  });
+
+  it("keeps malformed venue data stable", () => {
+    expect(
+      formatEquipmentBoundVenueText({
+        venueRestricted: true,
+        allowedVenues: [{ venueId: null, venueName: "" }],
+      }),
+    ).toBe("綁定場地：未提供場地");
   });
 });

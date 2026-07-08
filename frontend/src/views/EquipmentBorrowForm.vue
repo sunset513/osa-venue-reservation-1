@@ -77,17 +77,34 @@
         </label>
 
         <div class="equipment-list-heading">選擇設備</div>
+        <p class="equipment-list-helper">
+          綁定特定場地的設備需從對應場地的場地借用流程一併申請，無法在此頁單獨借用。
+        </p>
         <div class="equipment-list">
-          <label v-for="equipment in equipmentOptions" :key="equipment.id" class="equipment-option">
+          <label
+            v-for="equipment in equipmentOptions"
+            :key="equipment.id"
+            class="equipment-option"
+            :class="{
+              'is-selected': isEquipmentSelected(equipment.id),
+              'is-disabled': isStandaloneRestricted(equipment),
+            }"
+          >
             <input
               type="checkbox"
+              :disabled="isStandaloneRestricted(equipment)"
               :checked="isEquipmentSelected(equipment.id)"
               @change="toggleEquipment(equipment.id, $event.target.checked)"
             />
-            <strong>{{ equipment.name }}</strong>
+            <div class="equipment-copy">
+              <strong>{{ equipment.name }}</strong>
+              <span v-if="getEquipmentBoundVenueText(equipment)" class="equipment-bound-venues">
+                {{ getEquipmentBoundVenueText(equipment) }}
+              </span>
+            </div>
             <span>總量 {{ equipment.totalQuantity }}</span>
             <input
-              v-if="isEquipmentSelected(equipment.id)"
+              v-if="isEquipmentSelected(equipment.id) && !isStandaloneRestricted(equipment)"
               v-model.number="equipmentQuantities[equipment.id]"
               type="number"
               min="1"
@@ -141,6 +158,8 @@ import { ArrowLeft, RotateCcw, Send, Wrench, X } from "lucide-vue-next";
 import { createEquipmentBooking, listEquipments } from "@/api/equipment";
 import {
   buildEquipmentBookingItems,
+  canBorrowEquipmentStandalone,
+  formatEquipmentBoundVenueText,
   normalizeEquipmentMasters,
 } from "@/utils/equipment";
 import { useToast } from "@/utils/useToast";
@@ -214,7 +233,16 @@ const selectedEquipmentIds = computed(() => new Set(form.equipmentItems.map((ite
 
 const isEquipmentSelected = (equipmentId) => selectedEquipmentIds.value.has(equipmentId);
 
+const isStandaloneRestricted = (equipment) => !canBorrowEquipmentStandalone(equipment);
+
+const getEquipmentBoundVenueText = (equipment) => formatEquipmentBoundVenueText(equipment);
+
 const toggleEquipment = (equipmentId, checked) => {
+  const equipment = equipmentOptions.value.find((option) => option.id === equipmentId);
+  if (equipment && isStandaloneRestricted(equipment)) {
+    return;
+  }
+
   if (checked) {
     if (!isEquipmentSelected(equipmentId)) {
       form.equipmentItems.push({ equipmentId, quantity: 1 });
@@ -248,6 +276,10 @@ const submitBorrowRequest = async () => {
       quantity: equipmentQuantities[item.equipmentId] || item.quantity,
     })),
   );
+  const standaloneEquipmentItems = equipmentItems.filter((item) => {
+    const equipment = equipmentOptions.value.find((option) => option.id === item.equipmentId);
+    return Boolean(equipment) && canBorrowEquipmentStandalone(equipment);
+  });
 
   if (form.slots.length === 0) {
     formErrors.slots = true;
@@ -257,7 +289,7 @@ const submitBorrowRequest = async () => {
 
   formErrors.slots = false;
 
-  if (equipmentItems.length === 0) {
+  if (standaloneEquipmentItems.length === 0) {
     toast.warning("請至少選擇一項設備");
     return;
   }
@@ -271,7 +303,7 @@ const submitBorrowRequest = async () => {
       purpose: form.purpose,
       contactInfo: form.contactInfo,
       relatedVenueBookingId: null,
-      items: equipmentItems,
+      items: standaloneEquipmentItems,
     });
     toast.success("設備借用申請已送出");
     await router.push({ name: "EquipmentBorrowHistory" });
@@ -491,6 +523,13 @@ input[type="number"] {
   font-weight: 700;
 }
 
+.equipment-list-helper {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
 .equipment-option {
   display: flex;
   align-items: center;
@@ -516,6 +555,36 @@ input[type="number"] {
     width: 5rem;
     margin-left: auto;
   }
+}
+
+.equipment-option.is-selected {
+  border-color: rgba(var(--blue-900-rgb), 0.28);
+  background: var(--accent-soft);
+}
+
+.equipment-option.is-disabled {
+  background: #f6f8fb;
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.equipment-option.is-disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.equipment-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.equipment-bound-venues {
+  color: var(--muted-strong);
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .form-actions {
