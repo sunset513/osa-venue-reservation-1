@@ -538,6 +538,35 @@ const parseDateString = (value) => {
   return date;
 };
 
+const getBookingStartDate = (booking) => {
+  const bookingDate = parseDateString(booking?.bookingDate || "");
+
+  if (!bookingDate) return null;
+
+  const normalizedSlots = Array.isArray(booking?.slots)
+    ? booking.slots
+      .map((slot) => Number(slot))
+      .filter((slot) => Number.isInteger(slot) && slot >= 0 && slot <= 23)
+      .sort((left, right) => left - right)
+    : [];
+
+  if (normalizedSlots.length === 0) {
+    return bookingDate;
+  }
+
+  bookingDate.setHours(normalizedSlots[0], 0, 0, 0);
+  return bookingDate;
+};
+
+const canEditBooking = (booking) => {
+  if (Number(booking?.status) !== 1) return false;
+
+  const bookingStartDate = getBookingStartDate(booking);
+  if (!bookingStartDate) return false;
+
+  return bookingStartDate.getTime() > Date.now();
+};
+
 const formatDatePickerLabel = (value) => {
   const date = parseDateString(value);
 
@@ -659,7 +688,7 @@ const historyItems = computed(() => {
         statusIcon: getStatusIcon(booking.status),
         contact: parseContactInfo(booking.contactInfo),
         equipments: Array.isArray(booking.equipments) ? booking.equipments : [],
-        canEdit: Number(booking.status) === 1,
+        canEdit: canEditBooking(booking),
         canWithdraw: Number(booking.status) === 1,
       };
     });
@@ -934,7 +963,7 @@ const openRequestedEditBooking = async () => {
   }
 
   if (!booking.canEdit) {
-    warning("這筆場地預約目前無法修改。只有待審核的預約可以自行修改；若預約已通過、退回或撤回，請重新送出申請或聯絡管理單位協助。");
+    warning("這筆場地預約目前無法修改。只有待審核且尚未開始的預約可以自行修改；若預約已開始、已過期、已通過、退回或撤回，請重新送出申請或聯絡管理單位協助。");
     return;
   }
 

@@ -2,11 +2,12 @@
   <div class="equipment-page page-enter">
     <header class="page-header equipment-header">
       <button class="back-btn" type="button" @click="router.push('/')">
-        ← {{ BACK_TO_UNIT_SELECTOR_LABEL }}
+        <ArrowLeft :size="16" aria-hidden="true" />
+        {{ BACK_TO_UNIT_SELECTOR_LABEL }}
       </button>
       <p class="hero-eyebrow">Equipment Status</p>
       <h1>設備狀態管理</h1>
-      <p>查看各項設備目前是否出借，並展開檢視借用人、用途與關聯場地。</p>
+      <p>查看指定日期與時段的設備借用狀態，並快速前往借用紀錄、編輯設備資料或刪除設備。</p>
     </header>
 
     <section class="status-toolbar card">
@@ -15,25 +16,38 @@
         <input v-model="queryDate" type="date" />
       </label>
       <label>
-        查詢小時
+        查詢時段
         <select v-model.number="queryHour">
           <option v-for="hour in hourOptions" :key="hour" :value="hour">
             {{ String(hour).padStart(2, "0") }}:00
           </option>
         </select>
       </label>
-      <button type="button" class="btn btn-secondary" @click="loadStatuses">重新查詢</button>
+      <button type="button" class="btn btn-secondary" @click="loadStatuses">
+        <span class="btn-icon" aria-hidden="true">
+          <RefreshCw :size="16" />
+        </span>
+        <span>重新查詢</span>
+      </button>
       <button type="button" class="btn btn-primary" @click="router.push({ name: 'EquipmentBorrowForm' })">
-        新增設備借用
+        <span class="btn-icon" aria-hidden="true">
+          <Plus :size="16" />
+        </span>
+        <span>新增設備借用</span>
       </button>
     </section>
 
-    <div v-if="loading" class="loading-state">載入設備資料中...</div>
+    <div v-if="loading" class="loading-state">載入設備狀態中...</div>
 
     <div v-else-if="loadError" class="empty-state equipment-feedback">
-      <h3>目前無法載入設備資料</h3>
+      <h3>目前無法載入設備狀態</h3>
       <p>{{ loadError }}</p>
-      <button type="button" class="btn btn-secondary" @click="loadStatuses">重新載入</button>
+      <button type="button" class="btn btn-secondary" @click="loadStatuses">
+        <span class="btn-icon" aria-hidden="true">
+          <RefreshCw :size="16" />
+        </span>
+        <span>重新載入</span>
+      </button>
     </div>
 
     <div v-else class="equipment-content">
@@ -42,11 +56,11 @@
           <thead>
             <tr>
               <th>設備名稱</th>
-              <th>總量</th>
-              <th>借出</th>
-              <th>可用</th>
+              <th>總數量</th>
+              <th>借出數量</th>
+              <th>可用數量</th>
               <th>狀態</th>
-              <th>紀錄</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -76,9 +90,25 @@
                   </span>
                 </td>
                 <td>
-                  <RouterLink class="history-url-link" :to="borrowHistoryRoute(equipment)">
-                    查看借用紀錄
-                  </RouterLink>
+                  <div class="action-buttons">
+                    <RouterLink class="history-url-link" :to="borrowHistoryRoute(equipment)">
+                      <History :size="15" aria-hidden="true" />
+                      <span>借用紀錄</span>
+                    </RouterLink>
+                    <button type="button" class="action-btn" @click="openEditModal(equipment)">
+                      <PencilLine :size="15" aria-hidden="true" />
+                      <span>編輯</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn action-btn-danger"
+                      :disabled="deletingEquipmentId === equipment.equipmentId"
+                      @click="handleDeleteEquipment(equipment)"
+                    >
+                      <Trash2 :size="15" aria-hidden="true" />
+                      <span>{{ deletingEquipmentId === equipment.equipmentId ? "刪除中..." : "刪除" }}</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="isExpanded(equipment.equipmentId)" class="active-booking-row">
@@ -89,11 +119,11 @@
                       :key="booking.equipmentBookingId"
                       class="active-booking-card"
                     >
-                      <strong>#{{ booking.equipmentBookingId }}｜{{ booking.purpose }}</strong>
-                      <span>{{ booking.borrowDate }}｜{{ formatSlotGroupsAsTimeRange(booking.slots) }}</span>
-                      <span>數量 {{ booking.quantity }}｜申請人 {{ booking.userId }}</span>
+                      <strong>#{{ booking.equipmentBookingId }} {{ booking.purpose }}</strong>
+                      <span>{{ booking.borrowDate }} {{ formatSlotGroupsAsTimeRange(booking.slots) }}</span>
+                      <span>借用數量 {{ booking.quantity }} / 申請人 {{ booking.userId }}</span>
                       <span v-if="booking.relatedVenueName">關聯場地：{{ booking.relatedVenueName }}</span>
-                      <span>{{ booking.contact.name || "未提供姓名" }}｜{{ booking.contact.phone || "未提供電話" }}</span>
+                      <span>{{ booking.contact.name || "未提供姓名" }} / {{ booking.contact.phone || "未提供電話" }}</span>
                     </article>
                   </div>
                 </td>
@@ -103,22 +133,37 @@
         </table>
       </section>
     </div>
+
+    <EquipmentMasterEditModal
+      v-model:visible="isEditModalVisible"
+      :equipment-id="editingEquipmentId"
+      :equipment-name="editingEquipmentName"
+      @saved="handleEquipmentSaved"
+    />
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { ChevronDown } from "lucide-vue-next";
-import { getEquipmentStatuses } from "@/api/equipment";
 import {
-  getEquipmentStatusMeta,
-  normalizeEquipmentStatuses,
-} from "@/utils/equipment";
+  ArrowLeft,
+  ChevronDown,
+  History,
+  PencilLine,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-vue-next";
+import EquipmentMasterEditModal from "@/components/equipment/EquipmentMasterEditModal.vue";
+import { deleteEquipment, getEquipmentStatuses } from "@/api/equipment";
+import { getEquipmentStatusMeta, normalizeEquipmentStatuses } from "@/utils/equipment";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
 import { BACK_TO_UNIT_SELECTOR_LABEL } from "@/utils/navigationLabels";
+import { useToast } from "@/utils/useToast";
 
 const router = useRouter();
+const { success, warning } = useToast();
 
 const loading = ref(true);
 const loadError = ref("");
@@ -127,12 +172,14 @@ const expandedEquipmentIds = ref(new Set());
 const queryDate = ref(new Date().toLocaleDateString("sv-SE"));
 const queryHour = ref(new Date().getHours());
 const hourOptions = Array.from({ length: 24 }, (_, hour) => hour);
+const isEditModalVisible = ref(false);
+const editingEquipmentId = ref(null);
+const editingEquipmentName = ref("");
+const deletingEquipmentId = ref(null);
 
 const isExpanded = (equipmentId) => expandedEquipmentIds.value.has(equipmentId);
 
 const toggleExpanded = (equipmentId) => {
-  // Keep the expanded state in a Set so the user can inspect multiple active
-  // equipment rows at once without losing context when checking related details.
   const nextExpandedIds = new Set(expandedEquipmentIds.value);
   if (nextExpandedIds.has(equipmentId)) {
     nextExpandedIds.delete(equipmentId);
@@ -150,14 +197,50 @@ const borrowHistoryRoute = (equipment) => ({
   },
 });
 
+const openEditModal = (equipment) => {
+  editingEquipmentId.value = equipment.equipmentId;
+  editingEquipmentName.value = equipment.equipmentName || "";
+  isEditModalVisible.value = true;
+};
+
+const handleDeleteEquipment = async (equipment) => {
+  const equipmentId = equipment?.equipmentId;
+  const equipmentName = equipment?.equipmentName || "這項設備";
+
+  if (!equipmentId || deletingEquipmentId.value === equipmentId) return;
+
+  const confirmed = window.confirm(`確定要刪除「${equipmentName}」嗎？刪除後會從設備清單中移除。`);
+  if (!confirmed) return;
+
+  deletingEquipmentId.value = equipmentId;
+
+  try {
+    await deleteEquipment(equipmentId);
+
+    if (editingEquipmentId.value === equipmentId) {
+      isEditModalVisible.value = false;
+      editingEquipmentId.value = null;
+      editingEquipmentName.value = "";
+    }
+
+    success(`已刪除設備「${equipmentName}」。`);
+    await loadStatuses();
+  } catch (deleteError) {
+    warning(deleteError.message || "刪除設備失敗，若仍有未來借用紀錄，請先處理相關申請。");
+  } finally {
+    deletingEquipmentId.value = null;
+  }
+};
+
+const handleEquipmentSaved = async () => {
+  await loadStatuses();
+};
+
 const loadStatuses = async () => {
   loading.value = true;
   loadError.value = "";
 
   try {
-    // The status endpoint returns one row per equipment and already contains
-    // active approved booking details, so the view does not need additional
-    // per-equipment requests before showing the expandable detail section.
     equipmentStatuses.value = normalizeEquipmentStatuses(
       await getEquipmentStatuses({
         date: queryDate.value,
@@ -165,9 +248,9 @@ const loadStatuses = async () => {
       }),
     );
   } catch (error) {
-    console.error("載入設備狀態失敗:", error);
+    console.error("Failed to load equipment statuses", error);
     equipmentStatuses.value = [];
-    loadError.value = error.message || "請稍後再試一次。";
+    loadError.value = error.message || "Unable to load equipment statuses right now.";
   } finally {
     loading.value = false;
   }
@@ -198,6 +281,13 @@ onMounted(loadStatuses);
   text-transform: uppercase;
 }
 
+.equipment-header p:last-child {
+  margin: 0;
+  max-width: 52rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .status-toolbar {
   display: flex;
   align-items: end;
@@ -224,6 +314,15 @@ onMounted(loadStatuses);
   }
 }
 
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
 .equipment-content {
   display: flex;
   flex-direction: column;
@@ -239,7 +338,7 @@ onMounted(loadStatuses);
 
 .equipment-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 840px;
   border-collapse: collapse;
 
   th,
@@ -299,12 +398,42 @@ onMounted(loadStatuses);
   }
 }
 
-.history-url-link {
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.history-url-link,
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--accent);
   font-size: var(--text-sm);
   font-weight: 800;
+}
+
+.history-url-link {
   text-decoration: underline;
   text-underline-offset: 0.18rem;
+}
+
+.action-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
+}
+
+.action-btn-danger {
+  color: var(--danger);
 }
 
 .active-booking-row td {
@@ -344,6 +473,11 @@ onMounted(loadStatuses);
   .status-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

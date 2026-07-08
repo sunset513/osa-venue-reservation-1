@@ -200,7 +200,14 @@ export const buildEquipmentMasterPayload = (form = {}) => ({
   totalQuantity: toPositiveInteger(form.totalQuantity ?? form.quantity, 1),
   description: toText(form.description),
   borrowNote: toText(form.borrowNote),
-  venueRules: Array.isArray(form.venueRules) ? form.venueRules : [],
+  venueRules: Array.isArray(form.venueRules)
+    ? form.venueRules
+        .map((rule) => ({
+          venueId: toNumberOrNull(rule?.venueId),
+          ruleNote: toText(rule?.ruleNote).trim(),
+        }))
+        .filter((rule) => rule.venueId)
+    : [],
 });
 
 export const buildEquipmentPayload = (form = {}) => ({

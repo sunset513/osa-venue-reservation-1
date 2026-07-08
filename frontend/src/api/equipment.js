@@ -21,6 +21,16 @@ export const listEquipments = ({ includeDeleted = false } = {}) => {
 };
 
 /**
+ * Fetch a single equipment master record.
+ *
+ * @param {number|string} id - Equipment ID.
+ * @returns {Promise<Object>} Equipment master record.
+ */
+export const getEquipment = (id) => {
+  return request.get(`/equipments/${id}`);
+};
+
+/**
  * Fetch all equipment with current or specified-hour usage details.
  * This powers the status page and avoids forcing the view to stitch master data,
  * approved equipment bookings, and related venue booking details by itself.
