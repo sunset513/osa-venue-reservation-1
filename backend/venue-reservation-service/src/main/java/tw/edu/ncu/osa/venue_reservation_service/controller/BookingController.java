@@ -719,21 +719,22 @@ public class BookingController {
     }
 
     // ==========================================
-    // 6. 公開查詢：指定日期兩場地已通過預約
+    // 6. 公開查詢：指定日期三場地已通過預約
     // ==========================================
 
     /**
-     * 查詢指定日期與兩個場地的已通過預約（公開 API）
+     * 查詢指定日期與三個場地的已通過預約（公開 API）
      * @param venueIdA 第一個場地 ID
      * @param venueIdB 第二個場地 ID
+     * @param venueIdC 第三個場地 ID
      * @param date 查詢日期
      * @return 依場地分組的已通過預約清單
      */
-    @GetMapping("/approved/two-venues")
+    @GetMapping("/approved/three-venues")
     @Operation(
-        summary = "查詢指定日期兩場地已通過預約",
+        summary = "查詢指定日期三場地已通過預約",
         description = """
-            取得指定日期內兩個場地的已通過預約清單（status=2）。
+            取得指定日期內三個場地的已通過預約清單（status=2）。
             
             **回傳資料：**
             - 依場地分組回傳
@@ -761,7 +762,7 @@ public class BookingController {
                     example = """
                     {
                       "success": false,
-                      "message": "兩個場地不可相同",
+                      "message": "三個場地不可相同",
                       "data": null
                     }
                     """
@@ -769,7 +770,7 @@ public class BookingController {
             )
         )
     })
-    public Result<List<ApprovedBookingsByVenueVO>> getApprovedBookingsForTwoVenues(
+    public Result<List<ApprovedBookingsByVenueVO>> getApprovedBookingsForThreeVenues(
             @RequestParam
             @Parameter(description = "第一個場地 ID", example = "1", required = true)
             Long venueIdA,
@@ -777,19 +778,22 @@ public class BookingController {
             @Parameter(description = "第二個場地 ID", example = "2", required = true)
             Long venueIdB,
             @RequestParam
+            @Parameter(description = "第三個場地 ID", example = "3", required = true)
+            Long venueIdC,
+            @RequestParam
             @Parameter(description = "查詢日期（YYYY-MM-DD）", example = "2026-06-01", required = true)
             LocalDate date) {
-        log.info("【BookingController】收到請求：查詢兩場地已通過預約，venueIdA={}, venueIdB={}, date={}",
-                venueIdA, venueIdB, date);
+        log.info("【BookingController】收到請求：查詢三場地已通過預約，venueIdA={}, venueIdB={}, venueIdC={}, date={}",
+                venueIdA, venueIdB, venueIdC, date);
         try {
             List<ApprovedBookingsByVenueVO> result =
-                    bookingService.getApprovedBookingsForTwoVenues(venueIdA, venueIdB, date);
-            log.info("【BookingController】成功查詢兩場地已通過預約，venueIdA={}, venueIdB={}，回傳 {} 組",
-                    venueIdA, venueIdB, result.size());
+                    bookingService.getApprovedBookingsForThreeVenues(venueIdA, venueIdB, venueIdC, date);
+            log.info("【BookingController】成功查詢三場地已通過預約，venueIdA={}, venueIdB={}, venueIdC={}，回傳 {} 組",
+                    venueIdA, venueIdB, venueIdC, result.size());
             return Result.success(result);
         } catch (Exception e) {
-            log.error("【BookingController】查詢兩場地已通過預約失敗，venueIdA={}, venueIdB={}, date={}",
-                    venueIdA, venueIdB, date, e);
+            log.error("【BookingController】查詢三場地已通過預約失敗，venueIdA={}, venueIdB={}, venueIdC={}, date={}",
+                    venueIdA, venueIdB, venueIdC, date, e);
             throw e;
         }
     }

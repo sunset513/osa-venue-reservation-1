@@ -732,36 +732,39 @@ public class BookingServiceImpl implements BookingService {
     // ==========================================
 
     /**
-     * 查詢指定日期與兩個場地的已通過預約（公開 API）
+     * 查詢指定日期與三個場地的已通過預約（公開 API）
      * @param venueIdA 第一個場地 ID
      * @param venueIdB 第二個場地 ID
+     * @param venueIdC 第三個場地 ID
      * @param date 查詢日期
      * @return 依場地分組的已通過預約清單
      */
     @Override
     @Transactional(readOnly = true)
-    public List<ApprovedBookingsByVenueVO> getApprovedBookingsForTwoVenues(
+    public List<ApprovedBookingsByVenueVO> getApprovedBookingsForThreeVenues(
             Long venueIdA,
             Long venueIdB,
+            Long venueIdC,
             java.time.LocalDate date) {
 
-        log.info("【BookingService】[getApprovedBookingsForTwoVenues] 開始查詢已通過預約，venueIdA={}, venueIdB={}, date={}",
-                venueIdA, venueIdB, date);
+        log.info("【BookingService】[getApprovedBookingsForThreeVenues] 開始查詢已通過預約，venueIdA={}, venueIdB={}, venueIdC={}, date={}",
+                venueIdA, venueIdB, venueIdC, date);
 
-        if (venueIdA == null || venueIdB == null) {
+        if (venueIdA == null || venueIdB == null || venueIdC == null) {
             throw new IllegalArgumentException("場地 ID 不可為空");
         }
         if (date == null) {
             throw new IllegalArgumentException("日期不可為空");
         }
-        if (venueIdA.equals(venueIdB)) {
-            throw new IllegalArgumentException("兩個場地不可相同");
+        if (venueIdA.equals(venueIdB) || venueIdA.equals(venueIdC) || venueIdB.equals(venueIdC)) {
+            throw new IllegalArgumentException("三個場地不可相同");
         }
 
         Venue venueA = venueMapper.selectVenueById(venueIdA);
         Venue venueB = venueMapper.selectVenueById(venueIdB);
+        Venue venueC = venueMapper.selectVenueById(venueIdC);
 
-        if (venueA == null || venueB == null) {
+        if (venueA == null || venueB == null || venueC == null) {
             throw new RuntimeException("場地不存在");
         }
 
@@ -775,18 +778,24 @@ public class BookingServiceImpl implements BookingService {
         groupB.setVenueName(venueB.getName());
         groupB.setItems(new ArrayList<>());
 
+        ApprovedBookingsByVenueVO groupC = new ApprovedBookingsByVenueVO();
+        groupC.setVenueId(venueIdC);
+        groupC.setVenueName(venueC.getName());
+        groupC.setItems(new ArrayList<>());
+
         Map<Long, ApprovedBookingsByVenueVO> groupMap = new HashMap<>();
         groupMap.put(venueIdA, groupA);
         groupMap.put(venueIdB, groupB);
+        groupMap.put(venueIdC, groupC);
 
-        List<ApprovedBookingQueryVO> records = bookingMapper.selectApprovedBookingsForTwoVenues(
-                venueIdA, venueIdB, date);
-        log.info("【BookingService】[getApprovedBookingsForTwoVenues] 查詢到 {} 筆已通過預約", records.size());
+        List<ApprovedBookingQueryVO> records = bookingMapper.selectApprovedBookingsForThreeVenues(
+                venueIdA, venueIdB, venueIdC, date);
+        log.info("【BookingService】[getApprovedBookingsForThreeVenues] 查詢到 {} 筆已通過預約", records.size());
 
         for (ApprovedBookingQueryVO record : records) {
             ApprovedBookingsByVenueVO group = groupMap.get(record.getVenueId());
             if (group == null) {
-                log.warn("【BookingService】[getApprovedBookingsForTwoVenues] 取得未知場地的預約資料，venueId={}",
+                log.warn("【BookingService】[getApprovedBookingsForThreeVenues] 取得未知場地的預約資料，venueId={}",
                         record.getVenueId());
                 continue;
             }
@@ -807,9 +816,10 @@ public class BookingServiceImpl implements BookingService {
         List<ApprovedBookingsByVenueVO> result = new ArrayList<>();
         result.add(groupA);
         result.add(groupB);
+        result.add(groupC);
 
-        log.info("【BookingService】[getApprovedBookingsForTwoVenues] 組裝完成，venueAItems={}, venueBItems={}",
-                groupA.getItems().size(), groupB.getItems().size());
+        log.info("【BookingService】[getApprovedBookingsForThreeVenues] 組裝完成，venueAItems={}, venueBItems={}, venueCItems={}",
+                groupA.getItems().size(), groupB.getItems().size(), groupC.getItems().size());
 
         return result;
     }

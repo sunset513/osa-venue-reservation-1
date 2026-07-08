@@ -127,6 +127,8 @@ WHERE ebi.equipment_id = #{equipmentId}
 - 管理端依條件查詢設備申請，目前由 `EquipmentBookingMapper.countReviewBookings` 與 `selectReviewBookings` 實作。
 - 查詢設備申請詳情與明細。
 - 使用樂觀鎖更新審核狀態。
+- 查詢核准後可能受影響的 pending 設備申請。
+- 批次拒絕已不可核准的 pending 設備申請。
 - 寫入 `reviewed_by`、`reviewed_at`；系統不保存拒絕原因。
 
 ### 查詢條件
@@ -160,6 +162,22 @@ SET status = #{newStatus},
 WHERE id = #{id}
   AND version = #{oldVersion};
 ```
+
+核准後自動拒絕流程需先查候選 pending 申請，再由 service 逐筆做 availability 判斷：
+
+```sql
+SELECT DISTINCT eb.*
+FROM equipment_bookings eb
+JOIN equipment_booking_items ebi
+  ON ebi.equipment_booking_id = eb.id
+WHERE eb.status = 1
+  AND eb.id != #{approvedBookingId}
+  AND eb.borrow_date = #{borrowDate}
+  AND (eb.time_slots & #{approvedTimeSlots}) != 0
+  AND ebi.equipment_id IN (...)
+```
+
+不可直接把所有候選申請拒絕，因為設備具有數量；只有 availability 檢查失敗的申請才會被自動改為 `status=3`。
 
 ## 場地預約輔助查詢
 

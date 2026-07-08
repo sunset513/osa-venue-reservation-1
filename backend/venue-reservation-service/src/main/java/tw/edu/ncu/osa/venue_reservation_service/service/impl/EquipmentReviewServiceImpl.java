@@ -8,6 +8,7 @@ import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentAvailabilityQ
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentBookingItemDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.dto.EquipmentBookingQueryDTO;
 import tw.edu.ncu.osa.venue_reservation_service.model.entity.EquipmentBooking;
+import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentAvailabilityVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingPageVO;
 import tw.edu.ncu.osa.venue_reservation_service.model.vo.EquipmentBookingVO;
 import tw.edu.ncu.osa.venue_reservation_service.service.EquipmentReviewService;
@@ -20,6 +21,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class EquipmentReviewServiceImpl implements EquipmentReviewService {
+    private static final String EQUIPMENT_QUANTITY_SHORTAGE_MESSAGE = "設備可借數量不足";
+
     private final EquipmentBookingMapper equipmentBookingMapper;
     private final EquipmentBookingSupport support;
 
@@ -96,6 +99,60 @@ public class EquipmentReviewServiceImpl implements EquipmentReviewService {
         if (updated == 0) {
             throw new RuntimeException("設備借用申請已被他人修改，請重新查詢");
         }
+        if (Integer.valueOf(2).equals(status)) {
+            rejectUnavailablePendingConflicts(booking);
+        }
+    }
+
+    private void rejectUnavailablePendingConflicts(EquipmentBooking approvedBooking) {
+        List<Long> approvedEquipmentIds = equipmentBookingMapper.selectItemsByBookingId(approvedBooking.getId())
+                .stream()
+                .map(item -> item.getEquipmentId())
+                .distinct()
+                .toList();
+        if (approvedEquipmentIds.isEmpty()) {
+            return;
+        }
+
+        List<EquipmentBooking> pendingConflicts = equipmentBookingMapper.selectPendingConflictingBookings(
+                approvedBooking.getId(),
+                approvedBooking.getBorrowDate(),
+                approvedBooking.getTimeSlots(),
+                approvedEquipmentIds
+        );
+        if (pendingConflicts.isEmpty()) {
+            return;
+        }
+
+        List<Long> rejectedIds = new ArrayList<>();
+        for (EquipmentBooking pendingConflict : pendingConflicts) {
+            if (isUnavailableBecauseOfApprovedEquipmentQuantity(pendingConflict)) {
+                rejectedIds.add(pendingConflict.getId());
+            }
+        }
+
+        if (!rejectedIds.isEmpty()) {
+            equipmentBookingMapper.batchRejectPendingBookings(rejectedIds, UserContext.getUser().getUserId());
+        }
+    }
+
+    private boolean isUnavailableBecauseOfApprovedEquipmentQuantity(EquipmentBooking pendingConflict) {
+        EquipmentAvailabilityVO availability;
+        try {
+            availability = support.checkAvailability(
+                    toAvailabilityQuery(pendingConflict),
+                    true
+            );
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+        if (availability.getItems() == null) {
+            return false;
+        }
+
+        return availability.getItems().stream()
+                .anyMatch(item -> Boolean.FALSE.equals(item.getAvailable())
+                        && EQUIPMENT_QUANTITY_SHORTAGE_MESSAGE.equals(item.getMessage()));
     }
 
     private EquipmentAvailabilityQueryDTO toAvailabilityQuery(EquipmentBooking booking) {

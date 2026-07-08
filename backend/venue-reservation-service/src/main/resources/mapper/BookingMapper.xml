@@ -126,10 +126,10 @@
     </select>
 
     <!-- ========================================== -->
-    <!-- 公開查詢：指定日期兩場地已通過預約 -->
+    <!-- 公開查詢：指定日期三場地已通過預約 -->
     <!-- ========================================== -->
 
-    <select id="selectApprovedBookingsForTwoVenues" resultMap="approvedBookingQueryMap">
+    <select id="selectApprovedBookingsForThreeVenues" resultMap="approvedBookingQueryMap">
         SELECT
             b.id AS booking_id,
             b.venue_id,
@@ -138,7 +138,7 @@
             b.purpose
         FROM bookings b
         INNER JOIN venues v ON b.venue_id = v.id
-        WHERE b.venue_id IN (#{venueIdA}, #{venueIdB})
+        WHERE b.venue_id IN (#{venueIdA}, #{venueIdB}, #{venueIdC})
           AND b.booking_date = #{date}
           AND b.status = 2
         ORDER BY b.venue_id ASC, b.created_at ASC

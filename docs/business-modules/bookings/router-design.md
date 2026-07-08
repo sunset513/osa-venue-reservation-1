@@ -19,7 +19,7 @@ Base path：`/api/bookings`
 | GET | `/api/bookings/calendar/month` | Not marked | 查詢指定場地月曆視圖。 |
 | GET | `/api/bookings/calendar/week` | Not marked | 查詢指定場地周曆視圖。 |
 | GET | `/api/bookings/calendar/day` | Not marked | 查詢指定場地日曆視圖。 |
-| GET | `/api/bookings/approved/two-venues` | Not marked | 查詢指定日期兩個場地的已通過預約。 |
+| GET | `/api/bookings/approved/three-venues` | Not marked | 查詢指定日期三個場地的已通過預約。 |
 
 ## ReviewController
 
@@ -102,15 +102,16 @@ Response `data` 為 `BookingPageVO`。
 - `venueId`
 - `date`
 
-### GET /api/bookings/approved/two-venues
+### GET /api/bookings/approved/three-venues
 
 Query：
 
 - `venueIdA`
 - `venueIdB`
+- `venueIdC`
 - `date`
 
-兩個場地不可相同。
+三個場地不可相同。
 
 ## Review Request
 

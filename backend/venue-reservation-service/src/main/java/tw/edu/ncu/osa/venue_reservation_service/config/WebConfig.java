@@ -41,7 +41,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(gatewaySessionAuthInterceptor)
                 .addPathPatterns("/api/**")         // 攔截所有 API 請求
                 .excludePathPatterns(
-                        "/api/bookings/approved/two-venues"
+                        "/api/bookings/approved/three-venues"
                 ); // 排除免驗證查詢接口
     }
 

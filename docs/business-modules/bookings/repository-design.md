@@ -50,7 +50,7 @@ AND (time_slots & #{mask}) != 0
 - `selectApprovedBookingsByDateRange`：查詢指定場地、日期範圍內已通過預約。
 - `selectUserBookingsByDateRange`：查詢指定使用者、場地、日期範圍內所有個人預約。
 - `selectBookingsByDateRangeForCalendar`：查詢指定場地、日期範圍內全部預約，並 join 場地與設備。
-- `selectApprovedBookingsForTwoVenues`：查詢指定日期兩個場地的已通過預約。
+- `selectApprovedBookingsForThreeVenues`：查詢指定日期三個場地的已通過預約。
 
 ### 個人分頁查詢
 
@@ -84,7 +84,7 @@ AND (time_slots & #{mask}) != 0
 - `queryMyBookingsWithFilters`：`created_at DESC`。
 - `selectBookingsByVenueAndDateRange`：`created_at ASC`。
 - `selectBookingsByDateRangeForCalendar`：`booking_date ASC, created_at ASC`。
-- `selectApprovedBookingsForTwoVenues`：`venue_id ASC, created_at ASC`。
+- `selectApprovedBookingsForThreeVenues`：`venue_id ASC, created_at ASC`。
 
 ## 注意事項
 

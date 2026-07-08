@@ -836,20 +836,21 @@ curl -X GET "http://localhost:8080/api/bookings/calendar/day?venueId=101&date=20
 
 ---
 
-### 3.8 查詢指定日期兩場地已通過預約
+### 3.8 查詢指定日期三場地已通過預約
 
 **端點資訊：**
 - **方法：** GET
-- **路徑：** `/api/bookings/approved/two-venues`
+- **路徑：** `/api/bookings/approved/three-venues`
 - **認證：** 非必須 (允許公開訪問)
 - **查詢參數：**
   - `venueIdA` (Long, 必填) - 第一個場地 ID
-  - `venueIdB` (Long, 必填) - 第二個場地 ID（不可與 venueIdA 相同）
+  - `venueIdB` (Long, 必填) - 第二個場地 ID
+  - `venueIdC` (Long, 必填) - 第三個場地 ID
   - `date` (LocalDate, 必填) - 查詢日期（格式：YYYY-MM-DD）
 
 **功能描述：**
 
-取得指定日期內兩個場地的已通過預約（status=2），並依場地分組回傳。回傳僅包含最小必要欄位（bookingId、slots、purpose）。
+取得指定日期內三個場地的已通過預約（status=2），並依場地分組回傳。回傳僅包含最小必要欄位（bookingId、slots、purpose）。
 
 **返回數據包含：**
 
@@ -859,7 +860,7 @@ curl -X GET "http://localhost:8080/api/bookings/calendar/day?venueId=101&date=20
 **請求示例：**
 
 ```bash
-curl -X GET "http://localhost:8080/api/bookings/approved/two-venues?venueIdA=1&venueIdB=2&date=2026-06-01"
+curl -X GET "http://localhost:8080/api/bookings/approved/three-venues?venueIdA=1&venueIdB=2&venueIdC=3&date=2026-06-01"
 ```
 
 **成功回應 (200 OK)：**
@@ -884,6 +885,11 @@ curl -X GET "http://localhost:8080/api/bookings/approved/two-venues?venueIdA=1&v
       "venueId": 2,
       "venueName": "會議室 B",
       "items": []
+    },
+    {
+      "venueId": 3,
+      "venueName": "學務長會議室",
+      "items": []
     }
   ]
 }
@@ -893,7 +899,7 @@ curl -X GET "http://localhost:8080/api/bookings/approved/two-venues?venueIdA=1&v
 
 | 情況 | 回應 |
 | :--- | :--- |
-| 兩場地相同 | `{"success": false, "message": "兩個場地不可相同", "data": null}` |
+| 三場地相同 | `{"success": false, "message": "三個場地不可相同", "data": null}` |
 | 場地或日期為空 | `{"success": false, "message": "場地 ID 不可為空", "data": null}` |
 
 ---

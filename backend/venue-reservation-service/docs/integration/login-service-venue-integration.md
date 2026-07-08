@@ -140,7 +140,7 @@ src/main/java/tw/edu/ncu/osa/venue_reservation_service/interceptor/GatewaySessio
 7. 展延 Redis TTL，並回寫同名 Cookie 更新 Max-Age。
 8. request 結束後清除 `UserContext`。
 
-目前 `/api/bookings/approved/two-venues` 為免登入查詢端點，在 `WebConfig` 中排除驗證。
+目前 `/api/bookings/approved/three-venues` 為免登入查詢端點，在 `WebConfig` 中排除驗證。
 
 ## 角色與審核權限
 
