@@ -36,9 +36,11 @@
           >
             <Wrench :size="16" aria-hidden="true" />
             <span>設備借用</span>
-            <span v-if="standalonePendingCount > 0" class="pending-badge">
-              {{ standalonePendingCount }}
-            </span>
+            <span
+              v-if="standalonePendingCount > 0"
+              class="pending-badge pending-badge--dot"
+              aria-hidden="true"
+            ></span>
           </button>
         </div>
 
@@ -1436,6 +1438,12 @@ onBeforeUnmount(() => {
     color: #ffffff;
     font-size: 0.72rem;
     font-weight: 900;
+  }
+
+  .pending-badge--dot {
+    min-width: 1.05rem;
+    height: 1.05rem;
+    padding: 0;
   }
 
   .workbench-layout {

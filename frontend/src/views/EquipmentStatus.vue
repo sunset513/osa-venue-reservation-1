@@ -349,6 +349,7 @@ onMounted(loadStatuses);
 
 .route-borrow-link {
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .equipment-content {
@@ -524,6 +525,10 @@ onMounted(loadStatuses);
   .action-buttons {
     flex-direction: column;
     align-items: flex-end;
+  }
+
+  .route-borrow-link {
+    margin-left: 0;
   }
 
   .history-url-link {

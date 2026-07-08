@@ -9,6 +9,7 @@
           <span>場地租借系統</span>
         </div>
       </RouterLink>
+
       <div ref="menuRef" class="nav-user">
         <button
           type="button"
@@ -33,8 +34,34 @@
               role="menuitem"
               @click="goToMyBookings"
             >
+              <ClipboardList :size="16" class="menu-item-icon" aria-hidden="true" />
               我的場地借用紀錄
             </button>
+
+            <button
+              v-if="isReviewer"
+              type="button"
+              class="menu-item"
+              :class="{ 'is-active': isEquipmentStatusPage }"
+              role="menuitem"
+              @click="goToEquipmentStatus"
+            >
+              <Wrench :size="16" class="menu-item-icon" aria-hidden="true" />
+              設備管理
+            </button>
+
+            <button
+              v-if="isReviewer"
+              type="button"
+              class="menu-item"
+              :class="{ 'is-active': isReviewPage }"
+              role="menuitem"
+              @click="goToReviewCalendar"
+            >
+              <ClipboardCheck :size="16" class="menu-item-icon" aria-hidden="true" />
+              管理員介面
+            </button>
+
             <button
               v-if="isReviewer"
               type="button"
@@ -43,6 +70,7 @@
               role="menuitem"
               @click="goToEquipmentHistory"
             >
+              <History :size="16" class="menu-item-icon" aria-hidden="true" />
               設備借用記錄
             </button>
           </div>
@@ -54,7 +82,14 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { ChevronDown, ClipboardCheck, ClipboardList, History, User, Wrench } from "lucide-vue-next";
+import {
+  ChevronDown,
+  ClipboardCheck,
+  ClipboardList,
+  History,
+  User,
+  Wrench,
+} from "lucide-vue-next";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useAuthSessionStore } from "@/stores/authSession";
 
@@ -68,6 +103,7 @@ const isReviewer = computed(() => authSession.isReviewer);
 const isHistoryPage = computed(() => route.name === "MyBookingHistory");
 const isEquipmentStatusPage = computed(() => route.name === "EquipmentStatus");
 const isEquipmentHistoryPage = computed(() => route.name === "EquipmentBorrowHistory");
+const isReviewPage = computed(() => route.name === "ReviewCalendar");
 
 const closeMenu = () => {
   isMenuOpen.value = false;
@@ -91,6 +127,14 @@ const goToEquipmentStatus = async () => {
   if (route.name === "EquipmentStatus") return;
 
   await router.push({ name: "EquipmentStatus" });
+};
+
+const goToReviewCalendar = async () => {
+  closeMenu();
+
+  if (route.name === "ReviewCalendar") return;
+
+  await router.push({ name: "ReviewCalendar" });
 };
 
 const goToEquipmentHistory = async () => {
