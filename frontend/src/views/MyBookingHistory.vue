@@ -897,7 +897,7 @@ const fetchLinkedEquipmentBooking = async (bookingId) => {
   );
 
   if (equipmentPage.items.length > 1) {
-    throw new Error("此場地預約關聯了多筆器材申請，暫時無法在此頁直接修改。");
+    throw new Error("此場地預約關聯了多筆設備申請，暫時無法在此頁直接修改。");
   }
 
   return equipmentPage.items[0] || null;
@@ -929,12 +929,12 @@ const openEditModal = async (booking) => {
       linkedEquipmentBooking,
       equipmentReadonly,
       equipmentReadonlyMessage: equipmentReadonly
-        ? "此筆器材申請目前不是審核中，本次只會更新場地預約。"
+        ? "此筆設備申請目前不是審核中，本次只會更新場地預約。"
         : "",
     };
     isModalVisible.value = true;
   } catch (openError) {
-    error(openError.message || "載入可修改的器材資料失敗。");
+    error(openError.message || "載入可修改的設備資料失敗。");
   } finally {
     editingBookingId.value = null;
   }

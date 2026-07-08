@@ -73,7 +73,7 @@
         <div class="form-section-title">借用內容</div>
         <label class="form-group">
           <span>借用用途 <b class="required">*</b></span>
-          <input v-model.trim="form.purpose" type="text" required placeholder="例如：社團活動器材" />
+          <input v-model.trim="form.purpose" type="text" required placeholder="例如：社團活動設備" />
         </label>
 
         <div class="equipment-list-heading">選擇設備</div>

@@ -107,10 +107,10 @@
               </div>
 
               <div v-if="shouldShowEquipmentSection" class="form-group">
-                <div class="form-section-title">需借用器材</div>
+                <div class="form-section-title">需借用設備</div>
 
                 <div v-if="isEquipmentLoading" class="equipment-helper">
-                  載入可借用器材中...
+                  載入可借用設備中...
                 </div>
 
                 <div v-else-if="isEquipmentReadonly" class="equipment-readonly-panel">
@@ -125,16 +125,16 @@
                       <span>數量 {{ item.quantity }}</span>
                     </div>
                   </div>
-                  <p v-else class="equipment-helper">此筆關聯器材申請沒有品項資料。</p>
+                  <p v-else class="equipment-helper">此筆關聯設備申請沒有品項資料。</p>
                 </div>
 
                 <div v-else-if="equipmentSelectionOptions.length === 0" class="equipment-helper">
-                  此場地目前沒有可修改的器材品項。
+                  此場地目前沒有可修改的設備品項。
                 </div>
 
                 <template v-else>
                   <div class="equipment-list-heading">
-                    {{ mode === "create" ? "選擇器材" : "修改器材" }}
+                    {{ mode === "create" ? "選擇設備" : "修改設備" }}
                   </div>
                   <div class="equipment-list">
                     <label
@@ -158,7 +158,7 @@
                         min="1"
                         :max="Math.max(equipment.totalQuantity || 1, 1)"
                         :disabled="isEquipmentReadonly"
-                        aria-label="器材借用數量"
+                        aria-label="設備借用數量"
                       />
                     </label>
                   </div>
@@ -545,7 +545,7 @@ const handleSubmit = async () => {
   }
 
   if (canEditLinkedEquipment.value && formData.equipmentItems.length === 0) {
-    warning("請至少保留一項器材品項。");
+    warning("請至少保留一項設備品項。");
     return;
   }
 
@@ -600,7 +600,7 @@ const handleSubmit = async () => {
           items: equipmentItems,
         });
 
-        success("場地與器材預約已成功修改。");
+        success("場地與設備預約已成功修改。");
         emitModalSuccess({
           venueUpdated: true,
           equipmentUpdated: true,
@@ -608,7 +608,7 @@ const handleSubmit = async () => {
         });
         return;
       } catch (equipmentError) {
-        warning(equipmentError.message || "場地已更新，但器材更新失敗。");
+        warning(equipmentError.message || "場地已更新，但設備更新失敗。");
         emitModalSuccess({
           venueUpdated: true,
           equipmentUpdated: false,
@@ -619,7 +619,7 @@ const handleSubmit = async () => {
     }
 
     if (isEquipmentReadonly.value) {
-      success("場地預約已成功修改，器材申請未變更。");
+      success("場地預約已成功修改，設備申請未變更。");
     } else {
       success("預約已成功修改。");
     }
