@@ -20,6 +20,11 @@ Frontend uses ES modules, Vue SFCs, and 2-space indentation. Use PascalCase for 
 ## Testing Guidelines
 Backend tests use JUnit via Spring Boot test support under `backend/venue-reservation-service/src/test/java`. Name new tests `*Tests.java` and add service or controller coverage for behavior changes, not just context loading. Frontend tests use Vitest and currently focus on pure utilities under `frontend/src/utils/__tests__`; name new frontend tests `*.test.js` and run `cd frontend && pnpm test` before handing off changes. For UI behavior changes, also verify the affected flow manually against the Vite dev server or Docker stack and document what you checked in the PR.
 
+## Common Troubleshooting
+- If PowerShell refuses `pnpm` with an execution-policy error, run the command through `corepack pnpm ...` or invoke the binary directly with `frontend\\node_modules\\.bin\\vitest.cmd`.
+- If Vitest fails before tests start with a Rolldown or native binding error such as `@rolldown/binding-win32-x64-msvc`, rebuild the frontend dependencies with `cd frontend && corepack pnpm install --force`, then retry the test command.
+- If a reviewer deep link does not prefill the expected filters, check that the route includes the intended query keys, especially `mode=equipment`, `equipmentKeyword`, and `equipmentStatus=all`.
+
 ## Commit & Pull Request Guidelines
 Recent history mixes plain summaries and Conventional Commit style (`feat: ...`). Prefer short, imperative commit messages with a type prefix such as `feat:`, `fix:`, or `docs:`. Keep each commit scoped to one change. PRs should include a concise summary, affected areas (`frontend`, `backend`, `docker`), setup notes, linked issues if available, and screenshots or API examples for user-facing changes.
 
