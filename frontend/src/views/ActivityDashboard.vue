@@ -94,7 +94,7 @@ import {
   MapPin,
   RefreshCw,
 } from "lucide-vue-next";
-import { fetchApprovedBookingsForTwoVenues } from "@/api/booking";
+import { fetchApprovedBookingsForThreeVenues } from "@/api/booking";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
 import { normalizeVenueDisplayName } from "@/utils/venueLabels";
 
@@ -102,6 +102,7 @@ const REFRESH_INTERVAL_MS = 60_000;
 const CLOCK_INTERVAL_MS = 1_000;
 const DASHBOARD_VENUE_ID_A = 1;
 const DASHBOARD_VENUE_ID_B = 2;
+const DASHBOARD_VENUE_ID_C = 3;
 
 const router = useRouter();
 const now = ref(new Date());
@@ -229,9 +230,10 @@ const loadDashboardData = async () => {
   }
 
   try {
-    const venueGroups = await fetchApprovedBookingsForTwoVenues(
+    const venueGroups = await fetchApprovedBookingsForThreeVenues(
       DASHBOARD_VENUE_ID_A,
       DASHBOARD_VENUE_ID_B,
+      DASHBOARD_VENUE_ID_C,
       queryDate,
     );
 

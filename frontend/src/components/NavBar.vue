@@ -35,7 +35,7 @@
               @click="goToMyBookings"
             >
               <ClipboardList :size="16" class="menu-item-icon" aria-hidden="true" />
-              我的場地借用紀錄
+              我的場地預約紀錄
             </button>
 
             <button
