@@ -249,32 +249,10 @@
             </div>
           </section>
 
-          <section class="panel-section status-filter-section" :aria-label="reviewCopy.venueStatusAria">
-            <span class="section-label">{{ reviewCopy.statusLabel }}</span>
-            <div class="status-filter-list">
-              <button
-                v-for="option in venueReviewStatusTabs"
-                :key="option.key"
-                class="status-filter-card"
-                :class="[option.className, { 'is-active': selectedStatus === option.statusValue }]"
-                type="button"
-                :aria-pressed="selectedStatus === option.statusValue"
-                @click="selectStatusFilter(option.statusValue)"
-              >
-                <span class="status-filter-icon">
-                  <component :is="option.icon" :size="19" aria-hidden="true" />
-                </span>
-                <span class="status-filter-copy">
-                  <strong>{{ option.label }}</strong>
-                  <span>{{ option.helper }}</span>
-                </span>
-                <span class="status-filter-count">{{ option.value }}</span>
-              </button>
-            </div>
-          </section>
         </aside>
-        <section class="calendar-panel">
-          <div class="filter-tabs record-tabs" role="tablist" :aria-label="reviewCopy.venueTabsAria">
+
+        <section class="calendar-panel card">
+          <div class="filter-tabs record-tabs" role="tablist" :aria-label="reviewCopy.venueStatusAria">
             <button
               v-for="option in venueReviewStatusTabs"
               :key="option.key"
@@ -293,6 +271,7 @@
                 aria-hidden="true"
               />
               {{ option.label }}
+              <span class="tab-count" style="font-size: 0.85em; opacity: 0.7;">({{ option.value }})</span>
             </button>
           </div>
 
@@ -346,10 +325,9 @@
                     <span>{{ booking.participantCount }} {{ reviewCopy.peopleUnit }}</span>
                   </div>
                 </div>
-
-                <div class="case-schedule">
-                  <strong>{{ booking.bookingDate }}</strong>
-                  <span>{{ booking.timeRange || reviewCopy.noTimeRange }}</span>
+                <div class="case-schedule-right">
+                  <div class="schedule-date">{{ booking.bookingDate }}</div>
+                  <div class="schedule-time">{{ booking.timeRange || reviewCopy.noTimeRange }}</div>
                 </div>
               </button>
             </div>
@@ -463,57 +441,9 @@
           </div>
         </div>
       </div>
-
       <div class="workbench-layout">
         <aside class="control-panel card">
-          <section class="panel-section status-filter-section equipment-status-filter-section" :aria-label="reviewCopy.equipmentStatusLabel">
-            <span class="section-label">{{ reviewCopy.statusLabel }}</span>
-            <div class="status-filter-list">
-              <button
-                v-for="option in equipmentReviewStatusTabs"
-                :key="option.key"
-                class="status-filter-card"
-                :class="[option.className, { 'is-active': equipmentSelectedStatus === option.statusValue }]"
-                type="button"
-                :aria-pressed="equipmentSelectedStatus === option.statusValue"
-                @click="selectEquipmentStatusFilter(option.statusValue)"
-              >
-                <span class="status-filter-icon">
-                  <component :is="option.icon" :size="19" aria-hidden="true" />
-                </span>
-                <span class="status-filter-copy">
-                  <strong>{{ option.label }}</strong>
-                  <span>{{ option.helper }}</span>
-                </span>
-                <span class="status-filter-count">{{ option.value }}</span>
-              </button>
-            </div>
-          </section>
-        </aside>
-        <section class="calendar-panel standalone-equipment-panel card">
-          <div class="filter-tabs record-tabs" role="tablist" :aria-label="reviewCopy.equipmentTabsAria">
-            <button
-              v-for="option in equipmentReviewStatusTabs"
-              :key="option.key"
-              type="button"
-              class="filter-tab"
-              :class="{ 'is-active': equipmentSelectedStatus === option.statusValue }"
-              role="tab"
-              :aria-selected="equipmentSelectedStatus === option.statusValue"
-              @click="selectEquipmentStatusFilter(option.statusValue)"
-            >
-              <component
-                :is="option.icon"
-                v-if="option.icon"
-                :size="18"
-                class="filter-tab-icon"
-                aria-hidden="true"
-              />
-              {{ option.label }}
-            </button>
-          </div>
-
-          <section class="review-filter-panel review-filter-panel--inline">
+          <section class="panel-section review-filter-panel">
             <div class="review-filter-toolbar">
               <div class="filter-field">
                 <label for="equipment-review-keyword">{{ reviewCopy.keywordLabel }}</label>
@@ -526,7 +456,7 @@
               </div>
 
               <div ref="equipmentDateRangePickerRef" class="date-range-picker review-date-range-picker">
-                <label for="equipment-review-date-range-trigger">{{ reviewCopy.equipmentDateRangeLabel }}</label>
+                <label for="equipment-review-date-range-trigger">{{ reviewCopy.dateRangeLabel }}</label>
                 <button
                   id="equipment-review-date-range-trigger"
                   type="button"
@@ -606,11 +536,38 @@
               </div>
             </div>
           </section>
-          <div v-if="equipmentReviewLoading" class="loading-state">{{ reviewCopy.equipmentLoading }}</div>
-          <div v-else-if="filteredEquipmentReviewItems.length === 0" class="list-empty-state">
-            {{ reviewCopy.equipmentEmpty }}
+
+        </aside>
+
+        <section class="calendar-panel card">
+          <div class="filter-tabs record-tabs" role="tablist" :aria-label="reviewCopy.statusLabel">
+            <button
+              v-for="option in equipmentReviewStatusTabs"
+              :key="option.key"
+              type="button"
+              class="filter-tab"
+              :class="{ 'is-active': equipmentSelectedStatus === option.statusValue }"
+              role="tab"
+              :aria-selected="equipmentSelectedStatus === option.statusValue"
+              @click="selectEquipmentStatusFilter(option.statusValue)"
+            >
+              <component
+                :is="option.icon"
+                v-if="option.icon"
+                :size="18"
+                class="filter-tab-icon"
+                aria-hidden="true"
+              />
+              {{ option.label }}
+              <span class="tab-count" style="font-size: 0.85em; opacity: 0.7;">({{ option.value }})</span>
+            </button>
           </div>
-          <div v-else class="case-list">
+
+          <div class="list-shell" :class="{ 'is-loading': equipmentReviewLoading }">
+            <div v-if="filteredEquipmentReviewItems.length === 0" class="list-empty-state">
+              {{ reviewCopy.equipmentEmpty }}
+            </div>
+            <div v-else class="case-list">
             <button
               v-for="equipmentBooking in paginatedEquipmentReviewItems"
               :key="equipmentBooking.id"
@@ -625,24 +582,17 @@
                   </span>
                   <strong>{{ equipmentBooking.itemSummary }}</strong>
                 </div>
-                <template v-if="equipmentBooking.relatedVenueBookingId">
-                  <div class="case-related-booking">
-                    <span class="case-id-pill">{{ reviewCopy.venueBookingIdPrefix }} #{{ equipmentBooking.relatedVenueBookingId }}</span>
-                    <span class="case-related-booking-icon" aria-hidden="true">
-                      <Building2 :size="14" />
-                    </span>
-                    <strong class="case-meta-strong">{{ equipmentBooking.relatedVenueBookingTitle || reviewCopy.noPurpose }}</strong>
-                  </div>
-                </template>
                 <div class="case-meta">
                   <span class="case-id-pill case-id-pill--equipment">{{ reviewCopy.equipmentBookingIdPrefix }} #{{ equipmentBooking.id }}</span>
+                  <template v-if="equipmentBooking.relatedVenueBookingId">
+                    <span>{{ equipmentBooking.relatedVenueBookingTitle || reviewCopy.noPurpose }}</span>
+                  </template>
                   <span>{{ equipmentBooking.contact.name || equipmentBooking.userId || reviewCopy.noApplicant }}</span>
                 </div>
               </div>
-
-              <div class="case-schedule">
-                <strong>{{ formatEquipmentBorrowDateMeta(equipmentBooking.borrowDate) }}</strong>
-                <span>{{ equipmentBooking.timeRange || reviewCopy.noTimeRange }}</span>
+              <div class="case-schedule-right">
+                <div class="schedule-date">{{ formatEquipmentBorrowDateMeta(equipmentBooking.borrowDate) }}</div>
+                <div class="schedule-time">{{ equipmentBooking.timeRange || reviewCopy.noTimeRange }}</div>
               </div>
             </button>
           </div>
@@ -690,6 +640,7 @@
               </button>
             </div>
           </nav>
+          </div>
         </section>
       </div>
     </div>
@@ -729,7 +680,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -788,10 +739,12 @@ import {
   filterVenueReviewList,
   hasActiveReviewFilters,
 } from "@/utils/reviewFilters";
+import { parseReviewRouteQuery } from "@/utils/reviewRouteQuery";
 import { useAuthSessionStore } from "@/stores/authSession";
 import { useToast } from "@/utils/useToast";
 
 const { success, error } = useToast();
+const route = useRoute();
 const router = useRouter();
 const authSession = useAuthSessionStore();
 const reviewCopy = {
@@ -925,6 +878,18 @@ const venueDateRangePickerRef = ref(null);
 const venueDateRangePopoverRef = ref(null);
 const equipmentDateRangePickerRef = ref(null);
 const equipmentDateRangePopoverRef = ref(null);
+
+const initialReviewRouteState = parseReviewRouteQuery(route.query);
+if (initialReviewRouteState.activeReviewMode) {
+  activeReviewMode.value = initialReviewRouteState.activeReviewMode;
+}
+if (initialReviewRouteState.equipmentKeyword) {
+  equipmentFilters.keyword = initialReviewRouteState.equipmentKeyword;
+}
+if (initialReviewRouteState.equipmentStatus !== null) {
+  equipmentSelectedStatus.value = initialReviewRouteState.equipmentStatus;
+}
+
 const isReviewer = computed(() => authSession.isReviewer);
 const isAllVenuesSelected = computed(() => selectedVenueId.value === ALL_VENUES_VALUE);
 const canNavigateToVenueBooking = computed(() => {
@@ -2456,10 +2421,12 @@ onMounted(async () => {
     pageLoading.value = false;
   }
 
-  await nextTick();
-  if (activeViewMode.value === "list" && activeReviewMode.value === "venue") {
+  if (activeReviewMode.value === "equipment") {
+    await loadEquipmentReviews();
+  } else if (activeViewMode.value === "list" && activeReviewMode.value === "venue") {
     await loadVenueListBookings();
   }
+  await nextTick();
   reconnectReviewStickyObserver();
   updateReviewStickyState();
 });
@@ -2621,18 +2588,13 @@ onBeforeUnmount(() => {
     z-index: 20;
     width: 100%;
     padding: 0.75rem 0 0.85rem;
-    background: #f3f6fb;
-    margin-bottom: 1.25rem;
-    transition: background 0.2s ease;
-  }
-
-  .review-sticky-stack.is-stuck {
     background: linear-gradient(
       180deg,
       rgba(243, 246, 251, 0.98) 0%,
       rgba(243, 246, 251, 0.94) 72%,
       rgba(243, 246, 251, 0) 100%
     );
+    margin-bottom: 1.25rem;
   }
 
   .review-mode-toggle-row {
@@ -3070,13 +3032,13 @@ onBeforeUnmount(() => {
 
   .case-row {
     width: 100%;
-    padding: 1rem 1.1rem;
+    padding: 1.25rem 1.5rem;
     border: 0;
-    border-bottom: 1px solid var(--review-line);
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(12rem, auto);
-    gap: 1rem;
+    border-bottom: 1px solid rgba(var(--blue-900-rgb), 0.08);
+    display: flex;
+    justify-content: space-between;
     align-items: center;
+    gap: 1rem;
     background: #ffffff;
     color: inherit;
     text-align: left;
@@ -3548,6 +3510,27 @@ onBeforeUnmount(() => {
     }
   }
 
+  .case-schedule-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .schedule-date {
+    color: var(--review-ink);
+    font-size: 1.05rem;
+    font-weight: 800;
+  }
+
+  .schedule-time {
+    color: var(--review-muted);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
   .case-meta {
     display: flex;
     flex-wrap: wrap;
@@ -3906,29 +3889,35 @@ onBeforeUnmount(() => {
   .case-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    border: 0;
-    background: transparent;
-    overflow: visible;
+    border: 1px solid var(--review-line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #ffffff;
+    gap: 0;
+    box-shadow: var(--shadow-soft);
   }
 
   .case-row {
-    padding: 1.35rem;
-    border: 1px solid rgba(var(--blue-900-rgb), 0.08);
-    border-radius: var(--radius);
+    padding: 1.35rem 1.5rem;
+    border: 0;
+    border-bottom: 1px solid rgba(var(--blue-900-rgb), 0.08);
+    border-radius: 0;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 1.25rem;
-    background: #ffffff;
-    box-shadow: var(--shadow-soft);
+    background: transparent;
+    box-shadow: none;
+
+    &:last-child {
+      border-bottom: 0;
+    }
 
     &:hover,
     &:focus-visible {
-      background: #ffffff;
-      border-color: rgba(var(--blue-900-rgb), 0.16);
-      box-shadow: 0 16px 34px rgba(20, 35, 58, 0.08);
-      transform: translateY(-1px);
+      background: #fcfcfc;
+      box-shadow: inset 4px 0 0 #202936;
+      transform: none;
     }
   }
 
@@ -3939,9 +3928,9 @@ onBeforeUnmount(() => {
 
   .case-title-line {
     align-items: flex-start;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 
     strong {
       color: var(--ink);
