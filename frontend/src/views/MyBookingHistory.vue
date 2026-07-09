@@ -220,11 +220,10 @@
                 <div class="history-overview">
                   <div class="overview-row">
                     <div>
-                      <p class="eyebrow">{{ booking.bookingDateLabel }}</p>
                       <h3>
                         <template
-                          v-for="(segment, index) in getHighlightedSegments(booking.venueName)"
-                          :key="`${booking.id}-venue-${index}`"
+                          v-for="(segment, index) in getHighlightedSegments(booking.purpose)"
+                          :key="`${booking.id}-purpose-${index}`"
                         >
                           <span
                             :class="{ 'keyword-highlight': segment.isMatch }"
@@ -260,11 +259,11 @@
                       </div>
                     </div>
                     <div class="info-item is-side-info">
-                      <span class="info-label">使用用途</span>
+                      <span class="info-label">場地</span>
                       <strong>
                         <template
-                          v-for="(segment, index) in getHighlightedSegments(booking.purpose)"
-                          :key="`${booking.id}-purpose-${index}`"
+                          v-for="(segment, index) in getHighlightedSegments(booking.venueName)"
+                          :key="`${booking.id}-venue-${index}`"
                         >
                           <span
                             :class="{ 'keyword-highlight': segment.isMatch }"

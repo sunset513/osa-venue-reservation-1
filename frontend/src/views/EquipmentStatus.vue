@@ -96,7 +96,7 @@
                 </td>
                 <td>
                   <div class="action-buttons">
-                    <RouterLink class="history-url-link" :to="borrowHistoryRoute(equipment)">
+                    <RouterLink class="history-url-link" :to="equipmentReviewRoute(equipment)">
                       <History :size="15" aria-hidden="true" />
                       <span>借用紀錄</span>
                     </RouterLink>
@@ -194,11 +194,12 @@ const toggleExpanded = (equipmentId) => {
   expandedEquipmentIds.value = nextExpandedIds;
 };
 
-const borrowHistoryRoute = (equipment) => ({
-  name: "EquipmentBorrowHistory",
+const equipmentReviewRoute = (equipment) => ({
+  name: "ReviewCalendar",
   query: {
-    equipmentId: equipment.equipmentId,
-    equipmentName: equipment.equipmentName,
+    mode: "equipment",
+    equipmentKeyword: equipment?.equipmentName || "",
+    equipmentStatus: "all",
   },
 });
 
