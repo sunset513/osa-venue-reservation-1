@@ -104,14 +104,15 @@ export const fetchCalendarDay = (venueId, date) => {
 };
 
 /**
- * 3.4 查詢指定日期兩個場地的已通過預約
+ * 3.4 查詢指定日期三個場地的已通過預約
  * @param {number|string} venueIdA - 第一個場地 ID
  * @param {number|string} venueIdB - 第二個場地 ID
+ * @param {number|string} venueIdC - 第三個場地 ID
  * @param {string} date - 查詢日期 (ISO 8601 格式 YYYY-MM-DD)
  * @returns {Promise<Array>} 依場地分組的已通過預約
  */
-export const fetchApprovedBookingsForTwoVenues = (venueIdA, venueIdB, date) => {
-  return request.get("/bookings/approved/two-venues", {
-    params: { venueIdA, venueIdB, date },
+export const fetchApprovedBookingsForThreeVenues = (venueIdA, venueIdB, venueIdC, date) => {
+  return request.get("/bookings/approved/three-venues", {
+    params: { venueIdA, venueIdB, venueIdC, date },
   });
 };
