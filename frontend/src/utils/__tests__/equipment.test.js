@@ -8,6 +8,7 @@ import {
   flattenEquipmentGroups,
   getEquipmentBookingEditTarget,
   getEquipmentStatusMeta,
+  normalizeEquipmentBooking,
   normalizeEquipmentBorrowPage,
   normalizeEquipmentGroups,
 } from "../equipment";
@@ -184,6 +185,21 @@ describe("normalizeEquipmentBorrowPage", () => {
       },
       items: [{ id: null, equipmentId: 3, equipmentName: "Projector", quantity: 2 }],
       itemSummary: "Projector x 2",
+    });
+  });
+});
+
+describe("normalizeEquipmentBooking", () => {
+  it("preserves parsed contact info when a booking is normalized again", () => {
+    const normalizedBooking = normalizeEquipmentBooking({
+      id: 31,
+      contactInfo: '{"name":"測試生","email":"student@ncu.edu.tw","phone":"0912345678"}',
+    });
+
+    expect(normalizeEquipmentBooking(normalizedBooking).contact).toEqual({
+      name: "測試生",
+      phone: "0912345678",
+      email: "student@ncu.edu.tw",
     });
   });
 });

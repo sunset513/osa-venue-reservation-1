@@ -143,7 +143,7 @@ export const normalizeEquipmentBooking = (record = {}) => {
     timeRange: formatSlotGroupsAsTimeRange(slots) || "未提供時段",
     status: toNumberOrNull(record.status),
     purpose: toText(record.purpose, "未填寫用途"),
-    contact: parseContactInfo(record.contactInfo),
+    contact: parseContactInfo(record.contactInfo ?? record.contact),
     relatedVenueBookingId: toNumberOrNull(record.relatedVenueBookingId),
     relatedVenueId: toNumberOrNull(record.relatedVenueId),
     relatedVenueName: toText(record.relatedVenueName),
