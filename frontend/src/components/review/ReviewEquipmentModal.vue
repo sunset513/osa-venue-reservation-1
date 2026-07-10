@@ -173,10 +173,10 @@ const actions = computed(() => {
 
 .equipment-modal-container {
   position: relative;
-  background: linear-gradient(180deg, #e4e8ed 0%, #edf0f4 100%);
-  border-left-color: #c4ccd6;
+  background: linear-gradient(180deg, #c5ccd4 0%, #d2d9e0 100%);
+  border-left-color: #a3afbd;
   box-shadow:
-    inset 0 0 0 1px rgba(108, 122, 137, 0.08),
+    inset 0 0 0 1px rgba(108, 122, 137, 0.15),
     -20px 0 36px rgba(15, 23, 42, 0.18);
 
   &::before {
@@ -184,35 +184,35 @@ const actions = computed(() => {
     position: absolute;
     inset: 0 auto 0 0;
     width: 6px;
-    background: linear-gradient(180deg, #8b96a3 0%, #697586 100%);
+    background: linear-gradient(180deg, #748393 0%, #566270 100%);
   }
 
   .modal-header {
-    background: #dbe1e8;
-    border-bottom-color: #c4ccd6;
+    background: #b8c1cb;
+    border-bottom-color: #a3afbd;
   }
 
   .modal-body {
-    background: linear-gradient(180deg, #eef2f5 0%, #f5f7f9 100%);
+    background: linear-gradient(180deg, #d3dae1 0%, #dee4ea 100%);
   }
 
   .modal-footer {
-    background: #e4e8ed;
-    border-top-color: #c4ccd6;
+    background: #c5ccd4;
+    border-top-color: #a3afbd;
   }
 
   .loading-panel {
-    background: #eef2f5;
+    background: #d3dae1;
   }
 
   .modal-title-icon {
     border-radius: 14px;
-    background: rgba(88, 101, 117, 0.12);
-    color: #536172;
+    background: rgba(68, 80, 94, 0.15);
+    color: #42505e;
   }
 
   .eyebrow {
-    color: #5f6b7a;
+    color: #4d5865;
   }
 }
 </style>

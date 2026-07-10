@@ -203,7 +203,7 @@
                     v-if="venueListFilters.datePickerOpen"
                     id="review-list-date-range-popover"
                     ref="venueDateRangePopoverRef"
-                    class="date-range-popover"
+                    class="date-range-popover date-range-popover--review"
                   >
                     <div class="calendar-selection-footer">
                       <div class="calendar-selection-summary" aria-live="polite">
@@ -491,7 +491,7 @@
                     v-if="equipmentFilters.datePickerOpen"
                     id="equipment-review-date-range-popover"
                     ref="equipmentDateRangePopoverRef"
-                    class="date-range-popover"
+                    class="date-range-popover date-range-popover--review"
                   >
                     <div class="calendar-selection-footer">
                       <div class="calendar-selection-summary" aria-live="polite">
@@ -584,10 +584,16 @@
                 </div>
                 <div class="case-meta">
                   <span class="case-id-pill case-id-pill--equipment">{{ reviewCopy.equipmentBookingIdPrefix }} #{{ equipmentBooking.id }}</span>
-                  <template v-if="equipmentBooking.relatedVenueBookingId">
-                    <span>{{ equipmentBooking.relatedVenueBookingTitle || reviewCopy.noPurpose }}</span>
-                  </template>
-                  <span>{{ equipmentBooking.contact.name || equipmentBooking.userId || reviewCopy.noApplicant }}</span>
+                  <span>{{ equipmentBooking.contact.name || reviewCopy.noApplicant }}</span>
+                </div>
+                <div v-if="equipmentBooking.relatedVenueBookingId" class="case-related-booking">
+                  <span class="case-id-pill">
+                    {{ reviewCopy.relatedVenueBookingLabel }} #{{ equipmentBooking.relatedVenueBookingId }}
+                  </span>
+                  <span class="case-related-booking-copy">
+                    <span class="case-related-booking-label">{{ reviewCopy.relatedVenuePurposeLabel }}</span>
+                    {{ equipmentBooking.relatedVenueBookingTitle || reviewCopy.noPurpose }}
+                  </span>
                 </div>
               </div>
               <div class="case-schedule-right">
@@ -792,6 +798,8 @@ const reviewCopy = {
   noApplicant: "\u672a\u63d0\u4f9b\u7533\u8acb\u4eba",
   venueBookingIdPrefix: "\u5834\u5730\u9810\u7d04\u7de8\u865f",
   equipmentBookingIdPrefix: "\u8a2d\u5099\u501f\u7528\u7de8\u865f",
+  relatedVenueBookingLabel: "\u5834\u5730\u7de8\u865f",
+  relatedVenuePurposeLabel: "\u5834\u5730\u501f\u7528\u8aaa\u660e\uff1a",
   peopleUnit: "\u4eba",
   itemsUnit: "\u7b46",
   previousPage: "\u4e0a\u4e00\u9801",
@@ -931,13 +939,14 @@ const updateReviewStickyState = () => {
   }
 
   const stickyStackRect = stickyStack.getBoundingClientRect();
-  const stickyStackMarginBottom = Number.parseFloat(window.getComputedStyle(stickyStack).marginBottom) || 0;
+  const navbarHeight = getNavbarHeight();
 
+  reviewPage.style.setProperty("--review-sticky-top", `${navbarHeight}px`);
   reviewPage.style.setProperty(
     "--review-sticky-stack-height",
-    `${stickyStackRect.height + stickyStackMarginBottom}px`,
+    `${stickyStackRect.height}px`,
   );
-  isReviewStickyPinned.value = stickyStackRect.top <= getNavbarHeight() + 1;
+  isReviewStickyPinned.value = stickyStackRect.top <= navbarHeight + 1;
 };
 
 let reviewStickyResizeObserver = null;
@@ -2448,7 +2457,10 @@ onBeforeUnmount(() => {
   --review-muted: #5f6b7a;
   --review-sticky-top: calc(var(--header-height) + 18px);
   --review-sticky-stack-height: 0px;
-  --review-sticky-secondary-top: calc(var(--review-sticky-top) + var(--review-sticky-stack-height));
+  --review-sticky-stack-gap: 1.25rem;
+  --review-sticky-secondary-top: calc(
+    var(--review-sticky-top) + var(--review-sticky-stack-height) + var(--review-sticky-stack-gap)
+  );
 
   .workbench-header {
     margin-bottom: 0.75rem;
@@ -2594,7 +2606,7 @@ onBeforeUnmount(() => {
       rgba(243, 246, 251, 0.94) 72%,
       rgba(243, 246, 251, 0) 100%
     );
-    margin-bottom: 1.25rem;
+    margin-bottom: var(--review-sticky-stack-gap);
   }
 
   .review-mode-toggle-row {
@@ -3179,49 +3191,7 @@ onBeforeUnmount(() => {
     }
   }
 
-  .date-range-popover {
-    position: fixed;
-    z-index: 60;
-    min-width: 18rem;
-    max-width: min(24rem, calc(100vw - 1.5rem));
-    padding: 0.95rem;
-    border: 1px solid rgba(var(--blue-900-rgb), 0.1);
-    border-radius: calc(var(--radius-sm) + 4px);
-    background: rgba(255, 255, 255, 0.98);
-    box-shadow: 0 22px 48px rgba(20, 35, 58, 0.16);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
 
-  .calendar-selection-footer {
-    display: grid;
-    gap: 0.9rem;
-  }
-
-  .calendar-selection-summary {
-    display: grid;
-    gap: 0.22rem;
-
-    strong {
-      color: var(--review-ink);
-    }
-  }
-
-  .calendar-manual-inputs {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .calendar-manual-field {
-    display: grid;
-    gap: 0.35rem;
-
-    span {
-      font-size: var(--text-xs);
-      color: var(--review-muted);
-    }
-  }
 
   .equipment-case-list {
     display: flex;
@@ -3553,6 +3523,17 @@ onBeforeUnmount(() => {
     gap: 0.45rem 0.8rem;
   }
 
+  .case-related-booking-copy {
+    min-width: 0;
+    color: var(--review-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .case-related-booking-label {
+    color: var(--review-ink);
+    font-weight: 800;
+  }
+
   .case-related-booking-icon {
     width: 1.5rem;
     height: 1.5rem;
@@ -3622,7 +3603,7 @@ onBeforeUnmount(() => {
 
   .control-panel {
     position: sticky;
-    top: calc(var(--header-height) + 2.25rem);
+    top: var(--review-sticky-secondary-top);
     padding: 1.5rem;
     gap: 1.1rem;
     background:
@@ -4327,6 +4308,23 @@ onBeforeUnmount(() => {
       }
     }
   }
+}
+
+.date-range-popover--review {
+  --date-range-popover-z-index: 60;
+  --date-range-popover-width: min(24rem, calc(100vw - 1.5rem));
+  --date-range-popover-min-width: 18rem;
+  --date-range-popover-max-width: min(24rem, calc(100vw - 1.5rem));
+  --date-range-popover-padding: 0.95rem;
+  --date-range-popover-border: 1px solid rgba(var(--blue-900-rgb), 0.1);
+  --date-range-popover-radius: calc(var(--radius-sm) + 4px);
+  --date-range-popover-background: rgba(255, 255, 255, 0.98);
+  --date-range-popover-shadow: 0 22px 48px rgba(20, 35, 58, 0.16);
+  --date-range-selection-gap: 0.9rem;
+  --date-range-selection-strong-color: #202936;
+  --date-range-selection-label-color: #5f6b7a;
+  --date-range-selection-hint-color: #5f6b7a;
+  --date-range-manual-label-color: #5f6b7a;
 }
 
 </style>

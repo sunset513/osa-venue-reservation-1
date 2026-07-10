@@ -15,11 +15,27 @@ const EMPTY_CONTACT_INFO = {
 export const parseContactInfo = (contactInfo) => {
   if (!contactInfo) return { ...EMPTY_CONTACT_INFO };
 
-  try {
-    return JSON.parse(contactInfo);
-  } catch {
+  let parsedContact = contactInfo;
+
+  // Some legacy records store JSON as an already-stringified JSON value.
+  // Unwrap at most twice so both formats produce the same contact object.
+  for (let parseCount = 0; parseCount < 2 && typeof parsedContact === "string"; parseCount += 1) {
+    try {
+      parsedContact = JSON.parse(parsedContact);
+    } catch {
+      return { ...EMPTY_CONTACT_INFO };
+    }
+  }
+
+  if (!parsedContact || typeof parsedContact !== "object" || Array.isArray(parsedContact)) {
     return { ...EMPTY_CONTACT_INFO };
   }
+
+  return {
+    name: typeof parsedContact.name === "string" ? parsedContact.name : "",
+    phone: typeof parsedContact.phone === "string" ? parsedContact.phone : "",
+    email: typeof parsedContact.email === "string" ? parsedContact.email : "",
+  };
 };
 
 /**

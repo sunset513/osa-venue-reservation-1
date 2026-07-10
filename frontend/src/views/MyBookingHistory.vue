@@ -252,10 +252,10 @@
                           借用時段
                         </span>
                       </div>
-                      <strong class="time-range-emphasis">{{ booking.timeRange }}</strong>
+                      <strong class="time-range-emphasis">{{ booking.bookingDateLabel }}</strong>
                       <div class="time-focus-meta">
-                        <span class="time-focus-meta-label">日期</span>
-                        <span class="time-focus-meta-value">{{ booking.bookingDateLabel }}</span>
+                        <span class="time-focus-meta-label">時段</span>
+                        <span class="time-focus-meta-value">{{ booking.timeRange }}</span>
                       </div>
                     </div>
                     <div class="info-item is-side-info">
@@ -1321,99 +1321,6 @@ watch(
   }
 }
 
-.date-range-popover {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  z-index: 80;
-  width: min(520px, calc(100vw - 2rem));
-  max-height: calc(100vh - 2rem);
-  padding: 1.2rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border: 1px solid rgba(var(--blue-900-rgb), 0.12);
-  border-radius: var(--radius);
-  background: #ffffff;
-  box-shadow: 0 22px 55px rgba(20, 35, 58, 0.16);
-  transform: translate(-50%, -50%);
-}
-
-.calendar-selection-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.calendar-selection-summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.35rem 0.85rem;
-  align-items: center;
-
-  strong {
-    min-width: 0;
-    color: var(--ink);
-    font-size: var(--text-base);
-    font-weight: 900;
-    line-height: 1.25;
-  }
-}
-
-.calendar-selection-hint {
-  grid-column: 2;
-  color: var(--muted);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.calendar-selection-label {
-  align-self: flex-start;
-  padding-top: 0.1rem;
-  color: var(--accent);
-  font-size: var(--text-xs);
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.calendar-manual-inputs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.calendar-manual-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-
-  span {
-    color: var(--muted-strong);
-    font-size: var(--text-xs);
-    font-weight: 800;
-  }
-
-  input {
-    width: 100%;
-    min-height: 2.55rem;
-    padding: 0.55rem 0.7rem;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: #ffffff;
-    color: var(--ink);
-    font: inherit;
-    font-size: var(--text-sm);
-    font-weight: 700;
-
-    &:focus {
-      outline: none;
-      border-color: rgba(var(--blue-900-rgb), 0.34);
-      box-shadow: 0 0 0 3px rgba(70, 99, 242, 0.12);
-    }
-  }
-}
-
 .filter-summary {
   display: flex;
   flex-direction: column;
@@ -1602,6 +1509,8 @@ watch(
   h3 {
     margin-top: 0.15rem;
     color: var(--ink);
+    font-size: var(--text-2xl);
+    font-weight: 800;
   }
 }
 
@@ -1736,8 +1645,9 @@ watch(
 }
 
 .time-focus-meta-value {
-  font-size: var(--text-sm);
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .info-item.is-side-info {
@@ -1841,9 +1751,6 @@ watch(
     flex-direction: column;
   }
 
-  .date-range-popover {
-    width: min(100%, calc(100vw - 2rem));
-  }
 }
 
 @media (max-width: 640px) {
@@ -1905,32 +1812,6 @@ watch(
 
   .date-range-segment {
     padding-right: 1.8rem;
-  }
-
-  .date-range-popover {
-    top: calc(var(--header-height) + 18px + max(0.75rem, env(safe-area-inset-top)));
-    bottom: 0.75rem;
-    left: 50%;
-    width: calc(100vw - 1rem);
-    max-height: calc(100dvh - var(--header-height) - 18px - 1.5rem);
-    padding: 1rem;
-    transform: translateX(-50%);
-  }
-
-  .calendar-selection-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-selection-hint {
-    grid-column: 1;
-  }
-
-  .calendar-selection-label {
-    padding-top: 0;
-  }
-
-  .calendar-manual-inputs {
-    grid-template-columns: 1fr;
   }
 
   .history-records {

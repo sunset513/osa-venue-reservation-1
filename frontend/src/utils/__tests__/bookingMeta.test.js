@@ -14,6 +14,14 @@ describe("parseContactInfo", () => {
     });
   });
 
+  it("parses double-stringified contact info JSON", () => {
+    expect(parseContactInfo('"{\\"name\\":\\"測試生\\",\\"email\\":\\"student@ncu.edu.tw\\",\\"phone\\":\\"0912345678\\"}"')).toEqual({
+      name: "測試生",
+      phone: "0912345678",
+      email: "student@ncu.edu.tw",
+    });
+  });
+
   it("returns empty contact info for empty values", () => {
     expect(parseContactInfo("")).toEqual({
       name: "",
