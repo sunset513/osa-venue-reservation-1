@@ -305,7 +305,7 @@
               {{ reviewCopy.venueEmpty }}
             </div>
 
-            <div v-else class="case-list">
+            <div v-else ref="venueReviewListRef" class="case-list review-page-list">
               <button
                 v-for="booking in paginatedReviewListBookings"
                 :key="booking.id"
@@ -316,12 +316,40 @@
                 <div class="case-main">
                   <div class="case-title-line">
                     <span class="status-pill" :class="booking.statusClass">{{ booking.statusText }}</span>
-                    <strong>{{ booking.purpose || reviewCopy.noPurpose }}</strong>
+                    <strong>
+                      <template
+                        v-for="(segment, index) in getHighlightedSegments(booking.purpose || reviewCopy.noPurpose, venueListFilters.keyword)"
+                        :key="`${booking.id}-purpose-${index}`"
+                      >
+                        <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                      </template>
+                    </strong>
                   </div>
                   <div class="case-meta">
-                    <span class="case-id-pill">{{ reviewCopy.venueBookingIdPrefix }} #{{ booking.id }}</span>
-                    <span>{{ booking.venueName }}</span>
-                    <span>{{ booking.contactName }}</span>
+                    <span class="case-id-pill">
+                      <template
+                        v-for="(segment, index) in getHighlightedSegments(`${reviewCopy.venueBookingIdPrefix} #${booking.id}`, venueListFilters.keyword)"
+                        :key="`${booking.id}-id-${index}`"
+                      >
+                        <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                      </template>
+                    </span>
+                    <span>
+                      <template
+                        v-for="(segment, index) in getHighlightedSegments(booking.venueName, venueListFilters.keyword)"
+                        :key="`${booking.id}-venue-${index}`"
+                      >
+                        <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                      </template>
+                    </span>
+                    <span>
+                      <template
+                        v-for="(segment, index) in getHighlightedSegments(booking.contactName, venueListFilters.keyword)"
+                        :key="`${booking.id}-contact-${index}`"
+                      >
+                        <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                      </template>
+                    </span>
                     <span>{{ booking.participantCount }} {{ reviewCopy.peopleUnit }}</span>
                   </div>
                 </div>
@@ -567,7 +595,7 @@
             <div v-if="filteredEquipmentReviewItems.length === 0" class="list-empty-state">
               {{ reviewCopy.equipmentEmpty }}
             </div>
-            <div v-else class="case-list">
+            <div v-else ref="equipmentReviewListRef" class="case-list review-page-list">
             <button
               v-for="equipmentBooking in paginatedEquipmentReviewItems"
               :key="equipmentBooking.id"
@@ -580,19 +608,50 @@
                   <span class="status-pill" :class="getReviewEquipmentStatusDisplayMeta(equipmentBooking.status).className">
                     {{ getReviewEquipmentStatusDisplayMeta(equipmentBooking.status).text }}
                   </span>
-                  <strong>{{ equipmentBooking.itemSummary }}</strong>
+                  <strong>
+                    <template
+                      v-for="(segment, index) in getHighlightedSegments(equipmentBooking.itemSummary, equipmentFilters.keyword)"
+                      :key="`${equipmentBooking.id}-item-${index}`"
+                    >
+                      <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                    </template>
+                  </strong>
                 </div>
                 <div class="case-meta">
-                  <span class="case-id-pill case-id-pill--equipment">{{ reviewCopy.equipmentBookingIdPrefix }} #{{ equipmentBooking.id }}</span>
-                  <span>{{ equipmentBooking.contact.name || reviewCopy.noApplicant }}</span>
+                  <span class="case-id-pill case-id-pill--equipment">
+                    <template
+                      v-for="(segment, index) in getHighlightedSegments(`${reviewCopy.equipmentBookingIdPrefix} #${equipmentBooking.id}`, equipmentFilters.keyword)"
+                      :key="`${equipmentBooking.id}-id-${index}`"
+                    >
+                      <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                    </template>
+                  </span>
+                  <span>
+                    <template
+                      v-for="(segment, index) in getHighlightedSegments(equipmentBooking.contact.name || reviewCopy.noApplicant, equipmentFilters.keyword)"
+                      :key="`${equipmentBooking.id}-contact-${index}`"
+                    >
+                      <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                    </template>
+                  </span>
                 </div>
                 <div v-if="equipmentBooking.relatedVenueBookingId" class="case-related-booking">
                   <span class="case-id-pill">
-                    {{ reviewCopy.relatedVenueBookingLabel }} #{{ equipmentBooking.relatedVenueBookingId }}
+                    <template
+                      v-for="(segment, index) in getHighlightedSegments(`${reviewCopy.relatedVenueBookingLabel} #${equipmentBooking.relatedVenueBookingId}`, equipmentFilters.keyword)"
+                      :key="`${equipmentBooking.id}-venue-id-${index}`"
+                    >
+                      <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                    </template>
                   </span>
                   <span class="case-related-booking-copy">
                     <span class="case-related-booking-label">{{ reviewCopy.relatedVenuePurposeLabel }}</span>
-                    {{ equipmentBooking.relatedVenueBookingTitle || reviewCopy.noPurpose }}
+                    <template
+                      v-for="(segment, index) in getHighlightedSegments(equipmentBooking.relatedVenueBookingTitle || reviewCopy.noPurpose, equipmentFilters.keyword)"
+                      :key="`${equipmentBooking.id}-venue-title-${index}`"
+                    >
+                      <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
+                    </template>
                   </span>
                 </div>
               </div>
@@ -798,7 +857,7 @@ const reviewCopy = {
   noApplicant: "\u672a\u63d0\u4f9b\u7533\u8acb\u4eba",
   venueBookingIdPrefix: "\u5834\u5730\u9810\u7d04\u7de8\u865f",
   equipmentBookingIdPrefix: "\u8a2d\u5099\u501f\u7528\u7de8\u865f",
-  relatedVenueBookingLabel: "\u5834\u5730\u7de8\u865f",
+  relatedVenueBookingLabel: "\u5834\u5730\u9810\u7d04\u7de8\u865f",
   relatedVenuePurposeLabel: "\u5834\u5730\u501f\u7528\u8aaa\u660e\uff1a",
   peopleUnit: "\u4eba",
   itemsUnit: "\u7b46",
@@ -829,6 +888,21 @@ const reviewSortLabelMap = {
 
 const getReviewSortLabel = (option) => reviewSortLabelMap[option.value] || option.label;
 
+const escapeHighlightPattern = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getHighlightedSegments = (value, keywordValue) => {
+  const text = value === null || value === undefined ? "" : String(value);
+  const keyword = String(keywordValue || "").trim();
+
+  if (!keyword || !text) return [{ text, isMatch: false }];
+
+  const pattern = new RegExp(`(${escapeHighlightPattern(keyword)})`, "ig");
+  return text.split(pattern).filter(Boolean).map((part) => ({
+    text: part,
+    isMatch: part.toLocaleLowerCase() === keyword.toLocaleLowerCase(),
+  }));
+};
+
 
 const createReviewFilterState = () => reactive({
   keyword: "",
@@ -840,6 +914,8 @@ const createReviewFilterState = () => reactive({
 const calendarRef = ref(null);
 const reviewPageRef = ref(null);
 const reviewStickyStackRef = ref(null);
+const venueReviewListRef = ref(null);
+const equipmentReviewListRef = ref(null);
 const venues = ref([]);
 const selectedVenueId = ref(ALL_VENUES_VALUE);
 const selectedStatus = ref("1");
@@ -1620,8 +1696,25 @@ const equipmentReviewPaginationEndIndex = computed(() => Math.min(
   filteredEquipmentReviewItems.value.length,
 ));
 
+const scrollToReviewListStart = async (listRef) => {
+  await nextTick();
+
+  const listElement = listRef.value;
+  if (!listElement) return;
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  listElement.scrollIntoView({
+    behavior: prefersReducedMotion ? "auto" : "smooth",
+    block: "start",
+  });
+};
+
 const setVenueReviewPage = (pageNo) => {
-  venueReviewCurrentPage.value = Math.min(Math.max(pageNo, 1), venueReviewTotalPages.value);
+  const nextPage = Math.min(Math.max(pageNo, 1), venueReviewTotalPages.value);
+  if (nextPage === venueReviewCurrentPage.value) return;
+
+  venueReviewCurrentPage.value = nextPage;
+  void scrollToReviewListStart(venueReviewListRef);
 };
 
 const goToPreviousVenueReviewPage = () => {
@@ -1633,7 +1726,11 @@ const goToNextVenueReviewPage = () => {
 };
 
 const setEquipmentReviewPage = (pageNo) => {
-  equipmentReviewCurrentPage.value = Math.min(Math.max(pageNo, 1), equipmentReviewTotalPages.value);
+  const nextPage = Math.min(Math.max(pageNo, 1), equipmentReviewTotalPages.value);
+  if (nextPage === equipmentReviewCurrentPage.value) return;
+
+  equipmentReviewCurrentPage.value = nextPage;
+  void scrollToReviewListStart(equipmentReviewListRef);
 };
 
 const goToPreviousEquipmentReviewPage = () => {
@@ -3042,6 +3139,10 @@ onBeforeUnmount(() => {
     background: #ffffff;
   }
 
+  .review-page-list {
+    scroll-margin-top: calc(var(--review-sticky-secondary-top) + 0.75rem);
+  }
+
   .case-row {
     width: 100%;
     padding: 1.25rem 1.5rem;
@@ -3554,16 +3655,21 @@ onBeforeUnmount(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(var(--blue-900-rgb), 0.08);
-    color: var(--review-ink);
+    border: 1px solid #d7dde5;
+    background: #eef1f4;
+    color: #5f6b7a;
     font-size: var(--text-xs);
     font-weight: 800;
     line-height: 1.2;
     white-space: nowrap;
   }
 
-  .case-id-pill--equipment {
-    background: #ffffff;
+  .keyword-highlight {
+    padding: 0 0.18em;
+    border-radius: 0.3em;
+    background: rgba(255, 216, 102, 0.65);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
   }
 
   .case-schedule {
@@ -3926,8 +4032,9 @@ onBeforeUnmount(() => {
   }
 
   .case-id-pill {
-    background: rgba(var(--blue-900-rgb), 0.06);
-    color: var(--accent);
+    border-color: #d7dde5;
+    background: #eef1f4;
+    color: #5f6b7a;
   }
 
   .case-schedule {
@@ -4206,6 +4313,10 @@ onBeforeUnmount(() => {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       align-items: end;
+    }
+
+    .review-page-list {
+      scroll-margin-top: calc(var(--review-sticky-top) + 0.75rem);
     }
 
     .panel-section:first-child,
