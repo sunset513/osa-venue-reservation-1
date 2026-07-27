@@ -42,28 +42,28 @@ describe("parseContactInfo", () => {
 describe("getBookingStatusMeta", () => {
   it("maps pending status", () => {
     expect(getBookingStatusMeta(1)).toEqual({
-      text: "審核中",
+      labelKey: "common.status.pending",
       className: "is-pending",
     });
   });
 
   it("maps approved status", () => {
     expect(getBookingStatusMeta(2)).toEqual({
-      text: "已通過",
+      labelKey: "common.status.approved",
       className: "is-approved",
     });
   });
 
   it("maps rejected status", () => {
     expect(getBookingStatusMeta(3)).toEqual({
-      text: "已被拒絕",
+      labelKey: "common.status.rejected",
       className: "is-rejected",
     });
   });
 
   it("falls back to withdrawn status", () => {
     expect(getBookingStatusMeta(0)).toEqual({
-      text: "已撤回",
+      labelKey: "common.status.withdrawn",
       className: "is-withdrawn",
     });
   });

@@ -3,13 +3,13 @@
     <header class="dashboard-header">
       <button class="back-btn" type="button" @click="router.push('/')">
         <ArrowLeft :size="16" />
-        返回首頁
+        {{ t("pages.activityDashboard.backHome") }}
       </button>
 
       <div class="dashboard-title-row">
         <div class="dashboard-title-content">
-          <h1 class="dashboard-title-visible">今日場地活動看板</h1>
-          <p class="dashboard-description">顯示今日已核准且尚未結束的活動，包含進行中與即將開始的預約。</p>
+          <h1 class="dashboard-title-visible">{{ t("pages.activityDashboard.heading") }}</h1>
+          <p class="dashboard-description">{{ t("pages.activityDashboard.description") }}</p>
         </div>
         <button
           class="btn btn-secondary refresh-btn"
@@ -18,32 +18,32 @@
           @click="loadDashboardData"
         >
           <RefreshCw :size="18" :class="{ 'is-spinning': refreshing }" />
-          重新整理
+          {{ t("pages.activityDashboard.refresh") }}
         </button>
       </div>
 
       <div class="time-panel">
         <div class="time-block">
-          <span class="time-label">目前時間</span>
+          <span class="time-label">{{ t("pages.activityDashboard.currentTime") }}</span>
           <strong>{{ currentTimeLabel }}</strong>
         </div>
         <div class="time-block">
-          <span class="time-label">使用中場地</span>
+          <span class="time-label">{{ t("pages.activityDashboard.activeVenues") }}</span>
           <strong>{{ activeVenueCount }}</strong>
         </div>
         <div class="time-block">
-          <span class="time-label">最近更新</span>
+          <span class="time-label">{{ t("pages.activityDashboard.lastUpdated") }}</span>
           <strong>{{ lastUpdatedLabel }}</strong>
         </div>
       </div>
     </header>
 
-    <div v-if="loading" class="loading-state">載入活動資訊中...</div>
+    <div v-if="loading" class="loading-state">{{ t("pages.activityDashboard.loading") }}</div>
 
     <section v-else-if="loadError" class="empty-state error-state" aria-live="polite">
       <AlertCircle :size="26" />
       <div>
-        <h2>目前無法取得活動資訊</h2>
+        <h2>{{ t("pages.activityDashboard.loadFailed") }}</h2>
         <p>{{ loadError }}</p>
       </div>
     </section>
@@ -51,12 +51,12 @@
     <section v-else-if="activeBookings.length === 0" class="empty-state dashboard-empty" aria-live="polite">
       <CalendarClock :size="30" />
       <div>
-        <h2>目前沒有今日尚未結束的場地活動</h2>
-        <p>系統會持續更新今日已核准、且尚未結束的預約。</p>
+        <h2>{{ t("pages.activityDashboard.emptyTitle") }}</h2>
+        <p>{{ t("pages.activityDashboard.emptyDescription") }}</p>
       </div>
     </section>
 
-    <section v-else class="live-activity-grid" aria-label="今日尚未結束的活動">
+    <section v-else class="live-activity-grid" :aria-label="t('pages.activityDashboard.activitiesAria')">
       <article
         v-for="booking in activeBookings"
         :key="booking.key"
@@ -75,7 +75,7 @@
           <div class="activity-meta">
             <span>
               <MapPin :size="17" />
-              {{ booking.venueName }}
+              {{ formatVenueDisplayName(booking.venueName, locale) }}
             </span>
           </div>
         </div>
@@ -87,6 +87,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import {
   AlertCircle,
   ArrowLeft,
@@ -96,7 +97,10 @@ import {
 } from "lucide-vue-next";
 import { fetchApprovedBookingsForThreeVenues } from "@/api/booking";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
-import { normalizeVenueDisplayName } from "@/utils/venueLabels";
+import {
+  formatVenueDisplayName,
+  normalizeVenueDisplayName,
+} from "@/utils/venueLabels";
 
 const REFRESH_INTERVAL_MS = 60_000;
 const CLOCK_INTERVAL_MS = 1_000;
@@ -105,6 +109,7 @@ const DASHBOARD_VENUE_ID_B = 2;
 const DASHBOARD_VENUE_ID_C = 3;
 
 const router = useRouter();
+const { locale, t } = useI18n();
 const now = ref(new Date());
 const rawBookings = ref([]);
 const loading = ref(true);
@@ -119,9 +124,9 @@ let requestToken = 0;
 const toDateKey = (date) => date.toLocaleDateString("sv-SE");
 
 const formatDateTime = (date) => {
-  if (!date) return "尚未更新";
+  if (!date) return t("pages.activityDashboard.notUpdated");
 
-  return new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat(locale.value, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -183,10 +188,12 @@ const activeBookings = computed(() => {
         slots,
         startSlot: validSlots.length ? Math.min(...validSlots) : Number.MAX_SAFE_INTEGER,
         statusClass: validSlots.includes(currentSlot.value) ? "is-active" : "is-upcoming",
-        statusLabel: validSlots.includes(currentSlot.value) ? "進行中" : "即將開始",
-        venueName: venueName || "未提供場地",
-        purpose: booking.purpose || "未填寫用途",
-        timeRange: formatSlotGroupsAsTimeRange(slots) || "未提供時段",
+        statusLabel: validSlots.includes(currentSlot.value)
+          ? t("pages.activityDashboard.inProgress")
+          : t("pages.activityDashboard.upcoming"),
+        venueName: venueName || t("pages.activityDashboard.noVenue"),
+        purpose: booking.purpose || t("common.noPurpose"),
+        timeRange: formatSlotGroupsAsTimeRange(slots) || t("common.noTimeRange"),
       };
     })
     .sort((left, right) => {
@@ -195,7 +202,7 @@ const activeBookings = computed(() => {
 
       if (leftStart !== rightStart) return leftStart - rightStart;
 
-      return left.venueName.localeCompare(right.venueName, "zh-Hant");
+      return left.venueName.localeCompare(right.venueName, locale.value);
     });
 });
 
@@ -254,7 +261,7 @@ const loadDashboardData = async () => {
 
     console.error("取得活動資訊失敗:", error);
     rawBookings.value = [];
-    loadError.value = error.message || "請稍後再試，或確認後端服務是否正常。";
+    loadError.value = t("pages.activityDashboard.loadFailedHelp");
   } finally {
     if (token === requestToken) {
       loading.value = false;

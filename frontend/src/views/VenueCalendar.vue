@@ -3,12 +3,21 @@
     <header v-if="venueInfo" class="page-header">
       <div class="header-toolbar">
         <div class="toolbar-left">
-          <button class="back-btn" @click="goBackToVenueList">← 返回場地列表</button>
+          <button class="back-btn" @click="goBackToVenueList">
+            ← {{ t("pages.venueCalendar.actions.backToVenueList") }}
+          </button>
           <div class="toolbar-title">
-            <span class="toolbar-label">目前場地</span>
+            <span class="toolbar-label">{{ t("pages.venueCalendar.currentVenue") }}</span>
             <h2>{{ venueInfo.name }}</h2>
             <div class="venue-meta">
-              <span>👥 容納人數: {{ venueInfo.capacity }} 人</span>
+              <span>
+                👥
+                {{
+                  t("pages.venueCalendar.capacity", {
+                    count: venueInfo.capacity,
+                  })
+                }}
+              </span>
             </div>
           </div>
         </div>
@@ -22,7 +31,11 @@
           >
             <ChevronDown v-if="isInfoCollapsed" :size="16" aria-hidden="true" />
             <ChevronUp v-else :size="16" aria-hidden="true" />
-            {{ isInfoCollapsed ? "展開資訊" : "收合資訊" }}
+            {{
+              isInfoCollapsed
+                ? t("pages.venueCalendar.actions.expandInformation")
+                : t("pages.venueCalendar.actions.collapseInformation")
+            }}
           </button>
         </div>
       </div>
@@ -31,33 +44,35 @@
         <div class="header-main">
           <div class="header-left">
 
-            <p class="header-description">用月曆查看當月借用狀況，並快速切換同單位其他場地。</p>
+            <p class="header-description">
+              {{ t("pages.venueCalendar.description") }}
+            </p>
    
           </div>
 
           <div class="legend-group">
             <span class="legend-item">
               <span class="legend-dot my-approved"></span>
-              我的預約 (已通過)
+              {{ t("pages.venueCalendar.legend.myApproved") }}
             </span>
             <span class="legend-item">
               <span class="legend-dot my-pending"></span>
-              審核中
+              {{ t("pages.venueCalendar.legend.myPending") }}
             </span>
             <span class="legend-item">
               <span class="legend-dot others-pending"></span>
-              他人審核中
+              {{ t("pages.venueCalendar.legend.otherPending") }}
             </span>
             <span class="legend-item">
               <span class="legend-dot others"></span>
-              已佔用時段
+              {{ t("pages.venueCalendar.legend.occupied") }}
             </span>
           </div>
         </div>
 
         <section class="filter-panel card">
           <div class="filter-field filter-field-main">
-            <label for="venue-switcher">場地</label>
+            <label for="venue-switcher">{{ t("pages.venueCalendar.venue") }}</label>
             <select
               id="venue-switcher"
               v-model.number="selectedVenueId"
@@ -65,15 +80,17 @@
               @change="handleVenueChange"
             >
               <option v-for="venue in switchableVenues" :key="venue.id" :value="venue.id">
-                {{ venue.name }}
+                {{ formatVenueDisplayName(venue.name, locale) }}
               </option>
             </select>
           </div>
 
           <div class="filter-summary">
-            <span class="summary-label">目前場地</span>
+            <span class="summary-label">{{ t("pages.venueCalendar.currentVenue") }}</span>
             <strong>{{ selectedVenueName }}</strong>
-            <span class="summary-subtle">可快速切換同單位其他場地</span>
+            <span class="summary-subtle">
+              {{ t("pages.venueCalendar.switchVenueHint") }}
+            </span>
           </div>
         </section>
       </div>
@@ -90,7 +107,7 @@
     :visible="isDayModalVisible"
     :selectedDate="selectedDate"
     :dayOfWeek="selectedDayOfWeek"
-    :venueName="venueInfo?.name || ''"
+    :venueName="selectedVenueName"
     :bookings="selectedDayBookings"
     :canCreate="!isSelectedDatePast"
     @close="closeDayModal"
@@ -127,14 +144,19 @@ import { getDailyEventCount, renderMoreLinkContent } from "@/utils/calendarDispl
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
 import { buildBookingQueryPayload, normalizeBookingPage } from "@/utils/bookingQuery";
 import { useToast } from "@/utils/useToast.js";
+import { createLocalizedError, resolveErrorMessage } from "@/utils/errorMessage";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import FullCalendar from "@fullcalendar/vue3";
+import zhTwLocale from "@fullcalendar/core/locales/zh-tw";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { computed, nextTick, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 
 const { error, success, warning } = useToast();
+const { locale, t } = useI18n();
 
 const route = useRoute();
 const router = useRouter();
@@ -170,7 +192,9 @@ const currentRouteVenueId = computed(() => {
 });
 
 const loadingMessage = computed(() => {
-  return isSwitchingVenue.value ? "切換場地中，請稍候..." : "載入中，請稍候...";
+  return isSwitchingVenue.value
+    ? t("pages.venueCalendar.loading.switchingVenue")
+    : t("pages.venueCalendar.loading.calendar");
 });
 
 const switchableVenues = computed(() => {
@@ -186,7 +210,12 @@ const switchableVenues = computed(() => {
 });
 
 const selectedVenueName = computed(() => {
-  return switchableVenues.value.find((venue) => venue.id === selectedVenueId.value)?.name || venueInfo.value?.name || "未選擇場地";
+  const venueName = switchableVenues.value.find((venue) => venue.id === selectedVenueId.value)?.name
+    || venueInfo.value?.name
+    || "";
+
+  return formatVenueDisplayName(venueName, locale.value)
+    || t("pages.venueCalendar.fallbacks.noSelectedVenue");
 });
 
 const selectedDayBookings = computed(() => {
@@ -202,10 +231,10 @@ const selectedDayBookings = computed(() => {
       return {
         id: booking.id,
         purpose: booking.purpose || "",
-        contactName: parsedContact.name || "預約人",
+        contactName: parsedContact.name || t("pages.venueCalendar.fallbacks.booker"),
         participantCount: booking.pCount || 0,
         timeRange: formatSlotsAsTimeRange(booking.slots),
-        statusText: statusMeta.text,
+        statusText: t(statusMeta.labelKey),
         statusClass: statusMeta.className,
         isEditable: booking.canWithdraw === true,
         originalData: booking,
@@ -303,7 +332,7 @@ const openDayModal = (dateStr) => {
   selectedDate.value = dateStr;
 
   const targetDate = new Date(`${dateStr}T00:00:00`);
-  selectedDayOfWeek.value = targetDate.toLocaleDateString("zh-TW", {
+  selectedDayOfWeek.value = targetDate.toLocaleDateString(locale.value, {
     weekday: "long",
   });
 
@@ -316,7 +345,7 @@ const closeDayModal = () => {
 
 const openCreateModal = (dateStr) => {
   if (isPastDate(dateStr)) {
-    warning("過去日期不可預約，請選擇今天之後的日期。");
+    warning(t("pages.venueCalendar.toast.pastDateUnavailable"));
     return;
   }
 
@@ -365,7 +394,7 @@ const fetchLinkedEquipmentBooking = async (bookingId) => {
   );
 
   if (equipmentPage.items.length > 1) {
-    throw new Error("此場地預約關聯了多筆設備申請，暫時無法在此頁直接修改。");
+    throw createLocalizedError("pages.venueCalendar.errors.multipleEquipmentBookings");
   }
 
   return equipmentPage.items[0] || null;
@@ -394,15 +423,15 @@ const openEditModal = async (originalData) => {
       canWithdraw: originalData.canWithdraw === true,
       linkedEquipmentBooking,
       equipmentReadonly,
-      equipmentReadonlyMessage: equipmentReadonly
-        ? "此筆設備申請目前不是審核中，本次只會更新場地預約。"
-        : "",
+      equipmentReadonlyMessageKey: equipmentReadonly
+        ? "pages.bookingModal.equipment.nonPendingVenueOnly"
+        : null,
     };
 
     isDayModalVisible.value = false;
     isModalVisible.value = true;
   } catch (err) {
-    error(err.message || "載入可修改的設備資料失敗。");
+    error(resolveErrorMessage(err, t, "pages.venueCalendar.errors.editableEquipmentLoadFailed"));
   } finally {
     editingBookingId.value = null;
   }
@@ -415,26 +444,28 @@ const openEditModal = async (originalData) => {
 // 4. 他人已通過：綠色，代表該時段已確定佔用。
 const getEventDisplayTitle = (booking) => {
   if (booking.isMine === true) {
-    return booking.status === 2 ? "我的預約" : "審核中";
+    return booking.status === 2
+      ? t("pages.venueCalendar.event.myBooking")
+      : t("common.status.pending");
   }
 
   if (booking.status === 1) {
-    return "他人審核中";
+    return t("pages.venueCalendar.event.otherPending");
   }
 
-  return "已佔用";
+  return t("pages.venueCalendar.event.occupied");
 };
 
 const getEventClickWarning = (booking) => {
   if (booking?.isMine === true && booking?.status === 2) {
-    return "這是你已通過的預約。如需取消，請聯絡管理單位。";
+    return t("pages.venueCalendar.toast.approvedBookingContactUnit");
   }
 
   if (booking?.status === 1) {
-    return "這個時段已有其他申請正在審核，尚未確定佔用。";
+    return t("pages.venueCalendar.toast.otherPending");
   }
 
-  return "這個時段已被他人預約，請改選其他時間。";
+  return t("pages.venueCalendar.toast.occupied");
 };
 
 const getEventClassNames = (booking) => {
@@ -487,7 +518,7 @@ const handleWithdrawBooking = async (bookingId) => {
   if (!targetBooking) return;
 
   if (targetBooking.canWithdraw !== true) {
-    warning("這筆預約已經通過，不能在這裡撤回。若要取消，請聯絡管理單位。");
+    warning(t("pages.venueCalendar.toast.withdrawApprovedUnavailable"));
     return;
   }
 
@@ -503,9 +534,9 @@ const handleWithdrawBooking = async (bookingId) => {
 
     isModalVisible.value = false;
     rebuildEventsFromBookings(monthlyBookings.value);
-    success("已撤回預約申請。");
+    success(t("pages.venueCalendar.toast.withdrawn"));
   } catch (withdrawError) {
-    error(withdrawError.message || "撤回預約申請失敗");
+    error(resolveErrorMessage(withdrawError, t, "pages.venueCalendar.errors.withdrawFailed"));
   } finally {
     isWithdrawing.value = false;
   }
@@ -645,7 +676,7 @@ const loadEvents = async (view, targetVenueId = venueInfo.value?.id) => {
     console.error("取得日曆資料失敗:", loadError);
     events.value = [];
     monthlyBookings.value = [];
-    error(loadError.message || "取得場地月曆失敗");
+    error(resolveErrorMessage(loadError, t, "pages.venueCalendar.errors.calendarLoadFailed"));
   } finally {
     if (requestToken === eventsRequestToken) {
       isFetchingEvents.value = false;
@@ -689,7 +720,11 @@ const syncVenueContext = async (targetVenueId) => {
 
       console.error("取得同單位場地清單失敗:", venueListError);
       venues.value = [];
-      error(venueListError.message || "取得同單位場地清單失敗");
+      error(resolveErrorMessage(
+        venueListError,
+        t,
+        "pages.venueCalendar.errors.venueListLoadFailed",
+      ));
     }
 
     if (syncToken !== venueSyncToken) return;
@@ -704,7 +739,7 @@ const syncVenueContext = async (targetVenueId) => {
     venueInfo.value = null;
     venues.value = [];
     resetVenueState();
-    error(syncError.message || "取得場地資訊失敗");
+    error(resolveErrorMessage(syncError, t, "pages.venueCalendar.errors.venueLoadFailed"));
   } finally {
     if (syncToken === venueSyncToken) {
       suppressDatesSetLoad.value = false;
@@ -733,20 +768,21 @@ const handleModalSuccess = async () => {
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, interactionPlugin],
+  locales: [zhTwLocale],
   initialView: "dayGridMonth",
   headerToolbar: {
     left: "",
     center: "prev title next",
     right: "",
   },
-  locale: "zh-tw",
+  locale: locale.value === "en-US" ? "en" : "zh-tw",
   firstDay: 0,
   height: "auto",
   dayMaxEvents: 3,
   displayEventEnd: true,
   dayCellContent: renderDayCellContent,
   eventContent: renderEventContent,
-  moreLinkContent: (arg) => renderMoreLinkContent(arg, "個"),
+  moreLinkContent: (arg) => renderMoreLinkContent(t("common.moreItems", { count: arg.num })),
   moreLinkClick: () => {},
   eventTimeFormat: {
     hour: "2-digit",
@@ -772,6 +808,16 @@ const calendarOptions = ref({
       warning(getEventClickWarning(originalData));
     }
   },
+});
+
+watch(locale, (nextLocale) => {
+  const calendarLocale = nextLocale === "en-US" ? "en" : "zh-tw";
+  calendarRef.value?.getApi().setOption("locale", calendarLocale);
+  calendarRef.value?.getApi().setOption(
+    "moreLinkContent",
+    (arg) => renderMoreLinkContent(t("common.moreItems", { count: arg.num })),
+  );
+  rebuildEventsFromBookings(monthlyBookings.value);
 });
 
 watch(

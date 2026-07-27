@@ -1,12 +1,12 @@
 <template>
   <div class="selector-page page-enter">
     <header class="page-header">
-      <button class="back-btn" @click="$router.push('/')">← 返回單位</button>
-      <h1>選擇場地</h1>
-      <p>點擊下方場地以查看預約狀況</p>
+      <button class="back-btn" @click="$router.push('/')">← {{ t("pages.venueSelector.backToUnits") }}</button>
+      <h1>{{ t("pages.venueSelector.title") }}</h1>
+      <p>{{ t("pages.venueSelector.description") }}</p>
     </header>
 
-    <div v-if="loading" class="loading-state">載入中...</div>
+    <div v-if="loading" class="loading-state">{{ t("common.loading") }}</div>
 
     <div v-else class="selector-sections">
       <section class="selector-section">
@@ -17,16 +17,16 @@
             class="select-card venue-card"
             @click="selectVenue(venue.id)"
           >
-            <h3>{{ normalizeVenueDisplayName(venue.name) }}</h3>
+            <h3>{{ formatVenueDisplayName(venue.name, locale) }}</h3>
             <div class="venue-info">
-              <span>👥 容納人數: {{ venue.capacity }}</span>
+              <span>👥 {{ t("pages.venueSelector.capacity", { count: venue.capacity }) }}</span>
             </div>
             <p class="description">{{ venue.description }}</p>
             <div class="card-footer">
               <span class="card-footer-icon" aria-hidden="true">
                 <Calendar :size="16" />
               </span>
-              <span>進入預約系統</span>
+              <span>{{ t("pages.venueSelector.enterReservation") }}</span>
               <span class="card-footer-icon" aria-hidden="true">
                 <ArrowRight :size="16" />
               </span>
@@ -37,22 +37,22 @@
 
       <section class="selector-section equipment-section">
         <div class="equipment-section-heading">
-          <p class="section-kicker">或是</p>
-          <h2 class="selector-section-title">單獨借用設備</h2>
+          <p class="section-kicker">{{ t("pages.venueSelector.or") }}</p>
+          <h2 class="selector-section-title">{{ t("pages.venueSelector.standaloneTitle") }}</h2>
         </div>
 
         <div class="card-grid equipment-card-grid">
           <div class="select-card venue-card equipment-entry-card" @click="openEquipmentBorrowForm">
-            <h3>設備借用申請</h3>
+            <h3>{{ t("pages.venueSelector.equipmentRequest") }}</h3>
             <div class="venue-info">
-              <span>不綁定場地預約</span>
+              <span>{{ t("pages.venueSelector.notLinkedToVenue") }}</span>
             </div>
-            <p class="description">若只需要借用設備，可直接填寫設備借用申請。</p>
+            <p class="description">{{ t("pages.venueSelector.equipmentDescription") }}</p>
             <div class="card-footer">
               <span class="card-footer-icon" aria-hidden="true">
                 <Wrench :size="16" />
               </span>
-              <span>進入設備借用</span>
+              <span>{{ t("pages.venueSelector.enterEquipment") }}</span>
               <span class="card-footer-icon" aria-hidden="true">
                 <ArrowRight :size="16" />
               </span>
@@ -67,12 +67,14 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { ArrowRight, Calendar, Wrench } from "lucide-vue-next";
 import { fetchVenuesByUnit } from "@/api/venue";
-import { normalizeVenueDisplayName } from "@/utils/venueLabels";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 
 const props = defineProps(["unitId"]);
 const router = useRouter();
+const { locale, t } = useI18n();
 const venues = ref([]);
 const loading = ref(true);
 

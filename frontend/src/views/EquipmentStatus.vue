@@ -3,20 +3,20 @@
     <header class="page-header equipment-header">
       <button class="back-btn" type="button" @click="router.push('/')">
         <ArrowLeft :size="16" aria-hidden="true" />
-        {{ BACK_TO_UNIT_SELECTOR_LABEL }}
+        {{ t("nav.backToUnits") }}
       </button>
-      <p class="hero-eyebrow">Equipment Status</p>
-      <h1>設備狀態管理</h1>
-      <p>查看指定日期與時段的設備借用狀態，並快速前往借用紀錄、編輯設備資料或刪除設備。</p>
+      <p class="hero-eyebrow">{{ t("pages.equipmentStatus.eyebrow") }}</p>
+      <h1>{{ t("pages.equipmentStatus.heading") }}</h1>
+      <p>{{ t("pages.equipmentStatus.description") }}</p>
     </header>
 
     <section class="status-toolbar card">
       <label>
-        查詢日期
+        {{ t("pages.equipmentStatus.queryDate") }}
         <input v-model="queryDate" type="date" />
       </label>
       <label>
-        查詢時段
+        {{ t("pages.equipmentStatus.queryTimeSlot") }}
         <select v-model.number="queryHour">
           <option v-for="hour in hourOptions" :key="hour" :value="hour">
             {{ String(hour).padStart(2, "0") }}:00
@@ -27,13 +27,13 @@
         <span class="btn-icon" aria-hidden="true">
           <RefreshCw :size="16" />
         </span>
-        <span>重新查詢</span>
+        <span>{{ t("pages.equipmentStatus.refreshQuery") }}</span>
       </button>
       <button type="button" class="btn btn-secondary admin-create-btn" @click="openCreateModal">
         <span class="btn-icon" aria-hidden="true">
           <PackagePlus :size="16" />
         </span>
-        <span>創建設備</span>
+        <span>{{ t("pages.equipmentStatus.createEquipment") }}</span>
       </button>
       <button
         type="button"
@@ -43,20 +43,20 @@
         <span class="btn-icon" aria-hidden="true">
           <ArrowRight :size="16" />
         </span>
-        <span>前往設備借用</span>
+        <span>{{ t("pages.equipmentStatus.goToBorrow") }}</span>
       </button>
     </section>
 
-    <div v-if="loading" class="loading-state">載入設備狀態中...</div>
+    <div v-if="loading" class="loading-state">{{ t("pages.equipmentStatus.loading") }}</div>
 
     <div v-else-if="loadError" class="empty-state equipment-feedback">
-      <h3>目前無法載入設備狀態</h3>
+      <h3>{{ t("pages.equipmentStatus.loadFailedTitle") }}</h3>
       <p>{{ loadError }}</p>
       <button type="button" class="btn btn-secondary" @click="loadStatuses">
         <span class="btn-icon" aria-hidden="true">
           <RefreshCw :size="16" />
         </span>
-        <span>重新載入</span>
+        <span>{{ t("pages.equipmentStatus.reload") }}</span>
       </button>
     </div>
 
@@ -65,12 +65,12 @@
         <table class="equipment-table">
           <thead>
             <tr>
-              <th>設備名稱</th>
-              <th>總數量</th>
-              <th>借出數量</th>
-              <th>可用數量</th>
-              <th>狀態</th>
-              <th>操作</th>
+              <th>{{ t("pages.equipmentStatus.columns.name") }}</th>
+              <th>{{ t("pages.equipmentStatus.columns.total") }}</th>
+              <th>{{ t("pages.equipmentStatus.columns.borrowed") }}</th>
+              <th>{{ t("pages.equipmentStatus.columns.available") }}</th>
+              <th>{{ t("pages.equipmentStatus.columns.status") }}</th>
+              <th>{{ t("pages.equipmentStatus.columns.actions") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -83,7 +83,12 @@
                     :disabled="equipment.activeBookings.length === 0"
                     @click="toggleExpanded(equipment.equipmentId)"
                   >
-                    <strong>{{ equipment.equipmentName }}</strong>
+                    <strong>
+                      {{
+                        equipment.equipmentName
+                          || t("pages.equipmentShared.unnamedEquipment", { id: equipment.equipmentId })
+                      }}
+                    </strong>
                   </button>
                 </td>
                 <td>{{ equipment.totalQuantity }}</td>
@@ -91,18 +96,18 @@
                 <td>{{ equipment.availableQuantity }}</td>
                 <td>
                   <span class="status-pill" :class="getEquipmentStatusMeta(equipment.isInUse).className">
-                    {{ getEquipmentStatusMeta(equipment.isInUse).text }}
+                    {{ t(getEquipmentStatusMeta(equipment.isInUse).labelKey) }}
                   </span>
                 </td>
                 <td>
                   <div class="action-buttons">
                     <RouterLink class="history-url-link" :to="equipmentReviewRoute(equipment)">
                       <History :size="15" aria-hidden="true" />
-                      <span>借用紀錄</span>
+                      <span>{{ t("pages.equipmentStatus.borrowRecords") }}</span>
                     </RouterLink>
                     <button type="button" class="action-btn" @click="openEditModal(equipment)">
                       <PencilLine :size="15" aria-hidden="true" />
-                      <span>編輯</span>
+                      <span>{{ t("common.actions.edit") }}</span>
                     </button>
                     <button
                       type="button"
@@ -111,7 +116,13 @@
                       @click="handleDeleteEquipment(equipment)"
                     >
                       <Trash2 :size="15" aria-hidden="true" />
-                      <span>{{ deletingEquipmentId === equipment.equipmentId ? "刪除中..." : "刪除" }}</span>
+                      <span>
+                        {{
+                          deletingEquipmentId === equipment.equipmentId
+                            ? t("pages.equipmentStatus.deleting")
+                            : t("common.actions.delete")
+                        }}
+                      </span>
                     </button>
                   </div>
                 </td>
@@ -124,11 +135,31 @@
                       :key="booking.equipmentBookingId"
                       class="active-booking-card"
                     >
-                      <strong>#{{ booking.equipmentBookingId }} {{ booking.purpose }}</strong>
-                      <span>{{ booking.borrowDate }} {{ formatSlotGroupsAsTimeRange(booking.slots) }}</span>
-                      <span>借用數量 {{ booking.quantity }} / 申請人 {{ booking.userId }}</span>
-                      <span v-if="booking.relatedVenueName">關聯場地：{{ booking.relatedVenueName }}</span>
-                      <span>{{ booking.contact.name || "未提供姓名" }} / {{ booking.contact.phone || "未提供電話" }}</span>
+                      <strong>
+                        #{{ booking.equipmentBookingId }}
+                        {{ booking.purpose || t("common.noPurpose") }}
+                      </strong>
+                      <span>{{ formatDateLabel(booking.borrowDate) }} {{ formatSlotGroupsAsTimeRange(booking.slots) }}</span>
+                      <span>
+                        {{
+                          t("pages.equipmentStatus.bookingSummary", {
+                            quantity: booking.quantity,
+                            applicant: booking.userId || t("common.notProvided"),
+                          })
+                        }}
+                      </span>
+                      <span v-if="booking.relatedVenueName">
+                        {{
+                          t("pages.equipmentStatus.relatedVenue", {
+                            name: formatVenueDisplayName(booking.relatedVenueName, locale),
+                          })
+                        }}
+                      </span>
+                      <span>
+                        {{ booking.contact.name || t("pages.equipmentStatus.nameNotProvided") }}
+                        /
+                        {{ booking.contact.phone || t("pages.equipmentStatus.phoneNotProvided") }}
+                      </span>
                     </article>
                   </div>
                 </td>
@@ -151,6 +182,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import {
   ArrowRight,
   ArrowLeft,
@@ -164,10 +196,12 @@ import EquipmentMasterEditModal from "@/components/equipment/EquipmentMasterEdit
 import { deleteEquipment, getEquipmentStatuses } from "@/api/equipment";
 import { getEquipmentStatusMeta, normalizeEquipmentStatuses } from "@/utils/equipment";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
-import { BACK_TO_UNIT_SELECTOR_LABEL } from "@/utils/navigationLabels";
 import { useToast } from "@/utils/useToast";
+import { resolveErrorMessage } from "@/utils/errorMessage";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 
 const router = useRouter();
+const { locale, t } = useI18n();
 const { success, warning } = useToast();
 
 const loading = ref(true);
@@ -203,6 +237,19 @@ const equipmentReviewRoute = (equipment) => ({
   },
 });
 
+const formatDateLabel = (value) => {
+  if (!value) return t("pages.equipmentStatus.dateNotProvided");
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat(locale.value, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+};
+
 const openCreateModal = () => {
   editingEquipmentId.value = null;
   editingEquipmentName.value = "";
@@ -217,11 +264,11 @@ const openEditModal = (equipment) => {
 
 const handleDeleteEquipment = async (equipment) => {
   const equipmentId = equipment?.equipmentId;
-  const equipmentName = equipment?.equipmentName || "這項設備";
+  const equipmentName = equipment?.equipmentName || t("pages.equipmentStatus.thisEquipment");
 
   if (!equipmentId || deletingEquipmentId.value === equipmentId) return;
 
-  const confirmed = window.confirm(`確定要刪除「${equipmentName}」嗎？刪除後會從設備清單中移除。`);
+  const confirmed = window.confirm(t("pages.equipmentStatus.deleteConfirm", { name: equipmentName }));
   if (!confirmed) return;
 
   deletingEquipmentId.value = equipmentId;
@@ -235,10 +282,10 @@ const handleDeleteEquipment = async (equipment) => {
       editingEquipmentName.value = "";
     }
 
-    success(`已刪除設備「${equipmentName}」。`);
+    success(t("pages.equipmentStatus.deleteSuccess", { name: equipmentName }));
     await loadStatuses();
   } catch (deleteError) {
-    warning(deleteError.message || "刪除設備失敗，若仍有未來借用紀錄，請先處理相關申請。");
+    warning(resolveErrorMessage(deleteError, t, "pages.equipmentStatus.deleteFailed"));
   } finally {
     deletingEquipmentId.value = null;
   }
@@ -262,7 +309,7 @@ const loadStatuses = async () => {
   } catch (error) {
     console.error("Failed to load equipment statuses", error);
     equipmentStatuses.value = [];
-    loadError.value = error.message || "Unable to load equipment statuses right now.";
+    loadError.value = resolveErrorMessage(error, t, "pages.equipmentStatus.loadFailedHelp");
   } finally {
     loading.value = false;
   }

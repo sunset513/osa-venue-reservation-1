@@ -44,12 +44,12 @@ export const parseContactInfo = (contactInfo) => {
 export const getBookingStatusMeta = (status) => {
   switch (status) {
     case 1:
-      return { text: "審核中", className: "is-pending" };
+      return { labelKey: "common.status.pending", className: "is-pending" };
     case 2:
-      return { text: "已通過", className: "is-approved" };
+      return { labelKey: "common.status.approved", className: "is-approved" };
     case 3:
-      return { text: "已被拒絕", className: "is-rejected" };
+      return { labelKey: "common.status.rejected", className: "is-rejected" };
     default:
-      return { text: "已撤回", className: "is-withdrawn" };
+      return { labelKey: "common.status.withdrawn", className: "is-withdrawn" };
   }
 };

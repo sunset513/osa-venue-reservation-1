@@ -2,12 +2,12 @@
   <div class="not-found-page page-enter">
     <section class="not-found-card card" aria-labelledby="not-found-title">
       <p class="not-found-code">404</p>
-      <h1 id="not-found-title">找不到頁面</h1>
+      <h1 id="not-found-title">{{ t("pages.notFound.title") }}</h1>
       <p class="not-found-copy">
-        你要前往的頁面目前無法顯示，請回到首頁重新開始。
+        {{ t("pages.notFound.description") }}
       </p>
       <RouterLink class="btn btn-primary not-found-action" :to="{ name: 'Home' }">
-        回到首頁
+        {{ t("pages.notFound.backHome") }}
       </RouterLink>
     </section>
   </div>
@@ -15,6 +15,9 @@
 
 <script setup>
 import { RouterLink } from "vue-router";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 </script>
 
 <style lang="scss" scoped>

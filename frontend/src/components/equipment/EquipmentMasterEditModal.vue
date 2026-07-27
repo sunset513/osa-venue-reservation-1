@@ -3,14 +3,14 @@
     <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="equipment-master-edit-title">
       <header class="modal-header">
         <div class="modal-heading">
-          <p class="modal-eyebrow">Equipment Master</p>
+          <p class="modal-eyebrow">{{ t("pages.equipmentMasterEdit.eyebrow") }}</p>
           <h2 id="equipment-master-edit-title">{{ modalTitle }}</h2>
           <p class="modal-subtitle">{{ equipmentTitle }}</p>
         </div>
         <button
           class="close-btn"
           type="button"
-          :aria-label="`關閉${modalTitle}視窗`"
+          :aria-label="t('pages.equipmentMasterEdit.closeWindow', { title: modalTitle })"
           :disabled="isSaving"
           @click="closeModal"
         >
@@ -19,62 +19,66 @@
       </header>
 
       <div v-if="isLoading" class="modal-state">
-        <p>載入設備資料中...</p>
+        <p>{{ t("pages.equipmentMasterEdit.loading") }}</p>
       </div>
 
       <div v-else-if="loadError" class="modal-state modal-state-error">
-        <h3>無法載入設備資料</h3>
+        <h3>{{ t("pages.equipmentMasterEdit.loadFailedTitle") }}</h3>
         <p>{{ loadError }}</p>
         <div class="modal-state-actions">
-          <button class="btn btn-secondary" type="button" @click="initializeModal">重新載入</button>
-          <button class="btn btn-primary" type="button" @click="closeModal">先關閉</button>
+          <button class="btn btn-secondary" type="button" @click="initializeModal">
+            {{ t("pages.equipmentMasterEdit.reload") }}
+          </button>
+          <button class="btn btn-primary" type="button" @click="closeModal">
+            {{ t("pages.equipmentMasterEdit.closeForNow") }}
+          </button>
         </div>
       </div>
 
       <form v-else class="edit-form" @submit.prevent="handleSubmit">
         <div class="form-layout">
           <section class="form-panel">
-            <div class="form-section-title">基本資料</div>
+            <div class="form-section-title">{{ t("pages.equipmentMasterEdit.basicInformation") }}</div>
 
             <label class="form-group">
-              <span>設備名稱 <b class="required">*</b></span>
+              <span>{{ t("pages.equipmentMasterEdit.name") }} <b class="required">*</b></span>
               <input v-model.trim="form.name" type="text" maxlength="100" required />
             </label>
 
             <label class="form-group">
-              <span>總數量 <b class="required">*</b></span>
+              <span>{{ t("pages.equipmentMasterEdit.totalQuantity") }} <b class="required">*</b></span>
               <input v-model.number="form.totalQuantity" type="number" min="1" step="1" required />
             </label>
 
             <label class="form-group">
-              <span>設備說明</span>
+              <span>{{ t("pages.equipmentMasterEdit.description") }}</span>
               <textarea v-model="form.description" rows="4" maxlength="255" />
             </label>
 
             <label class="form-group">
-              <span>借用備註</span>
+              <span>{{ t("pages.equipmentMasterEdit.borrowNote") }}</span>
               <textarea v-model="form.borrowNote" rows="4" maxlength="255" />
             </label>
           </section>
 
           <section class="form-panel form-panel-details">
-            <div class="form-section-title">場地限制</div>
+            <div class="form-section-title">{{ t("pages.equipmentMasterEdit.venueRestrictions") }}</div>
 
             <label class="toggle-card">
               <input v-model="form.venueRestricted" type="checkbox" />
               <div>
-                <strong>僅允許特定場地借用</strong>
-                <p>未勾選時，所有場地都可借用此設備。</p>
+                <strong>{{ t("pages.equipmentMasterEdit.restrictToVenues") }}</strong>
+                <p>{{ t("pages.equipmentMasterEdit.restrictionHelp") }}</p>
               </div>
             </label>
 
             <div v-if="form.venueRestricted" class="venue-rule-section">
               <div class="selection-summary">
-                已選擇 {{ selectedVenueCount }} 個場地
+                {{ t("pages.equipmentMasterEdit.selectedVenues", { count: selectedVenueCount }) }}
               </div>
 
               <div v-if="venueGroups.length === 0" class="empty-venues">
-                目前沒有可設定的場地。
+                {{ t("pages.equipmentMasterEdit.noVenues") }}
               </div>
 
               <div v-else class="venue-groups">
@@ -96,7 +100,7 @@
                           />
                         </span>
                         <div class="venue-copy">
-                          <strong>{{ venue.name }}</strong>
+                          <strong>{{ formatVenueDisplayName(venue.name, locale) }}</strong>
                           <small v-if="venue.code">{{ venue.code }}</small>
                         </div>
                       </div>
@@ -105,7 +109,7 @@
                         :value="getVenueRuleNote(venue.id)"
                         rows="2"
                         maxlength="255"
-                        placeholder="可選填：此設備於該場地的補充規則"
+                        :placeholder="t('pages.equipmentMasterEdit.ruleNotePlaceholder')"
                         :disabled="!isVenueSelected(venue.id)"
                         @input="updateVenueRuleNote(venue.id, $event.target.value)"
                       />
@@ -122,11 +126,11 @@
             <span class="btn-icon">
               <X :size="16" aria-hidden="true" />
             </span>
-            <span>取消</span>
+            <span>{{ t("common.actions.cancel") }}</span>
           </button>
           <button class="btn btn-primary" type="submit" :disabled="isSaving || isLoading">
             <Save v-if="!isSaving" :size="16" aria-hidden="true" />
-            <span>{{ isSaving ? "儲存中..." : submitLabel }}</span>
+            <span>{{ isSaving ? t("pages.equipmentMasterEdit.saving") : submitLabel }}</span>
           </button>
         </footer>
       </form>
@@ -136,11 +140,14 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { Save, X } from "lucide-vue-next";
 import { createEquipment, getEquipment, updateEquipment } from "@/api/equipment";
 import { fetchAllUnits, fetchVenuesByUnit } from "@/api/venue";
 import { buildEquipmentMasterPayload, normalizeEquipmentMaster } from "@/utils/equipment";
 import { useToast } from "@/utils/useToast.js";
+import { resolveErrorMessage } from "@/utils/errorMessage";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 
 const props = defineProps({
   visible: Boolean,
@@ -155,6 +162,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:visible", "saved"]);
+const { locale, t } = useI18n();
 const toast = useToast();
 
 const isLoading = ref(false);
@@ -175,13 +183,25 @@ const form = reactive({
 
 const isCreateMode = computed(() => !props.equipmentId);
 
-const modalTitle = computed(() => (isCreateMode.value ? "新增設備" : "編輯設備"));
+const modalTitle = computed(() =>
+  isCreateMode.value
+    ? t("pages.equipmentMasterEdit.createTitle")
+    : t("pages.equipmentMasterEdit.editTitle"),
+);
 
 const equipmentTitle = computed(() => {
-  return currentEquipment.value?.name || props.equipmentName || (isCreateMode.value ? "建立新的設備主檔" : "Equipment");
+  return currentEquipment.value?.name
+    || props.equipmentName
+    || (isCreateMode.value
+      ? t("pages.equipmentMasterEdit.newEquipmentSubtitle")
+      : t("pages.equipmentMasterEdit.equipmentFallback"));
 });
 
-const submitLabel = computed(() => (isCreateMode.value ? "新增設備" : "儲存變更"));
+const submitLabel = computed(() =>
+  isCreateMode.value
+    ? t("pages.equipmentMasterEdit.create")
+    : t("pages.equipmentMasterEdit.saveChanges"),
+);
 
 const selectedVenueIds = computed(() => {
   return new Set(
@@ -238,7 +258,7 @@ const loadVenueCatalog = async () => {
       venues: Array.isArray(venues)
         ? venues.map((venue) => ({
             id: Number(venue.id),
-            name: venue.name || `Venue ${venue.id}`,
+            name: venue.name || t("pages.equipmentMasterEdit.venueFallback", { id: venue.id }),
             code: venue.code || "",
           }))
         : [],
@@ -266,7 +286,7 @@ const initializeModal = async () => {
       await Promise.all([loadVenueCatalog(), loadEquipmentDetail()]);
     }
   } catch (error) {
-    loadError.value = error.message || "Failed to load equipment details.";
+    loadError.value = resolveErrorMessage(error, t, "pages.equipmentMasterEdit.loadFailedHelp");
   } finally {
     isLoading.value = false;
   }
@@ -317,17 +337,17 @@ const handleSubmit = async () => {
   if (isSaving.value) return;
 
   if (!form.name.trim()) {
-    toast.warning("Please enter an equipment name.");
+    toast.warning(t("pages.equipmentMasterEdit.validation.nameRequired"));
     return;
   }
 
   if (!Number.isInteger(Number(form.totalQuantity)) || Number(form.totalQuantity) < 1) {
-    toast.warning("Total quantity must be at least 1.");
+    toast.warning(t("pages.equipmentMasterEdit.validation.totalQuantityMinimum"));
     return;
   }
 
   if (form.venueRestricted && selectedVenueCount.value === 0) {
-    toast.warning("Select at least one allowed venue when venue restriction is enabled.");
+    toast.warning(t("pages.equipmentMasterEdit.validation.selectVenue"));
     return;
   }
 
@@ -346,11 +366,21 @@ const handleSubmit = async () => {
       ? await createEquipment(payload)
       : await updateEquipment(props.equipmentId, payload);
 
-    toast.success(isCreateMode.value ? "設備已新增。" : "Equipment updated.");
+    toast.success(
+      isCreateMode.value
+        ? t("pages.equipmentMasterEdit.createSuccess")
+        : t("pages.equipmentMasterEdit.updateSuccess"),
+    );
     emit("saved", savedEquipmentId || props.equipmentId);
     emit("update:visible", false);
   } catch (error) {
-    toast.error(error.message || (isCreateMode.value ? "新增設備失敗。" : "Failed to update equipment."));
+    toast.error(resolveErrorMessage(
+      error,
+      t,
+      isCreateMode.value
+        ? "pages.equipmentMasterEdit.createFailed"
+        : "pages.equipmentMasterEdit.updateFailed",
+    ));
   } finally {
     isSaving.value = false;
   }

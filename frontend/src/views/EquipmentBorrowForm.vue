@@ -5,42 +5,42 @@
         <span class="btn-icon" aria-hidden="true">
           <ArrowLeft :size="16" />
         </span>
-        <span>返回上一頁</span>
+        <span>{{ t("common.actions.back") }}</span>
       </button>
-      <p class="hero-eyebrow">Equipment Request</p>
+      <p class="hero-eyebrow">{{ t("pages.equipmentBorrow.eyebrow") }}</p>
       <h1 class="page-title">
         <Wrench :size="28" aria-hidden="true" class="page-title-icon" />
-        <span>設備借用申請</span>
+        <span>{{ t("pages.equipmentBorrow.heading") }}</span>
       </h1>
-      <p>填寫借用日期、時段與設備數量，送出後由審核者確認。</p>
+      <p>{{ t("pages.equipmentBorrow.description") }}</p>
     </header>
 
-    <div v-if="loading" class="loading-state">載入設備資料中...</div>
+    <div v-if="loading" class="loading-state">{{ t("pages.equipmentShared.loadingEquipment") }}</div>
 
     <div v-else-if="loadError" class="empty-state equipment-feedback">
-      <h3>目前無法載入設備資料</h3>
+      <h3>{{ t("pages.equipmentBorrow.loadFailedTitle") }}</h3>
       <p>{{ loadError }}</p>
       <button type="button" class="btn btn-secondary" @click="loadEquipments">
         <span class="btn-icon" aria-hidden="true">
           <RotateCcw :size="16" />
         </span>
-        <span>重新載入</span>
+        <span>{{ t("pages.equipmentShared.reload") }}</span>
       </button>
     </div>
 
     <form v-else class="borrow-form card" @submit.prevent="submitBorrowRequest">
       <section class="form-panel">
-        <div class="form-section-title">借用時間</div>
+        <div class="form-section-title">{{ t("pages.equipmentShared.borrowTime") }}</div>
         <div class="form-row">
           <label class="form-group">
-            <span>借用日期 <b class="required">*</b></span>
+            <span>{{ t("pages.equipmentShared.borrowDate") }} <b class="required">*</b></span>
             <input v-model="form.borrowDate" type="date" required />
           </label>
         </div>
 
         <div class="form-group">
-          <span>選擇時段 <b class="required">*</b></span>
-          <div class="slots-grid" role="group">
+          <span>{{ t("pages.equipmentShared.selectTimeSlots") }} <b class="required">*</b></span>
+          <div class="slots-grid" role="group" :aria-label="t('pages.equipmentShared.selectTimeSlots')">
             <label
               v-for="slot in slotOptions"
               :key="slot.value"
@@ -65,20 +65,27 @@
               <span class="slot-time">{{ slot.timeRange }}</span>
             </label>
           </div>
-          <small v-if="formErrors.slots" class="error-text">請至少選擇一個借用時段</small>
+          <small v-if="formErrors.slots" class="error-text">
+            {{ t("pages.equipmentShared.validation.selectTimeSlot") }}
+          </small>
         </div>
       </section>
 
       <section class="form-panel">
-        <div class="form-section-title">借用內容</div>
+        <div class="form-section-title">{{ t("pages.equipmentShared.borrowDetails") }}</div>
         <label class="form-group">
-          <span>借用用途 <b class="required">*</b></span>
-          <input v-model.trim="form.purpose" type="text" required placeholder="例如：社團活動設備" />
+          <span>{{ t("pages.equipmentShared.purpose") }} <b class="required">*</b></span>
+          <input
+            v-model.trim="form.purpose"
+            type="text"
+            required
+            :placeholder="t('pages.equipmentBorrow.purposePlaceholder')"
+          />
         </label>
 
-        <div class="equipment-list-heading">選擇設備</div>
+        <div class="equipment-list-heading">{{ t("pages.equipmentShared.selectEquipment") }}</div>
         <p class="equipment-list-helper">
-          綁定特定場地的設備需從對應場地的場地借用流程一併申請，無法在此頁單獨借用。
+          {{ t("pages.equipmentShared.venueRestrictedBorrowHelp") }}
         </p>
         <div class="equipment-list">
           <label
@@ -97,36 +104,41 @@
               @change="toggleEquipment(equipment.id, $event.target.checked)"
             />
             <div class="equipment-copy">
-              <strong>{{ equipment.name }}</strong>
+              <strong>
+                {{
+                  equipment.name
+                    || t("pages.equipmentShared.unnamedEquipment", { id: equipment.id })
+                }}
+              </strong>
               <span v-if="getEquipmentBoundVenueText(equipment)" class="equipment-bound-venues">
                 {{ getEquipmentBoundVenueText(equipment) }}
               </span>
             </div>
-            <span>總量 {{ equipment.totalQuantity }}</span>
+            <span>{{ t("pages.equipmentShared.totalQuantity", { count: equipment.totalQuantity }) }}</span>
             <input
               v-if="isEquipmentSelected(equipment.id) && !isStandaloneRestricted(equipment)"
               v-model.number="equipmentQuantities[equipment.id]"
               type="number"
               min="1"
               :max="equipment.totalQuantity"
-              aria-label="設備借用數量"
+              :aria-label="t('pages.equipmentShared.quantityAria')"
             />
           </label>
         </div>
 
-        <div class="form-section-title">聯絡人資訊</div>
+        <div class="form-section-title">{{ t("pages.equipmentShared.contactInformation") }}</div>
         <div class="form-row">
           <label class="form-group">
-            <span>姓名 <b class="required">*</b></span>
+            <span>{{ t("pages.equipmentShared.name") }} <b class="required">*</b></span>
             <input v-model.trim="form.contactInfo.name" type="text" required />
           </label>
           <label class="form-group">
-            <span>電話 <b class="required">*</b></span>
+            <span>{{ t("pages.equipmentShared.phone") }} <b class="required">*</b></span>
             <input v-model.trim="form.contactInfo.phone" type="tel" required />
           </label>
         </div>
         <label class="form-group">
-          <span>Email <b class="required">*</b></span>
+          <span>{{ t("common.email") }} <b class="required">*</b></span>
           <input v-model.trim="form.contactInfo.email" type="email" required />
         </label>
       </section>
@@ -136,7 +148,7 @@
           <span class="btn-icon" aria-hidden="true">
             <X :size="16" />
           </span>
-          <span>取消</span>
+          <span>{{ t("common.actions.cancel") }}</span>
         </button>
         <button type="submit" class="btn btn-primary" :disabled="submitting">
           <template v-if="!submitting">
@@ -144,7 +156,13 @@
               <Send :size="16" />
             </span>
           </template>
-          <span>{{ submitting ? "送出中..." : "送出設備借用" }}</span>
+          <span>
+            {{
+              submitting
+                ? t("pages.equipmentBorrow.submitting")
+                : t("pages.equipmentBorrow.submit")
+            }}
+          </span>
         </button>
       </footer>
     </form>
@@ -154,17 +172,20 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { ArrowLeft, RotateCcw, Send, Wrench, X } from "lucide-vue-next";
 import { createEquipmentBooking, listEquipments } from "@/api/equipment";
 import {
   buildEquipmentBookingItems,
   canBorrowEquipmentStandalone,
-  formatEquipmentBoundVenueText,
   normalizeEquipmentMasters,
 } from "@/utils/equipment";
 import { useToast } from "@/utils/useToast";
+import { resolveErrorMessage } from "@/utils/errorMessage";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 
 const router = useRouter();
+const { locale, t } = useI18n();
 const toast = useToast();
 
 const loading = ref(true);
@@ -180,9 +201,9 @@ const form = reactive({
   slots: [],
   purpose: "",
   contactInfo: {
-    name: "測試生",
-    email: "student@ncu.edu.tw",
-    phone: "0912345678",
+    name: "",
+    email: "",
+    phone: "",
   },
   equipmentItems: [],
 });
@@ -235,7 +256,18 @@ const isEquipmentSelected = (equipmentId) => selectedEquipmentIds.value.has(equi
 
 const isStandaloneRestricted = (equipment) => !canBorrowEquipmentStandalone(equipment);
 
-const getEquipmentBoundVenueText = (equipment) => formatEquipmentBoundVenueText(equipment);
+const getEquipmentBoundVenueText = (equipment) => {
+  if (canBorrowEquipmentStandalone(equipment)) return "";
+
+  const venueNames = (Array.isArray(equipment.allowedVenues) ? equipment.allowedVenues : [])
+    .map((venue) => formatVenueDisplayName(venue?.venueName, locale.value)
+      || t("pages.equipmentShared.unnamedVenue"));
+  const venues = venueNames.length > 0
+    ? venueNames.join(t("pages.equipmentShared.listSeparator"))
+    : t("pages.equipmentShared.unnamedVenue");
+
+  return t("pages.equipmentShared.boundVenues", { venues });
+};
 
 const toggleEquipment = (equipmentId, checked) => {
   const equipment = equipmentOptions.value.find((option) => option.id === equipmentId);
@@ -263,7 +295,7 @@ const loadEquipments = async () => {
     equipmentOptions.value = normalizeEquipmentMasters(await listEquipments());
   } catch (error) {
     console.error("載入設備資料失敗:", error);
-    loadError.value = error.message || "請稍後再試一次。";
+    loadError.value = resolveErrorMessage(error, t, "pages.equipmentBorrow.loadFailedHelp");
   } finally {
     loading.value = false;
   }
@@ -283,14 +315,14 @@ const submitBorrowRequest = async () => {
 
   if (form.slots.length === 0) {
     formErrors.slots = true;
-    toast.warning("請至少選擇一個借用時段");
+    toast.warning(t("pages.equipmentShared.validation.selectTimeSlot"));
     return;
   }
 
   formErrors.slots = false;
 
   if (standaloneEquipmentItems.length === 0) {
-    toast.warning("請至少選擇一項設備");
+    toast.warning(t("pages.equipmentShared.validation.selectEquipment"));
     return;
   }
 
@@ -305,10 +337,10 @@ const submitBorrowRequest = async () => {
       relatedVenueBookingId: null,
       items: standaloneEquipmentItems,
     });
-    toast.success("設備借用申請已送出");
+    toast.success(t("pages.equipmentBorrow.submitSuccess"));
     await router.push({ name: "EquipmentBorrowHistory" });
   } catch (error) {
-    toast.error(error.message || "設備借用申請送出失敗");
+    toast.error(resolveErrorMessage(error, t, "pages.equipmentBorrow.submitFailed"));
   } finally {
     submitting.value = false;
   }

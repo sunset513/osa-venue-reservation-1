@@ -5,7 +5,9 @@ import {
   canEditEquipmentBookingOnHistoryPage,
   canBorrowEquipmentStandalone,
   formatEquipmentBoundVenueText,
+  formatEquipmentItemSummary,
   flattenEquipmentGroups,
+  getEquipmentBookingStatusMeta,
   getEquipmentBookingEditTarget,
   getEquipmentStatusMeta,
   normalizeEquipmentBooking,
@@ -130,14 +132,31 @@ describe("flattenEquipmentGroups", () => {
 
 describe("getEquipmentStatusMeta", () => {
   it("maps active status", () => {
-    expect(getEquipmentStatusMeta(true)).toMatchObject({
+    expect(getEquipmentStatusMeta(true)).toEqual({
+      labelKey: "common.status.inUse",
       className: "is-in-use",
     });
   });
 
   it("maps idle status", () => {
-    expect(getEquipmentStatusMeta(false)).toMatchObject({
+    expect(getEquipmentStatusMeta(false)).toEqual({
+      labelKey: "common.status.idle",
       className: "is-idle",
+    });
+  });
+});
+
+describe("getEquipmentBookingStatusMeta", () => {
+  it.each([
+    [1, "common.status.pending", "is-pending"],
+    [2, "common.status.approved", "is-approved"],
+    [3, "common.status.rejected", "is-rejected"],
+    [0, "common.status.withdrawn", "is-withdrawn"],
+    ["unexpected", "common.status.unknown", "is-withdrawn"],
+  ])("maps status %s to translation metadata", (status, labelKey, className) => {
+    expect(getEquipmentBookingStatusMeta(status)).toEqual({
+      labelKey,
+      className,
     });
   });
 });
@@ -245,22 +264,67 @@ describe("standalone equipment helpers", () => {
 
   it("formats bound venue names for restricted equipment", () => {
     expect(
-      formatEquipmentBoundVenueText({
-        venueRestricted: true,
-        allowedVenues: [
-          { venueId: 1, venueName: "Venue A" },
-          { venueId: 2, venueName: "Venue B" },
-        ],
-      }),
+      formatEquipmentBoundVenueText(
+        {
+          venueRestricted: true,
+          allowedVenues: [
+            { venueId: 1, venueName: "Venue A" },
+            { venueId: 2, venueName: "Venue B" },
+          ],
+        },
+        {
+          prefix: "綁定場地：",
+          separator: "、",
+          fallbackVenue: "未提供場地",
+        },
+      ),
     ).toBe("綁定場地：Venue A、Venue B");
   });
 
   it("keeps malformed venue data stable", () => {
     expect(
-      formatEquipmentBoundVenueText({
-        venueRestricted: true,
-        allowedVenues: [{ venueId: null, venueName: "" }],
-      }),
+      formatEquipmentBoundVenueText(
+        {
+          venueRestricted: true,
+          allowedVenues: [{ venueId: null, venueName: "" }],
+        },
+        {
+          prefix: "綁定場地：",
+          separator: "、",
+          fallbackVenue: "未提供場地",
+        },
+      ),
     ).toBe("綁定場地：未提供場地");
+  });
+});
+
+describe("formatEquipmentItemSummary", () => {
+  it("uses the requested separator and getName callback", () => {
+    expect(
+      formatEquipmentItemSummary(
+        [
+          { localizedName: "Projector", quantity: 2 },
+          { localizedName: "HDMI Cable", quantity: 1 },
+        ],
+        {
+          separator: " / ",
+          getName: (item) => item.localizedName,
+        },
+      ),
+    ).toBe("Projector x 2 / HDMI Cable x 1");
+  });
+
+  it("uses the localized fallback when no item label is available", () => {
+    expect(
+      formatEquipmentItemSummary(
+        [{ equipmentName: "  ", quantity: 1 }],
+        { fallback: "No equipment information" },
+      ),
+    ).toBe("No equipment information");
+    expect(
+      formatEquipmentItemSummary([], {
+        fallback: "No equipment information",
+      }),
+    ).toBe("No equipment information");
   });
 });

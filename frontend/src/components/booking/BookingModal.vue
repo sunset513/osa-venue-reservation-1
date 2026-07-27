@@ -2,27 +2,40 @@
   <div v-if="visible" class="modal-overlay" @click.self="closeModal">
     <div class="modal-container">
       <header class="modal-header">
-        <h2>{{ mode === "create" ? "新增預約申請" : "修改預約申請" }}</h2>
-        <button class="close-btn" type="button" @click="closeModal">✕</button>
+        <h2>
+          {{
+            mode === "create"
+              ? t("pages.bookingModal.createTitle")
+              : t("pages.bookingModal.editTitle")
+          }}
+        </h2>
+        <button
+          class="close-btn"
+          type="button"
+          :aria-label="t('common.actions.close')"
+          @click="closeModal"
+        >
+          ✕
+        </button>
       </header>
 
       <div class="modal-body">
         <section v-if="shouldShowBookingIdentifiers" class="booking-identifier-strip">
           <span v-if="venueBookingId" class="booking-identifier-pill">
-            場地預約編號 #{{ venueBookingId }}
+            {{ t("common.bookingId", { id: venueBookingId }) }}
           </span>
           <span v-if="equipmentBookingId" class="booking-identifier-pill">
-            設備借用編號 #{{ equipmentBookingId }}
+            {{ t("common.equipmentBookingId", { id: equipmentBookingId }) }}
           </span>
         </section>
 
         <form class="booking-form" @submit.prevent="handleSubmit">
           <div class="booking-form-layout">
             <section class="booking-form-panel booking-form-panel-times">
-              <div class="form-section-title">借用時間</div>
+              <div class="form-section-title">{{ t("pages.bookingModal.sections.time") }}</div>
 
               <div class="form-group">
-                <label>預約日期</label>
+                <label>{{ t("pages.bookingModal.fields.bookingDate") }}</label>
                 <input
                   type="text"
                   :value="formData.bookingDate"
@@ -32,7 +45,9 @@
               </div>
 
               <div class="form-group">
-                <label>選擇時段 (可複選) <span class="required">*</span></label>
+                <label>
+                  {{ t("pages.bookingModal.fields.slots") }} <span class="required">*</span>
+                </label>
                 <div class="slots-grid" role="group">
                   <label
                     v-for="slot in slotOptions"
@@ -59,26 +74,34 @@
                   </label>
                 </div>
                 <small v-if="formErrors.slots" class="error-text">
-                  請至少選擇一個時段。
+                  {{ t("pages.bookingModal.validation.selectSlot") }}
                 </small>
               </div>
             </section>
 
             <section class="booking-form-panel booking-form-panel-details">
-              <div class="form-section-title">借用說明</div>
+              <div class="form-section-title">
+                {{ t("pages.bookingModal.sections.description") }}
+              </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label>使用用途 <span class="required">*</span></label>
+                  <label>
+                    {{ t("pages.bookingModal.fields.purpose") }}
+                    <span class="required">*</span>
+                  </label>
                   <input
                     v-model="formData.purpose"
                     type="text"
-                    placeholder="例如：系學會開會"
+                    :placeholder="t('pages.bookingModal.placeholders.purpose')"
                     required
                   />
                 </div>
                 <div class="form-group">
-                  <label>預估人數 <span class="required">*</span></label>
+                  <label>
+                    {{ t("pages.bookingModal.fields.participantCount") }}
+                    <span class="required">*</span>
+                  </label>
                   <input
                     v-model.number="formData.participantCount"
                     type="number"
@@ -88,29 +111,39 @@
                 </div>
               </div>
 
-              <div class="form-section-title">聯絡人資訊</div>
+              <div class="form-section-title">
+                {{ t("pages.bookingModal.sections.contact") }}
+              </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label>姓名 <span class="required">*</span></label>
+                  <label>
+                    {{ t("pages.bookingModal.fields.name") }} <span class="required">*</span>
+                  </label>
                   <input v-model="formData.contactInfo.name" type="text" required />
                 </div>
                 <div class="form-group">
-                  <label>電話 <span class="required">*</span></label>
+                  <label>
+                    {{ t("pages.bookingModal.fields.phone") }} <span class="required">*</span>
+                  </label>
                   <input v-model="formData.contactInfo.phone" type="tel" required />
                 </div>
               </div>
 
               <div class="form-group">
-                <label>電子郵件 <span class="required">*</span></label>
+                <label>
+                  {{ t("pages.bookingModal.fields.email") }} <span class="required">*</span>
+                </label>
                 <input v-model="formData.contactInfo.email" type="email" required />
               </div>
 
               <div v-if="shouldShowEquipmentSection" class="form-group">
-                <div class="form-section-title">需借用設備</div>
+                <div class="form-section-title">
+                  {{ t("pages.bookingModal.sections.equipment") }}
+                </div>
 
                 <div v-if="isEquipmentLoading" class="equipment-helper">
-                  載入可借用設備中...
+                  {{ t("pages.bookingModal.equipment.loading") }}
                 </div>
 
                 <div v-else-if="isEquipmentReadonly" class="equipment-readonly-panel">
@@ -122,19 +155,27 @@
                       class="equipment-readonly-item"
                     >
                       <strong>{{ item.equipmentName }}</strong>
-                      <span>數量 {{ item.quantity }}</span>
+                      <span>
+                        {{ t("pages.bookingModal.equipment.quantity", { count: item.quantity }) }}
+                      </span>
                     </div>
                   </div>
-                  <p v-else class="equipment-helper">此筆關聯設備申請沒有品項資料。</p>
+                  <p v-else class="equipment-helper">
+                    {{ t("pages.bookingModal.equipment.noLinkedItems") }}
+                  </p>
                 </div>
 
                 <div v-else-if="equipmentSelectionOptions.length === 0" class="equipment-helper">
-                  此場地目前沒有可修改的設備品項。
+                  {{ t("pages.bookingModal.equipment.noAvailableItems") }}
                 </div>
 
                 <template v-else>
                   <div class="equipment-list-heading">
-                    {{ mode === "create" ? "選擇設備" : "修改設備" }}
+                    {{
+                      mode === "create"
+                        ? t("pages.bookingModal.equipment.select")
+                        : t("pages.bookingModal.equipment.edit")
+                    }}
                   </div>
                   <div class="equipment-list">
                     <label
@@ -149,8 +190,19 @@
                         :disabled="isEquipmentReadonly"
                         @change="toggleEquipmentSelection(equipment.id, $event.target.checked)"
                       />
-                      <strong>{{ equipment.name }}</strong>
-                      <span>總數 {{ equipment.totalQuantity }}</span>
+                      <strong>
+                        {{
+                          equipment.name
+                            || t("pages.bookingModal.equipment.fallbackName", { id: equipment.id })
+                        }}
+                      </strong>
+                      <span>
+                        {{
+                          t("pages.bookingModal.equipment.totalQuantity", {
+                            count: equipment.totalQuantity,
+                          })
+                        }}
+                      </span>
                       <input
                         v-if="isEquipmentSelected(equipment.id)"
                         v-model.number="equipmentQuantities[equipment.id]"
@@ -158,7 +210,7 @@
                         min="1"
                         :max="Math.max(equipment.totalQuantity || 1, 1)"
                         :disabled="isEquipmentReadonly"
-                        aria-label="設備借用數量"
+                        :aria-label="t('pages.bookingModal.equipment.quantityAria')"
                       />
                     </label>
                   </div>
@@ -180,7 +232,7 @@
           <span class="btn-icon">
             <Undo2 :size="16" />
           </span>
-          <span>撤回申請</span>
+          <span>{{ t("pages.bookingModal.actions.withdrawApplication") }}</span>
         </button>
 
         <div class="modal-footer-actions">
@@ -188,7 +240,7 @@
             <span class="btn-icon">
               <X :size="16" />
             </span>
-            <span>取消</span>
+            <span>{{ t("common.actions.cancel") }}</span>
           </button>
           <button class="btn btn-primary" type="button" :disabled="isBusy" @click="handleSubmit">
             <template v-if="!isBusy">
@@ -200,10 +252,12 @@
             <span>
               {{
                 isBusy
-                  ? (isWithdrawing ? "撤回中..." : "儲存中...")
+                  ? (isWithdrawing
+                    ? t("pages.bookingModal.actions.withdrawing")
+                    : t("pages.bookingModal.actions.saving"))
                   : mode === "create"
-                    ? "送出申請"
-                    : "儲存修改"
+                    ? t("pages.bookingModal.actions.submitApplication")
+                    : t("pages.bookingModal.actions.saveChanges")
               }}
             </span>
           </button>
@@ -216,8 +270,8 @@
         @click.self="closeWithdrawConfirm"
       >
         <div class="confirm-dialog">
-          <h3>確認撤回申請？</h3>
-          <p>撤回後這筆預約會改成已撤回，且無法再編輯或重新啟用。</p>
+          <h3>{{ t("pages.bookingModal.withdrawConfirm.title") }}</h3>
+          <p>{{ t("pages.bookingModal.withdrawConfirm.description") }}</p>
           <div class="confirm-actions">
             <button
               class="btn btn-secondary"
@@ -225,7 +279,7 @@
               :disabled="isBusy"
               @click="closeWithdrawConfirm"
             >
-              取消
+              {{ t("common.actions.cancel") }}
             </button>
             <button
               class="btn btn-danger"
@@ -236,7 +290,7 @@
               <span class="btn-icon">
                 <Undo2 :size="16" />
               </span>
-              確認撤回
+              {{ t("pages.bookingModal.actions.confirmWithdraw") }}
             </button>
           </div>
         </div>
@@ -256,8 +310,11 @@ import {
   normalizeEquipmentMasters,
 } from "@/utils/equipment";
 import { useToast } from "@/utils/useToast.js";
+import { resolveErrorMessage } from "@/utils/errorMessage";
+import { useI18n } from "vue-i18n";
 
 const { success, error: showError, warning } = useToast();
+const { t } = useI18n();
 
 const props = defineProps({
   visible: Boolean,
@@ -290,9 +347,9 @@ const formData = reactive({
   purpose: "",
   participantCount: 1,
   contactInfo: {
-    name: "測試生",
-    email: "student@ncu.edu.tw",
-    phone: "0912345678",
+    name: "",
+    email: "",
+    phone: "",
   },
   equipmentItems: [],
 });
@@ -319,7 +376,12 @@ const canEditLinkedEquipment = computed(() => {
   return props.mode === "edit" && Boolean(linkedEquipmentBooking.value?.id) && !isEquipmentReadonly.value;
 });
 const equipmentReadonlyMessage = computed(() => {
-  return props.initialData?.equipmentReadonlyMessage || "本次只會更新場地預約。";
+  if (props.initialData?.equipmentReadonlyMessageKey) {
+    return t(props.initialData.equipmentReadonlyMessageKey);
+  }
+
+  return props.initialData?.equipmentReadonlyMessage
+    || t("pages.bookingModal.equipment.venueOnlyUpdate");
 });
 
 const selectedEquipmentIds = computed(() => {
@@ -343,7 +405,8 @@ const equipmentSelectionOptions = computed(() => {
 
     optionMap.set(item.equipmentId, {
       id: item.equipmentId,
-      name: item.equipmentName || `Equipment ${item.equipmentId}`,
+      name: item.equipmentName
+        || t("pages.bookingModal.equipment.fallbackName", { id: item.equipmentId }),
       totalQuantity: item.quantity || 1,
     });
   });
@@ -432,9 +495,9 @@ watch(
       contactInfo: props.initialData.contactInfo?.name
         ? { ...props.initialData.contactInfo }
         : {
-            name: "測試生",
-            email: "student@ncu.edu.tw",
-            phone: "0912345678",
+            name: "",
+            email: "",
+            phone: "",
           },
       equipmentItems: [],
     });
@@ -540,12 +603,12 @@ const handleSubmit = async () => {
   formErrors.slots = false;
 
   if (!formData.purpose || !formData.contactInfo.name || !formData.contactInfo.phone) {
-    warning("請填寫所有必填欄位。");
+    warning(t("pages.bookingModal.validation.requiredFields"));
     return;
   }
 
   if (canEditLinkedEquipment.value && formData.equipmentItems.length === 0) {
-    warning("請至少保留一項設備品項。");
+    warning(t("pages.bookingModal.validation.keepEquipmentItem"));
     return;
   }
 
@@ -578,7 +641,7 @@ const handleSubmit = async () => {
         await createBooking(bookingPayload);
       }
 
-      success("申請已成功送出。");
+      success(t("pages.bookingModal.toast.created"));
       emitModalSuccess({
         venueUpdated: true,
         equipmentUpdated: equipmentItems.length > 0 ? true : null,
@@ -600,7 +663,7 @@ const handleSubmit = async () => {
           items: equipmentItems,
         });
 
-        success("場地與設備預約已成功修改。");
+        success(t("pages.bookingModal.toast.venueAndEquipmentUpdated"));
         emitModalSuccess({
           venueUpdated: true,
           equipmentUpdated: true,
@@ -608,7 +671,11 @@ const handleSubmit = async () => {
         });
         return;
       } catch (equipmentError) {
-        warning(equipmentError.message || "場地已更新，但設備更新失敗。");
+        warning(resolveErrorMessage(
+          equipmentError,
+          t,
+          "pages.bookingModal.toast.equipmentUpdateFailed",
+        ));
         emitModalSuccess({
           venueUpdated: true,
           equipmentUpdated: false,
@@ -619,9 +686,9 @@ const handleSubmit = async () => {
     }
 
     if (isEquipmentReadonly.value) {
-      success("場地預約已成功修改，設備申請未變更。");
+      success(t("pages.bookingModal.toast.venueUpdatedEquipmentUnchanged"));
     } else {
-      success("預約已成功修改。");
+      success(t("pages.bookingModal.toast.updated"));
     }
 
     emitModalSuccess({
@@ -630,7 +697,7 @@ const handleSubmit = async () => {
       partial: false,
     });
   } catch (submitError) {
-    showError(submitError.message || "場地更新失敗，請確認時段是否衝突。");
+    showError(resolveErrorMessage(submitError, t, "pages.bookingModal.toast.venueUpdateFailed"));
   } finally {
     isSubmitting.value = false;
   }

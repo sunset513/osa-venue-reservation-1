@@ -150,7 +150,7 @@
             <select id="review-venue" v-model="selectedVenueId" @change="handleFilterChange">
               <option :value="ALL_VENUES_VALUE">{{ reviewCopy.allVenues }}</option>
               <option v-for="venue in venues" :key="venue.id" :value="venue.id">
-                {{ venue.name }}
+                {{ formatVenueDisplayName(venue.name, locale) }}
               </option>
             </select>
           </section>
@@ -281,8 +281,8 @@
             :class="{ 'is-loading': isFetchingEvents }"
             @keydown.esc="closeMonthPicker"
           >
-            <div v-if="isMonthPickerOpen" class="month-picker-popover" role="dialog" aria-label="選擇月份">
-              <label for="review-month-picker">選擇月份</label>
+            <div v-if="isMonthPickerOpen" class="month-picker-popover" role="dialog" :aria-label="t('pages.review.selectMonth')">
+              <label for="review-month-picker">{{ t("pages.review.selectMonth") }}</label>
               <input
                 id="review-month-picker"
                 ref="monthPickerRef"
@@ -291,10 +291,10 @@
                 @keyup.enter="goToSelectedMonth"
               />
               <button class="month-picker-action is-primary" type="button" @click="goToSelectedMonth">
-                套用
+                {{ t("common.actions.apply") }}
               </button>
               <button class="month-picker-action" type="button" @click="closeMonthPicker">
-                取消
+                {{ t("common.actions.cancel") }}
               </button>
             </div>
             <FullCalendar ref="calendarRef" :options="calendarOptions" />
@@ -336,7 +336,7 @@
                     </span>
                     <span>
                       <template
-                        v-for="(segment, index) in getHighlightedSegments(booking.venueName, venueListFilters.keyword)"
+                        v-for="(segment, index) in getHighlightedSegments(formatVenueDisplayName(booking.venueName, locale), venueListFilters.keyword)"
                         :key="`${booking.id}-venue-${index}`"
                       >
                         <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
@@ -610,7 +610,7 @@
                   </span>
                   <strong>
                     <template
-                      v-for="(segment, index) in getHighlightedSegments(equipmentBooking.itemSummary, equipmentFilters.keyword)"
+                      v-for="(segment, index) in getHighlightedSegments(getEquipmentSummary(equipmentBooking), equipmentFilters.keyword)"
                       :key="`${equipmentBooking.id}-item-${index}`"
                     >
                       <span :class="{ 'keyword-highlight': segment.isMatch }">{{ segment.text }}</span>
@@ -744,11 +744,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import zhTwLocale from "@fullcalendar/core/locales/zh-tw";
+import { useI18n } from "vue-i18n";
 import {
   ArrowRight,
   BadgeCheck,
@@ -793,6 +795,7 @@ import {
 import { formatDateKey, getDailyEventCount, renderMoreLinkContent } from "@/utils/calendarDisplay";
 import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
 import {
+  formatEquipmentItemSummary,
   getEquipmentBookingStatusMeta,
   getEquipmentReviewOpenTarget,
   normalizeEquipmentBooking,
@@ -807,86 +810,48 @@ import {
 import { parseReviewRouteQuery } from "@/utils/reviewRouteQuery";
 import { useAuthSessionStore } from "@/stores/authSession";
 import { useToast } from "@/utils/useToast";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 
 const { success, error } = useToast();
+const { locale, t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const authSession = useAuthSessionStore();
-const reviewCopy = {
-  mode: "\u5be9\u6838\u8005\u6a21\u5f0f",
-  title: "\u5be9\u6838\u5de5\u4f5c\u53f0",
-  description: "\u4ee5\u9810\u7d04\u7533\u8acb\u70ba\u4e2d\u5fc3\u8655\u7406\u5834\u5730\u501f\u7528\uff0c\u6aa2\u8996\u72c0\u614b\u3001\u6bd4\u5c0d\u6642\u6bb5\uff0c\u4e26\u5f9e\u540c\u4e00\u8655\u5b8c\u6210\u901a\u904e\u6216\u9000\u56de\u3002",
-  switchMode: "\u5207\u63db\u5be9\u6838\u985e\u578b",
-  switchView: "\u5207\u63db\u9810\u7d04\u7533\u8acb\u6aa2\u8996",
-  venueMode: "\u5834\u5730\u9810\u7d04",
-  equipmentMode: "\u8a2d\u5099\u501f\u7528",
-  equipmentAdmin: "\u8a2d\u5099\u72c0\u614b\u7ba1\u7406",
-  currentVenue: "\u76ee\u524d\u5834\u5730",
-  venueNote: "\u901a\u904e\u95dc\u806f\u5834\u5730\u9810\u7d04\u7533\u8acb\u6642\uff0c\u7cfb\u7d71\u4e5f\u6703\u4e00\u4f75\u901a\u904e\u8a72\u7b46\u8a2d\u5099\u501f\u7528\u7533\u8acb\u3002",
-  equipmentTitle: "\u8a2d\u5099\u5be9\u6838\u6e05\u55ae",
-  equipmentNote: "\u901a\u904e\u95dc\u806f\u5834\u5730\u9810\u7d04\u7533\u8acb\u6642\uff0c\u7cfb\u7d71\u4e5f\u6703\u4e00\u4f75\u901a\u904e\u8a72\u7b46\u8a2d\u5099\u501f\u7528\u7533\u8acb\u3002",
-  venueSelectorLabel: "\u5be9\u6838\u5834\u5730",
-  allVenues: "\u5168\u90e8\u5834\u5730",
-  keywordLabel: "\u95dc\u9375\u5b57\u641c\u5c0b",
-  venueKeywordPlaceholder: "\u641c\u5c0b\u7528\u9014\u3001\u5834\u5730\u3001\u7533\u8acb\u4eba\u6216\u7de8\u865f",
-  equipmentKeywordPlaceholder: "\u641c\u5c0b\u8a2d\u5099\u3001\u7528\u9014\u3001\u7533\u8acb\u4eba\u6216\u7de8\u865f",
-  dateRangeLabel: "\u65e5\u671f\u5340\u9593",
-  equipmentDateRangeLabel: "\u501f\u7528\u65e5\u671f\u5340\u9593",
-  dateStart: "\u958b\u59cb",
-  dateEnd: "\u7d50\u675f",
-  clearDate: "\u6e05\u9664\u65e5\u671f",
-  currentRange: "\u76ee\u524d\u5340\u9593",
-  startDateLabel: "\u958b\u59cb\u65e5\u671f",
-  endDateLabel: "\u7d50\u675f\u65e5\u671f",
-  currentResultsLabel: "\u76ee\u524d\u7d50\u679c",
-  clearFilters: "\u6e05\u9664\u7be9\u9078",
-  venueStatusAria: "\u5834\u5730\u7533\u8acb\u72c0\u614b\u7be9\u9078",
-  venueTabsAria: "\u5834\u5730\u5be9\u6838\u72c0\u614b\u7be9\u9078",
-  equipmentTabsAria: "\u8a2d\u5099\u5be9\u6838\u72c0\u614b\u7be9\u9078",
-  calendar: "\u6708\u66c6",
-  list: "\u5217\u8868",
-  sort: "\u6392\u5e8f\u65b9\u5f0f",
-  loading: "\u8f09\u5165\u5834\u5730\u8207\u5be9\u6838\u8cc7\u6599\u4e2d...",
-  statusLabel: "\u7533\u8acb\u72c0\u614b",
-  equipmentStatusLabel: "\u8a2d\u5099\u7533\u8acb\u72c0\u614b\u7be9\u9078",
-  venueEmpty: "\u76ee\u524d\u7be9\u9078\u689d\u4ef6\u4e0b\u6c92\u6709\u9810\u7d04\u7533\u8acb\u3002",
-  equipmentEmpty: "\u76ee\u524d\u6c92\u6709\u8a2d\u5099\u501f\u7528\u7533\u8acb\u3002",
-  equipmentLoading: "\u8f09\u5165\u8a2d\u5099\u7533\u8acb\u4e2d...",
-  noPurpose: "\u672a\u586b\u5beb\u7528\u9014",
-  noTimeRange: "\u672a\u6307\u5b9a\u6642\u6bb5",
-  noApplicant: "\u672a\u63d0\u4f9b\u7533\u8acb\u4eba",
-  venueBookingIdPrefix: "\u5834\u5730\u9810\u7d04\u7de8\u865f",
-  equipmentBookingIdPrefix: "\u8a2d\u5099\u501f\u7528\u7de8\u865f",
-  relatedVenueBookingLabel: "\u5834\u5730\u9810\u7d04\u7de8\u865f",
-  relatedVenuePurposeLabel: "\u5834\u5730\u501f\u7528\u8aaa\u660e\uff1a",
-  peopleUnit: "\u4eba",
-  itemsUnit: "\u7b46",
-  previousPage: "\u4e0a\u4e00\u9801",
-  nextPage: "\u4e0b\u4e00\u9801",
-  venuePaginationAria: "\u5834\u5730\u5be9\u6838\u5217\u8868\u5206\u9801",
-  equipmentPaginationAria: "\u8a2d\u5099\u5be9\u6838\u5217\u8868\u5206\u9801",
-  pageSummaryPrefix: "\u7b2c",
-  pageSummaryMiddle: "\u5171",
-};
+const reviewCopy = reactive({});
+
+watchEffect(() => {
+  const keys = [
+    "mode", "title", "description", "switchMode", "switchView", "venueMode",
+    "equipmentMode", "equipmentAdmin", "currentVenue", "venueNote", "equipmentTitle",
+    "equipmentNote", "venueSelectorLabel", "allVenues", "keywordLabel",
+    "venueKeywordPlaceholder", "equipmentKeywordPlaceholder", "dateRangeLabel",
+    "equipmentDateRangeLabel", "dateStart", "dateEnd", "clearDate", "currentRange",
+    "startDateLabel", "endDateLabel", "currentResultsLabel", "clearFilters",
+    "venueStatusAria", "venueTabsAria", "equipmentTabsAria", "calendar", "list",
+    "sort", "loading", "statusLabel", "equipmentStatusLabel", "venueEmpty",
+    "equipmentEmpty", "equipmentLoading", "noPurpose", "noTimeRange", "noApplicant",
+    "venueBookingIdPrefix", "equipmentBookingIdPrefix", "relatedVenueBookingLabel",
+    "relatedVenuePurposeLabel", "peopleUnit", "itemsUnit", "previousPage", "nextPage",
+    "venuePaginationAria", "equipmentPaginationAria", "pageSummaryPrefix",
+    "pageSummaryMiddle",
+  ];
+
+  keys.forEach((key) => {
+    reviewCopy[key] = t(`pages.review.${key}`);
+  });
+});
 const ALL_VENUES_VALUE = "all";
 const REVIEW_UNIT_ID = "1";
 const REVIEW_PAGE_SIZE = 100;
 const REVIEW_LIST_PAGE_SIZE = 10;
-const reviewSortOptions = [
-  { value: "date-desc", label: "\u65e5\u671f\u7531\u65b0\u5230\u820a" },
-  { value: "date-asc", label: "\u65e5\u671f\u7531\u820a\u5230\u65b0" },
-  { value: "id-desc", label: "\u7de8\u865f\u7531\u65b0\u5230\u820a" },
-  { value: "id-asc", label: "\u7de8\u865f\u7531\u820a\u5230\u65b0" },
-];
+const reviewSortOptions = computed(() => [
+  { value: "date-desc", label: t("pages.review.sortDateDesc") },
+  { value: "date-asc", label: t("pages.review.sortDateAsc") },
+  { value: "id-desc", label: t("pages.review.sortIdDesc") },
+  { value: "id-asc", label: t("pages.review.sortIdAsc") },
+]);
 
-const reviewSortLabelMap = {
-  "date-desc": "\u65e5\u671f\u7531\u65b0\u5230\u820a",
-  "date-asc": "\u65e5\u671f\u7531\u820a\u5230\u65b0",
-  "id-desc": "\u7de8\u865f\u7531\u65b0\u5230\u820a",
-  "id-asc": "\u7de8\u865f\u7531\u820a\u5230\u65b0",
-};
-
-const getReviewSortLabel = (option) => reviewSortLabelMap[option.value] || option.label;
+const getReviewSortLabel = (option) => option.label;
 
 const escapeHighlightPattern = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -902,6 +867,13 @@ const getHighlightedSegments = (value, keywordValue) => {
     isMatch: part.toLocaleLowerCase() === keyword.toLocaleLowerCase(),
   }));
 };
+
+const getEquipmentSummary = (booking) => formatEquipmentItemSummary(booking?.items, {
+  separator: t("pages.equipmentShared.listSeparator"),
+  fallback: t("pages.equipmentShared.noEquipment"),
+  getName: (item) => item.equipmentName
+    || t("pages.equipmentShared.unnamedEquipment", { id: item.equipmentId }),
+});
 
 
 const createReviewFilterState = () => reactive({
@@ -983,18 +955,20 @@ const canNavigateToVenueBooking = computed(() => {
 });
 
 const selectedVenueName = computed(() => {
-  if (isAllVenuesSelected.value) return "\u5168\u90e8\u5834\u5730";
+  if (isAllVenuesSelected.value) return t("pages.review.allVenues");
 
-  return (
-    venues.value.find((venue) => String(venue.id) === String(selectedVenueId.value))?.name ||
-    "\u672a\u77e5\u5834\u5730"
-  );
+  const venueName = venues.value.find(
+    (venue) => String(venue.id) === String(selectedVenueId.value),
+  )?.name;
+
+  return formatVenueDisplayName(venueName, locale.value)
+    || t("pages.review.unknownVenue");
 });
 
 const bookingRouteLabel = computed(() => {
-  if (isAllVenuesSelected.value) return "\u524d\u5f80\u5834\u5730\u9810\u7d04";
+  if (isAllVenuesSelected.value) return t("pages.review.goToVenueReservation");
 
-  return `\u524d\u5f80 ${selectedVenueName.value} \u9810\u7d04`;
+  return t("pages.review.goToNamedVenue", { venue: selectedVenueName.value });
 });
 const getNavbarHeight = () => {
   const navbarHeight = document.querySelector(".navbar")?.getBoundingClientRect().height;
@@ -1042,12 +1016,12 @@ const reconnectReviewStickyObserver = () => {
 let calendarTitleElement = null;
 
 const formatEquipmentBorrowDateMeta = (value) => {
-  if (!value) return "\u672a\u63d0\u4f9b\u501f\u7528\u65e5\u671f";
+  if (!value) return t("pages.review.noBorrowDate");
 
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
 
-  return new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat(locale.value, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -1088,9 +1062,9 @@ currentCalendarVisibleRange.value = getCurrentMonthDateRange();
 const formatDatePickerLabel = (value) => {
   const date = parseDateString(value);
 
-  if (!date) return "\u672a\u9078\u64c7\u65e5\u671f";
+  if (!date) return t("pages.review.noDateSelected");
 
-  return new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat(locale.value, {
     month: "numeric",
     day: "numeric",
     weekday: "short",
@@ -1099,15 +1073,15 @@ const formatDatePickerLabel = (value) => {
 
 const getReviewFilterRangeLabel = (filters) => {
   if (!filters.startDate && !filters.endDate) {
-    return "\u672a\u9078\u64c7";
+    return t("pages.review.notSelected");
   }
 
   if (!filters.startDate && filters.endDate) {
-    return `\u81f3 ${formatDatePickerLabel(filters.endDate)}`;
+    return t("pages.review.untilDate", { date: formatDatePickerLabel(filters.endDate) });
   }
 
   if (filters.startDate && !filters.endDate) {
-    return `${formatDatePickerLabel(filters.startDate)} \u4e4b\u5f8c`;
+    return t("pages.review.afterDate", { date: formatDatePickerLabel(filters.startDate) });
   }
 
   if (filters.startDate === filters.endDate) {
@@ -1119,18 +1093,18 @@ const getReviewFilterRangeLabel = (filters) => {
 
 const getReviewFilterRangeHint = (filters) => {
   if (!filters.startDate && !filters.endDate) {
-    return "\u672a\u8a2d\u5b9a\u8d77\u8fc4\uff0c\u5c07\u986f\u793a\u9810\u8a2d\u8cc7\u6599\u7bc4\u570d\u3002";
+    return t("pages.review.defaultRangeHint");
   }
 
   if (!filters.startDate && filters.endDate) {
-    return "\u5c07\u5305\u542b\u8a72\u65e5\u671f\u4e4b\u524d\u7684\u6240\u6709\u8cc7\u6599\u3002";
+    return t("pages.review.beforeRangeHint");
   }
 
   if (filters.startDate && !filters.endDate) {
-    return "\u5c07\u5305\u542b\u8a72\u65e5\u671f\u4e4b\u5f8c\u7684\u6240\u6709\u8cc7\u6599\u3002";
+    return t("pages.review.afterRangeHint");
   }
 
-  return "\u5c07\u53ea\u986f\u793a\u5340\u9593\u5167\u7684\u8cc7\u6599\u3002";
+  return t("pages.review.betweenRangeHint");
 };
 
 const updateReviewFilterStartDate = (filters, dateString) => {
@@ -1260,7 +1234,7 @@ const enhanceCalendarTitleInteraction = async () => {
 
   titleElement.setAttribute("role", "button");
   titleElement.setAttribute("tabindex", "0");
-  titleElement.setAttribute("title", "\u9078\u64c7\u6708\u4efd");
+  titleElement.setAttribute("title", t("pages.review.selectMonth"));
   titleElement.classList.add("is-month-picker-trigger");
   titleElement.onclick = openMonthPicker;
   titleElement.onkeydown = (event) => {
@@ -1275,7 +1249,7 @@ const enhanceCalendarTitleInteraction = async () => {
 
 const getReviewStatusText = (status) => {
   const statusMeta = getBookingStatusMeta(status);
-  return statusMeta.text || "";
+  return t(statusMeta.labelKey);
 };
 
 const getReviewBookingDateValue = (booking) => String(booking?.bookingDate || "");
@@ -1407,9 +1381,9 @@ const venueListDisplayBookings = computed(() => {
 
     return {
       ...booking,
-      venueName: booking.venueName || selectedVenueName.value || "\u672a\u77e5\u5834\u5730",
+      venueName: booking.venueName || selectedVenueName.value || t("pages.review.unknownVenue"),
       purpose: booking.purpose || "",
-      contactName: parsedContact.name || "\u672a\u63d0\u4f9b\u7533\u8acb\u4eba",
+      contactName: parsedContact.name || t("pages.review.noApplicant"),
       participantCount: booking.pCount || 0,
       timeRange: formatSlotGroupsAsTimeRange(booking.slots),
       statusText: getReviewStatusText(booking.status),
@@ -1450,45 +1424,6 @@ const clearEquipmentFilters = () => {
   closeReviewDatePicker(equipmentFilters);
 };
 
-const statusFilterOptions = computed(() => [
-  {
-    key: "all",
-    label: "\u5168\u90e8\u7533\u8acb",
-    helper: "\u986f\u793a\u76ee\u524d\u689d\u4ef6\u4e0b\u7684\u6240\u6709\u5834\u5730\u5be9\u6838\u6848\u4ef6\u3002",
-    value: statusCounts.value.all,
-    className: "is-all",
-    icon: ClipboardList,
-    statusValue: "",
-  },
-  {
-    key: "pending",
-    label: "\u5f85\u5be9\u6838",
-    helper: "\u5c1a\u672a\u8655\u7406\u7684\u5834\u5730\u9810\u7d04\u7533\u8acb\u3002",
-    value: statusCounts.value.pending,
-    className: "is-pending",
-    icon: Clock3,
-    statusValue: "1",
-  },
-  {
-    key: "approved",
-    label: "\u5df2\u901a\u904e",
-    helper: "\u5df2\u901a\u904e\u7684\u5834\u5730\u9810\u7d04\u7533\u8acb\u3002",
-    value: statusCounts.value.approved,
-    className: "is-approved",
-    icon: BadgeCheck,
-    statusValue: "2",
-  },
-  {
-    key: "rejected",
-    label: "\u5df2\u9000\u4ef6",
-    helper: "\u5df2\u9000\u56de\u7684\u5834\u5730\u9810\u7d04\u7533\u8acb\u3002",
-    value: statusCounts.value.rejected,
-    className: "is-rejected",
-    icon: XCircle,
-    statusValue: "3",
-  },
-]);
-
 const equipmentKeywordDateFilteredItems = computed(() => {
   return filterEquipmentReviewList(equipmentReviewPage.value.items, equipmentFilters);
 });
@@ -1497,50 +1432,11 @@ const equipmentStatusCounts = computed(() => {
   return countReviewStatuses(equipmentKeywordDateFilteredItems.value);
 });
 
-const equipmentStatusFilterOptions = computed(() => [
-  {
-    key: "all",
-    label: "\u5168\u90e8\u7533\u8acb",
-    helper: "\u986f\u793a\u76ee\u524d\u689d\u4ef6\u4e0b\u7684\u6240\u6709\u8a2d\u5099\u5be9\u6838\u6848\u4ef6\u3002",
-    value: equipmentStatusCounts.value.all,
-    className: "is-all",
-    icon: ClipboardList,
-    statusValue: "",
-  },
-  {
-    key: "pending",
-    label: "\u5f85\u5be9\u6838",
-    helper: "\u5c1a\u672a\u8655\u7406\u7684\u8a2d\u5099\u501f\u7528\u7533\u8acb\u3002",
-    value: equipmentStatusCounts.value.pending,
-    className: "is-pending",
-    icon: Clock3,
-    statusValue: "1",
-  },
-  {
-    key: "approved",
-    label: "\u5df2\u901a\u904e",
-    helper: "\u5df2\u901a\u904e\u7684\u8a2d\u5099\u501f\u7528\u7533\u8acb\u3002",
-    value: equipmentStatusCounts.value.approved,
-    className: "is-approved",
-    icon: BadgeCheck,
-    statusValue: "2",
-  },
-  {
-    key: "rejected",
-    label: "\u5df2\u9000\u4ef6",
-    helper: "\u5df2\u9000\u56de\u7684\u8a2d\u5099\u501f\u7528\u7533\u8acb\u3002",
-    value: equipmentStatusCounts.value.rejected,
-    className: "is-rejected",
-    icon: XCircle,
-    statusValue: "3",
-  },
-]);
-
 const getReviewEquipmentStatusMeta = (status) => {
   const meta = getEquipmentBookingStatusMeta(status);
   return {
     ...meta,
-    text: meta.text || "",
+    text: t(meta.labelKey),
   };
 };
 
@@ -1566,8 +1462,8 @@ const selectedDayBookings = computed(() => {
       return {
         id: booking.id,
         purpose: booking.purpose || "",
-        venueName: booking.venueName || selectedVenueName.value || "\u672a\u77e5\u5834\u5730",
-        contactName: parsedContact.name || "\u672a\u63d0\u4f9b\u7533\u8acb\u4eba",
+        venueName: booking.venueName || selectedVenueName.value || t("pages.review.unknownVenue"),
+        contactName: parsedContact.name || t("pages.review.noApplicant"),
         participantCount: booking.pCount || 0,
         timeRange: formatSlotGroupsAsTimeRange(booking.slots),
         statusText: getReviewStatusText(booking.status),
@@ -1584,11 +1480,14 @@ const reviewListBookings = computed(() => {
   return getSortedReviewBookings(filteredBookings);
 });
 
-const createReviewStatusOptions = (counts, scopeLabel = "\u7533\u8acb") => [
+const createReviewStatusOptions = (counts, scopeKey) => {
+  const scope = t(scopeKey);
+
+  return [
   {
     key: "all",
-    label: "\u5168\u90e8\u7533\u8acb",
-    helper: `\u986f\u793a\u76ee\u524d\u689d\u4ef6\u4e0b\u7684\u6240\u6709${scopeLabel}\u6848\u4ef6\u3002`,
+    label: t("pages.review.allRequests"),
+    helper: t("pages.review.allStatusHelper", { scope }),
     value: counts.all,
     className: "is-all",
     icon: ClipboardList,
@@ -1596,8 +1495,8 @@ const createReviewStatusOptions = (counts, scopeLabel = "\u7533\u8acb") => [
   },
   {
     key: "pending",
-    label: "\u5f85\u5be9\u6838",
-    helper: `\u5c1a\u672a\u8655\u7406\u7684${scopeLabel}\u6848\u4ef6\u3002`,
+    label: t("common.status.pending"),
+    helper: t("pages.review.pendingStatusHelper", { scope }),
     value: counts.pending,
     className: "is-pending",
     icon: Clock3,
@@ -1605,8 +1504,8 @@ const createReviewStatusOptions = (counts, scopeLabel = "\u7533\u8acb") => [
   },
   {
     key: "approved",
-    label: "\u5df2\u901a\u904e",
-    helper: `\u5df2\u901a\u904e\u7684${scopeLabel}\u6848\u4ef6\u3002`,
+    label: t("common.status.approved"),
+    helper: t("pages.review.approvedStatusHelper", { scope }),
     value: counts.approved,
     className: "is-approved",
     icon: BadgeCheck,
@@ -1614,23 +1513,38 @@ const createReviewStatusOptions = (counts, scopeLabel = "\u7533\u8acb") => [
   },
   {
     key: "rejected",
-    label: "\u5df2\u9000\u4ef6",
-    helper: `\u5df2\u9000\u56de\u7684${scopeLabel}\u6848\u4ef6\u3002`,
+    label: t("common.status.rejected"),
+    helper: t("pages.review.rejectedStatusHelper", { scope }),
     value: counts.rejected,
     className: "is-rejected",
     icon: XCircle,
     statusValue: "3",
   },
-];
+  ];
+};
 
-const venueReviewStatusTabs = computed(() => createReviewStatusOptions(statusCounts.value, "\u5834\u5730\u7533\u8acb"));
-const equipmentReviewStatusTabs = computed(() => createReviewStatusOptions(equipmentStatusCounts.value, "\u8a2d\u5099\u7533\u8acb"));
+const statusFilterOptions = computed(() => createReviewStatusOptions(
+  statusCounts.value,
+  "pages.review.venueRequestScope",
+));
+const equipmentStatusFilterOptions = computed(() => createReviewStatusOptions(
+  equipmentStatusCounts.value,
+  "pages.review.equipmentRequestScope",
+));
+const venueReviewStatusTabs = computed(() => createReviewStatusOptions(
+  statusCounts.value,
+  "pages.review.venueRequestScope",
+));
+const equipmentReviewStatusTabs = computed(() => createReviewStatusOptions(
+  equipmentStatusCounts.value,
+  "pages.review.equipmentRequestScope",
+));
 
 const getReviewEquipmentStatusDisplayMeta = (status) => {
   const meta = getEquipmentBookingStatusMeta(status);
   return {
     ...meta,
-    text: meta.text || "",
+    text: t(meta.labelKey),
   };
 };
 
@@ -1748,17 +1662,17 @@ const getEquipmentReviewActions = (equipmentBooking) => {
   switch (equipmentBooking?.status) {
     case 1:
       return [
-        { key: "reject", label: "\u9000\u4ef6", icon: XCircle, buttonClass: "btn-danger", status: 3 },
-        { key: "approve", label: "\u901a\u904e", icon: Check, buttonClass: "btn-primary", status: 2 },
+        { key: "reject", label: t("pages.review.actions.reject"), icon: XCircle, buttonClass: "btn-danger", status: 3 },
+        { key: "approve", label: t("pages.review.actions.approve"), icon: Check, buttonClass: "btn-primary", status: 2 },
       ];
     case 2:
       return [
-        { key: "reject-approved", label: "\u6539\u70ba\u9000\u4ef6", icon: XCircle, buttonClass: "btn-danger", status: 3 },
+        { key: "reject-approved", label: t("pages.review.actions.changeToRejected"), icon: XCircle, buttonClass: "btn-danger", status: 3 },
       ];
     case 3:
       return [
-        { key: "pending-rejected", label: "\u6539\u70ba\u5f85\u5be9\u6838", icon: RotateCcw, buttonClass: "btn-secondary-alt", status: 1 },
-        { key: "approve-rejected", label: "\u6539\u70ba\u901a\u904e", icon: Check, buttonClass: "btn-primary", status: 2 },
+        { key: "pending-rejected", label: t("pages.review.actions.changeToPending"), icon: RotateCcw, buttonClass: "btn-secondary-alt", status: 1 },
+        { key: "approve-rejected", label: t("pages.review.actions.changeToApproved"), icon: Check, buttonClass: "btn-primary", status: 2 },
       ];
     default:
       return [];
@@ -1801,13 +1715,14 @@ const renderDayCellContent = (arg) => {
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, interactionPlugin],
+  locales: [zhTwLocale],
   initialView: "dayGridMonth",
   headerToolbar: {
     left: "",
     center: "prev title next",
     right: "",
   },
-  locale: "zh-tw",
+  locale: locale.value === "en-US" ? "en" : "zh-tw",
   firstDay: 0,
   height: "auto",
   dayMaxEvents: 3,
@@ -1818,7 +1733,7 @@ const calendarOptions = ref({
   },
   dayCellContent: renderDayCellContent,
   eventContent: renderEventContent,
-  moreLinkContent: (arg) => renderMoreLinkContent(arg, "\u7b46"),
+  moreLinkContent: (arg) => renderMoreLinkContent(t("common.moreItems", { count: arg.num })),
   moreLinkClick: () => {},
   events,
   datesSet: async (arg) => {
@@ -1833,6 +1748,17 @@ const calendarOptions = ref({
     const bookingId = info.event.extendedProps.bookingId;
     await openBookingDetail(bookingId);
   },
+});
+
+watch(locale, (nextLocale) => {
+  const calendarLocale = nextLocale === "en-US" ? "en" : "zh-tw";
+  const calendarApi = calendarRef.value?.getApi();
+  calendarApi?.setOption("locale", calendarLocale);
+  calendarApi?.setOption(
+    "moreLinkContent",
+    (arg) => renderMoreLinkContent(t("common.moreItems", { count: arg.num })),
+  );
+  events.value = mapBookingsToEvents(monthlyBookings.value);
 });
 
 const refreshCalendarLayout = async () => {
@@ -1874,7 +1800,7 @@ const mapBookingsToEvents = (bookings) => {
     const statusMeta = getBookingStatusMeta(booking.status);
     const purposeLabel = booking.purpose?.trim() || reviewCopy.noPurpose;
     const displayPurpose = isAllVenuesSelected.value
-      ? `${booking.venueName || "\u672a\u63d0\u4f9b\u5834\u5730"} | ${purposeLabel}`
+      ? `${formatVenueDisplayName(booking.venueName, locale.value) || t("pages.review.unknownVenue")} | ${purposeLabel}`
       : purposeLabel;
 
     slotGroups.forEach((group) => {
@@ -1960,7 +1886,7 @@ const loadVenueListBookings = async () => {
     venueListBookingsSource.value = Array.isArray(bookings) ? bookings : [];
   } catch (loadError) {
     venueListBookingsSource.value = [];
-    error(loadError.message || "取得場地審核列表失敗。");
+    error(t("pages.review.venueListLoadFailed"));
   } finally {
     isFetchingEvents.value = false;
     pageLoading.value = false;
@@ -1985,7 +1911,7 @@ const loadEvents = async (view) => {
     allMonthlyBookings.value = [];
     monthlyBookings.value = [];
     events.value = [];
-    error(loadError.message || "取得審核月曆失敗。");
+    error(t("pages.review.calendarLoadFailed"));
   } finally {
     isFetchingEvents.value = false;
     pageLoading.value = false;
@@ -2105,7 +2031,7 @@ const loadEquipmentReviews = async () => {
     await loadEquipmentPendingCount();
   } catch (standaloneError) {
     equipmentReviewPage.value = normalizeEquipmentBookingPage();
-    error(standaloneError.message || "取得設備審核列表失敗。");
+    error(t("pages.review.equipmentListLoadFailed"));
   } finally {
     equipmentReviewLoading.value = false;
   }
@@ -2321,7 +2247,7 @@ const openBookingDetail = async (bookingId) => {
       ? equipmentBookings.map(normalizeEquipmentBooking)
       : [];
   } catch (detailError) {
-    error(detailError.message || "取得申請詳情失敗。");
+    error(t("pages.review.detailLoadFailed"));
     closeDetailModal();
   } finally {
     detailLoading.value = false;
@@ -2357,16 +2283,16 @@ const handleApprove = async () => {
     await approveReviewBooking(selectedBookingId.value);
     venueStatusUpdated = true;
     await syncLinkedEquipmentReviewStatus(2);
-    success("\u5834\u5730\u9810\u7d04\u5df2\u901a\u904e\u3002");
+    success(t("pages.review.venueApproved"));
     closeDetailModal();
     await refreshAfterVenueReviewUpdate();
   } catch (approveError) {
     if (venueStatusUpdated) {
-      error(approveError.message || "\u5834\u5730\u9810\u7d04\u5df2\u66f4\u65b0\uff0c\u4f46\u540c\u6b65\u8a2d\u5099\u5be9\u6838\u72c0\u614b\u5931\u6557\u3002");
+      error(t("pages.review.equipmentSyncFailed"));
       closeDetailModal();
       await refreshAfterVenueReviewUpdate();
     } else {
-      error(approveError.message || "\u901a\u904e\u7533\u8acb\u5931\u6557\u3002");
+      error(t("pages.review.approveFailed"));
     }
   } finally {
     detailProcessing.value = false;
@@ -2383,16 +2309,16 @@ const handleStatusUpdate = async (status) => {
     await updateReviewBookingStatus(selectedBookingId.value, status);
     venueStatusUpdated = true;
     await syncLinkedEquipmentReviewStatus(status);
-    success(`\u5df2\u5c07\u7533\u8acb\u72c0\u614b\u66f4\u65b0\u70ba${getReviewStatusText(status)}\u3002`);
+    success(t("pages.review.venueStatusUpdated", { status: getReviewStatusText(status) }));
     closeDetailModal();
     await refreshAfterVenueReviewUpdate();
   } catch (updateError) {
     if (venueStatusUpdated) {
-      error(updateError.message || "\u5834\u5730\u9810\u7d04\u5df2\u66f4\u65b0\uff0c\u4f46\u540c\u6b65\u8a2d\u5099\u5be9\u6838\u72c0\u614b\u5931\u6557\u3002");
+      error(t("pages.review.equipmentSyncFailed"));
       closeDetailModal();
       await refreshAfterVenueReviewUpdate();
     } else {
-      error(updateError.message || "\u66f4\u65b0\u7533\u8acb\u72c0\u614b\u5931\u6557\u3002");
+      error(t("pages.review.updateFailed"));
     }
   } finally {
     detailProcessing.value = false;
@@ -2494,10 +2420,12 @@ const handleEquipmentStatusUpdate = async (equipmentBookingId, status) => {
 
   try {
     await updateEquipmentReviewStatus(equipmentBookingId, status);
-    success(`\u5df2\u5c07\u8a2d\u5099\u7533\u8acb\u72c0\u614b\u66f4\u65b0\u70ba${getEquipmentBookingStatusMeta(status).text}\u3002`);
+    success(t("pages.review.statusUpdated", {
+      status: t(getEquipmentBookingStatusMeta(status).labelKey),
+    }));
     await refreshEquipmentReviewState();
   } catch (updateError) {
-    error(updateError.message || "\u66f4\u65b0\u8a2d\u5099\u7533\u8acb\u72c0\u614b\u5931\u6557\u3002");
+    error(t("pages.review.equipmentUpdateFailed"));
   } finally {
     equipmentProcessingId.value = null;
   }
@@ -2519,11 +2447,11 @@ onMounted(async () => {
 
     if (fetchedVenues.length === 0) {
       pageLoading.value = false;
-      error("\u76ee\u524d\u6c92\u6709\u53ef\u5be9\u6838\u7684\u5834\u5730\u3002");
+      error(t("pages.review.noReviewableVenues"));
     }
     await loadEquipmentPendingCount();
   } catch (venueError) {
-    error(venueError.message || "載入可審核場地失敗。");
+    error(t("pages.review.reviewableVenuesLoadFailed"));
     pageLoading.value = false;
   }
 

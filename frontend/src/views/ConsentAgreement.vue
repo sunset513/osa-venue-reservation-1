@@ -2,8 +2,8 @@
   <div class="consent-page page-enter">
     <header class="page-header consent-header">
       <p class="hero-eyebrow">Venue Use Consent</p>
-      <h1>場地借用同意書</h1>
-      <p>請確認借用規範、設備責任與個人資料使用聲明後，再進入場地租借系統。</p>
+      <h1>{{ t("pages.consent.heading") }}</h1>
+      <p>{{ t("pages.consent.description") }}</p>
     </header>
 
     <section class="agreement-panel card" aria-labelledby="agreement-title">
@@ -12,8 +12,8 @@
           <ClipboardCheck :size="28" />
         </div>
         <div>
-          <p class="summary-label">假資料範本</p>
-          <h2 id="agreement-title">國立中央大學學務處場地借用切結與同意事項</h2>
+          <p class="summary-label">{{ t("pages.consent.sampleLabel") }}</p>
+          <h2 id="agreement-title">{{ t("pages.consent.agreementTitle") }}</h2>
         </div>
       </div>
 
@@ -25,39 +25,41 @@
       >
         <section
           v-for="section in agreementSections"
-          :key="section.title"
+          :key="section.key"
           class="agreement-section"
         >
           <div class="section-heading">
             <component :is="section.icon" :size="20" aria-hidden="true" />
-            <h3>{{ section.title }}</h3>
+            <h3>{{ t(`${section.key}.title`) }}</h3>
           </div>
-          <p>{{ section.description }}</p>
+          <p>{{ t(`${section.key}.description`) }}</p>
           <ul>
-            <li v-for="item in section.items" :key="item">{{ item }}</li>
+            <li v-for="itemKey in section.itemKeys" :key="itemKey">
+              {{ t(`${section.key}.${itemKey}`) }}
+            </li>
           </ul>
         </section>
 
         <section class="agreement-section signature-block">
           <div class="section-heading">
             <FilePenLine :size="20" aria-hidden="true" />
-            <h3>聲明確認</h3>
+            <h3>{{ t("pages.consent.confirmation.title") }}</h3>
           </div>
           <p>
-            申請人確認本同意書為展示用假資料，實際借用規定仍以學務處公告、審核通知與現場管理人員說明為準。
+            {{ t("pages.consent.confirmation.description") }}
           </p>
           <dl>
             <div>
-              <dt>範例申請人</dt>
-              <dd>測試生</dd>
+              <dt>{{ t("pages.consent.confirmation.sampleApplicant") }}</dt>
+              <dd>{{ t("pages.consent.confirmation.sampleApplicantValue") }}</dd>
             </div>
             <div>
-              <dt>範例單位</dt>
-              <dd>測試系學會</dd>
+              <dt>{{ t("pages.consent.confirmation.sampleUnit") }}</dt>
+              <dd>{{ t("pages.consent.confirmation.sampleUnitValue") }}</dd>
             </div>
             <div>
-              <dt>範例日期</dt>
-              <dd>2026 年 5 月 13 日</dd>
+              <dt>{{ t("pages.consent.confirmation.sampleDate") }}</dt>
+              <dd>{{ t("pages.consent.confirmation.sampleDateValue") }}</dd>
             </div>
           </dl>
         </section>
@@ -70,10 +72,10 @@
             type="checkbox"
             :disabled="!hasReadAgreement"
           />
-          <span>我已閱讀並同意遵守以上場地借用規範</span>
+          <span>{{ t("pages.consent.agreeLabel") }}</span>
         </label>
         <p class="confirm-note">
-          {{ hasReadAgreement ? "已完成條款閱讀，可勾選同意。" : "閱讀完同意書後即可勾選確認。" }}
+          {{ hasReadAgreement ? t("pages.consent.readComplete") : t("pages.consent.readRequired") }}
         </p>
       </div>
 
@@ -87,7 +89,7 @@
           <span class="btn-icon">
             <Check :size="16" aria-hidden="true" />
           </span>
-          進入系統
+          {{ t("pages.consent.enterSystem") }}
         </button>
       </div>
     </section>
@@ -97,6 +99,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import {
   Check,
   ClipboardCheck,
@@ -112,6 +115,7 @@ import { useAuthSessionStore } from "@/stores/authSession";
 const route = useRoute();
 const router = useRouter();
 const authSession = useAuthSessionStore();
+const { t } = useI18n();
 
 const agreementContentRef = ref(null);
 const hasReadAgreement = ref(false);
@@ -119,54 +123,29 @@ const isConsentChecked = ref(false);
 
 const agreementSections = [
   {
-    title: "場地借用目的與責任",
+    key: "pages.consent.sections.responsibility",
     icon: FileText,
-    description: "申請人應依核准用途使用場地，並維持活動內容與申請資料一致。",
-    items: [
-      "借用場地限於核准日期、時段與範圍內使用，不得擅自轉借或變更用途。",
-      "活動期間應維護場地整潔，結束後完成復原、垃圾清運與門窗電源檢查。",
-      "若因申請資料不實或使用方式不當造成損害，申請人需配合後續處理。",
-    ],
+    itemKeys: ["item1", "item2", "item3"],
   },
   {
-    title: "設備使用與損壞責任",
+    key: "pages.consent.sections.equipment",
     icon: Wrench,
-    description: "借用設備應依現場規範操作，並於活動結束後歸還至指定位置。",
-    items: [
-      "麥克風、投影設備、桌椅與延長線等物品須於借用前後清點數量。",
-      "設備如有故障、短少或毀損，應立即通知管理單位，不得自行拆修。",
-      "因不當操作造成設備損壞時，申請人須依管理單位認定負擔修復責任。",
-    ],
+    itemKeys: ["item1", "item2", "item3"],
   },
   {
-    title: "活動安全與秩序",
+    key: "pages.consent.sections.safety",
     icon: ShieldCheck,
-    description: "活動辦理期間應顧及參與者安全、校園秩序與周邊使用者權益。",
-    items: [
-      "不得阻塞逃生動線、消防設備、出入口或公共走道。",
-      "使用音響、擴音或大型設備時，應控制音量並避免影響鄰近教學與辦公。",
-      "若遇天災、停電或其他不可抗力情形，管理單位得調整或取消借用。",
-    ],
+    itemKeys: ["item1", "item2", "item3"],
   },
   {
-    title: "取消、撤回與審核說明",
+    key: "pages.consent.sections.review",
     icon: Undo2,
-    description: "所有預約申請仍須經管理單位審核，通過後才視為完成借用程序。",
-    items: [
-      "申請送出後若需調整日期、時段、用途或設備，應於系統內修改或重新申請。",
-      "審核中申請可依系統提供功能撤回，已通過申請如需取消應通知管理單位。",
-      "管理單位得依場地維護、活動性質或校內需求保留核准與調整權利。",
-    ],
+    itemKeys: ["item1", "item2", "item3"],
   },
   {
-    title: "個人資料使用聲明",
+    key: "pages.consent.sections.privacy",
     icon: Users,
-    description: "系統將使用申請資料進行場地審核、通知聯繫與借用紀錄管理。",
-    items: [
-      "姓名、電話、電子郵件與活動資訊僅供本系統展示、審核與管理流程使用。",
-      "假資料範本不代表正式法務文字，正式版本應由業務單位確認後公告。",
-      "申請人可於系統中查看自己的預約紀錄與審核狀態。",
-    ],
+    itemKeys: ["item1", "item2", "item3"],
   },
 ];
 

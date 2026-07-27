@@ -38,7 +38,7 @@ const toText = (value, fallback = "") => {
 
 const normalizeAllowedVenue = (venue = {}) => ({
   venueId: toNumberOrNull(venue.venueId),
-  venueName: toText(venue.venueName, "未提供場地"),
+  venueName: toText(venue.venueName),
   ruleNote: toText(venue.ruleNote),
 });
 
@@ -49,7 +49,7 @@ export const normalizeEquipmentMaster = (item = {}) => {
 
   return {
     id: toNumberOrNull(item.id),
-    name: toText(item.name, "未命名設備"),
+    name: toText(item.name),
     totalQuantity: toPositiveInteger(item.totalQuantity, 0),
     description: toText(item.description),
     borrowNote: toText(item.borrowNote),
@@ -83,24 +83,28 @@ export const canBorrowEquipmentStandalone = (equipment = {}) => {
   return !Boolean(equipment.venueRestricted || allowedVenues.length > 0);
 };
 
-export const formatEquipmentBoundVenueText = (equipment = {}) => {
+export const formatEquipmentBoundVenueText = (
+  equipment = {},
+  { prefix = "", separator = ", ", fallbackVenue = "" } = {},
+) => {
   if (canBorrowEquipmentStandalone(equipment)) return "";
 
   const venueNames = (Array.isArray(equipment.allowedVenues) ? equipment.allowedVenues : [])
-    .map((venue) => toText(venue?.venueName, "未提供場地").trim() || "未提供場地");
+    .map((venue) => toText(venue?.venueName).trim() || fallbackVenue)
+    .filter(Boolean);
 
-  return `綁定場地：${venueNames.length > 0 ? venueNames.join("、") : "未提供場地"}`;
+  return `${prefix}${venueNames.length > 0 ? venueNames.join(separator) : fallbackVenue}`;
 };
 
 export const normalizeEquipmentStatus = (item = {}) => {
   const activeBookings = Array.isArray(item.activeBookings)
     ? item.activeBookings.map((booking) => ({
         equipmentBookingId: toNumberOrNull(booking.equipmentBookingId),
-        userId: toText(booking.userId, "未提供申請人"),
+        userId: toText(booking.userId),
         borrowDate: toText(booking.borrowDate),
         slots: Array.isArray(booking.slots) ? booking.slots.map(Number).filter(Number.isFinite) : [],
         quantity: toPositiveInteger(booking.quantity, 0),
-        purpose: toText(booking.purpose, "未填寫用途"),
+        purpose: toText(booking.purpose),
         contact: parseContactInfo(booking.contactInfo),
         relatedVenueBookingId: toNumberOrNull(booking.relatedVenueBookingId),
         relatedVenueId: toNumberOrNull(booking.relatedVenueId),
@@ -110,7 +114,7 @@ export const normalizeEquipmentStatus = (item = {}) => {
 
   return {
     equipmentId: toNumberOrNull(item.equipmentId),
-    equipmentName: toText(item.equipmentName, "未命名設備"),
+    equipmentName: toText(item.equipmentName),
     totalQuantity: toPositiveInteger(item.totalQuantity, 0),
     borrowedQuantity: toNonNegativeInteger(item.borrowedQuantity, 0),
     availableQuantity: toNonNegativeInteger(item.availableQuantity, 0),
@@ -127,9 +131,23 @@ export const normalizeEquipmentStatuses = (items = []) => {
 export const normalizeEquipmentBookingItem = (item = {}) => ({
   id: toNumberOrNull(item.id),
   equipmentId: toNumberOrNull(item.equipmentId),
-  equipmentName: toText(item.equipmentName, "未命名設備"),
+  equipmentName: toText(item.equipmentName),
   quantity: toPositiveInteger(item.quantity, 0),
 });
+
+export const formatEquipmentItemSummary = (
+  items = [],
+  { separator = ", ", fallback = "", getName = (item) => item?.equipmentName || "" } = {},
+) => {
+  if (!Array.isArray(items) || items.length === 0) return fallback;
+
+  const labels = items.map((item) => {
+    const name = toText(getName(item)).trim();
+    return name ? `${name} x ${item.quantity}` : "";
+  }).filter(Boolean);
+
+  return labels.length > 0 ? labels.join(separator) : fallback;
+};
 
 export const normalizeEquipmentBooking = (record = {}) => {
   const slots = Array.isArray(record.slots) ? record.slots.map(Number).filter(Number.isFinite) : [];
@@ -140,9 +158,9 @@ export const normalizeEquipmentBooking = (record = {}) => {
     userId: toText(record.userId),
     borrowDate: toText(record.borrowDate),
     slots,
-    timeRange: formatSlotGroupsAsTimeRange(slots) || "未提供時段",
+    timeRange: formatSlotGroupsAsTimeRange(slots),
     status: toNumberOrNull(record.status),
-    purpose: toText(record.purpose, "未填寫用途"),
+    purpose: toText(record.purpose),
     contact: parseContactInfo(record.contactInfo ?? record.contact),
     relatedVenueBookingId: toNumberOrNull(record.relatedVenueBookingId),
     relatedVenueId: toNumberOrNull(record.relatedVenueId),
@@ -153,9 +171,7 @@ export const normalizeEquipmentBooking = (record = {}) => {
     createdAt: record.createdAt || null,
     updatedAt: record.updatedAt || null,
     items,
-    itemSummary: items.length
-      ? items.map((item) => `${item.equipmentName} x ${item.quantity}`).join("、")
-      : "未選擇設備",
+    itemSummary: formatEquipmentItemSummary(items),
   };
 };
 
@@ -202,24 +218,24 @@ export const getEquipmentReviewOpenTarget = (record = {}) => {
 
 export const getEquipmentStatusMeta = (isInUse) => {
   if (isInUse) {
-    return { text: "使用中", className: "is-in-use" };
+    return { labelKey: "common.status.inUse", className: "is-in-use" };
   }
 
-  return { text: "閒置", className: "is-idle" };
+  return { labelKey: "common.status.idle", className: "is-idle" };
 };
 
 export const getEquipmentBookingStatusMeta = (status) => {
   switch (Number(status)) {
     case 1:
-      return { text: "審核中", className: "is-pending" };
+      return { labelKey: "common.status.pending", className: "is-pending" };
     case 2:
-      return { text: "已通過", className: "is-approved" };
+      return { labelKey: "common.status.approved", className: "is-approved" };
     case 3:
-      return { text: "已被拒絕", className: "is-rejected" };
+      return { labelKey: "common.status.rejected", className: "is-rejected" };
     case 0:
-      return { text: "已撤回", className: "is-withdrawn" };
+      return { labelKey: "common.status.withdrawn", className: "is-withdrawn" };
     default:
-      return { text: "未知", className: "is-withdrawn" };
+      return { labelKey: "common.status.unknown", className: "is-withdrawn" };
   }
 };
 
@@ -286,9 +302,9 @@ export const buildEquipmentBookingUpdatePayload = (form = {}) => ({
 // source moves from the removed grouped endpoint to the new equipment module.
 export const normalizeEquipmentItem = (item = {}) => ({
   venueId: toNumberOrNull(item.venueId),
-  venueName: toText(item.venueName, "未提供場地"),
+  venueName: toText(item.venueName),
   equipmentId: toNumberOrNull(item.equipmentId ?? item.id),
-  equipmentName: toText(item.equipmentName ?? item.name, "未命名設備"),
+  equipmentName: toText(item.equipmentName ?? item.name),
   quantity: toPositiveInteger(item.quantity ?? item.totalQuantity, 0),
   isInUse: Boolean(item.isInUse ?? item.inUse),
 });
@@ -299,7 +315,7 @@ export const normalizeEquipmentGroup = (group = {}) => {
     : [];
 
   return {
-    venueName: toText(group.venueName || equipmentList[0]?.venueName, "未提供場地"),
+    venueName: toText(group.venueName || equipmentList[0]?.venueName),
     equipmentList,
   };
 };

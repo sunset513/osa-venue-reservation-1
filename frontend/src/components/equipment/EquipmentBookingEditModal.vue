@@ -2,8 +2,14 @@
   <div v-if="visible" class="modal-overlay" @click.self="closeModal">
     <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="equipment-edit-title">
       <header class="modal-header">
-        <h2 id="equipment-edit-title">修改設備借用</h2>
-        <button class="close-btn" type="button" aria-label="關閉" :disabled="isSubmitting" @click="closeModal">
+        <h2 id="equipment-edit-title">{{ t("pages.equipmentBookingEdit.title") }}</h2>
+        <button
+          class="close-btn"
+          type="button"
+          :aria-label="t('common.actions.close')"
+          :disabled="isSubmitting"
+          @click="closeModal"
+        >
           <X :size="20" aria-hidden="true" />
         </button>
       </header>
@@ -11,15 +17,19 @@
       <form class="edit-form" @submit.prevent="handleSubmit">
         <div class="form-layout">
           <section class="form-panel">
-            <div class="form-section-title">借用時間</div>
+            <div class="form-section-title">{{ t("pages.equipmentShared.borrowTime") }}</div>
             <label class="form-group">
-              <span>借用日期 <b class="required">*</b></span>
+              <span>{{ t("pages.equipmentShared.borrowDate") }} <b class="required">*</b></span>
               <input v-model="form.borrowDate" type="date" required />
             </label>
 
             <div class="form-group">
-              <span>借用時段 <b class="required">*</b></span>
-              <div class="slots-grid" role="group" aria-label="借用時段">
+              <span>{{ t("pages.equipmentShared.timeSlots") }} <b class="required">*</b></span>
+              <div
+                class="slots-grid"
+                role="group"
+                :aria-label="t('pages.equipmentShared.timeSlots')"
+              >
                 <label
                   v-for="slot in slotOptions"
                   :key="slot.value"
@@ -44,21 +54,27 @@
                   <span class="slot-time">{{ slot.timeRange }}</span>
                 </label>
               </div>
-              <small v-if="formErrors.slots" class="error-text">請至少選擇一個借用時段</small>
+              <small v-if="formErrors.slots" class="error-text">
+                {{ t("pages.equipmentShared.validation.selectTimeSlot") }}
+              </small>
             </div>
           </section>
 
           <section class="form-panel form-panel-details">
-            <div class="form-section-title">借用內容</div>
+            <div class="form-section-title">{{ t("pages.equipmentShared.borrowDetails") }}</div>
             <label class="form-group">
-              <span>借用用途 <b class="required">*</b></span>
+              <span>{{ t("pages.equipmentShared.purpose") }} <b class="required">*</b></span>
               <input v-model.trim="form.purpose" type="text" required />
             </label>
 
-            <div class="equipment-list-heading">設備品項 <b class="required">*</b></div>
-            <div v-if="isEquipmentLoading" class="equipment-helper">載入設備資料中...</div>
+            <div class="equipment-list-heading">
+              {{ t("pages.equipmentShared.equipmentItems") }} <b class="required">*</b>
+            </div>
+            <div v-if="isEquipmentLoading" class="equipment-helper">
+              {{ t("pages.equipmentShared.loadingEquipment") }}
+            </div>
             <p v-else class="equipment-list-helper">
-              綁定特定場地的設備需從對應場地的場地借用流程一併申請，無法在此視窗單獨修改。
+              {{ t("pages.equipmentShared.venueRestrictedEditHelp") }}
             </p>
             <div v-if="!isEquipmentLoading" class="equipment-list">
               <label
@@ -77,36 +93,43 @@
                   @change="toggleEquipment(equipment.id, $event.target.checked)"
                 />
                 <div class="equipment-copy">
-                  <strong>{{ equipment.name }}</strong>
+                  <strong>
+                    {{
+                      equipment.name
+                        || t("pages.equipmentShared.unnamedEquipment", { id: equipment.id })
+                    }}
+                  </strong>
                   <span v-if="getEquipmentBoundVenueText(equipment)" class="equipment-bound-venues">
                     {{ getEquipmentBoundVenueText(equipment) }}
                   </span>
                 </div>
-                <span>總數 {{ equipment.totalQuantity }}</span>
+                <span>
+                  {{ t("pages.equipmentShared.totalQuantity", { count: equipment.totalQuantity }) }}
+                </span>
                 <input
                   v-if="isEquipmentSelected(equipment.id) && !isStandaloneRestricted(equipment)"
                   v-model.number="equipmentQuantities[equipment.id]"
                   type="number"
                   min="1"
                   :max="Math.max(equipment.totalQuantity || 1, 1)"
-                  aria-label="設備借用數量"
+                  :aria-label="t('pages.equipmentShared.quantityAria')"
                 />
               </label>
             </div>
 
-            <div class="form-section-title">聯絡資訊</div>
+            <div class="form-section-title">{{ t("pages.equipmentShared.contactInformation") }}</div>
             <div class="form-row">
               <label class="form-group">
-                <span>姓名 <b class="required">*</b></span>
+                <span>{{ t("pages.equipmentShared.name") }} <b class="required">*</b></span>
                 <input v-model.trim="form.contactInfo.name" type="text" required />
               </label>
               <label class="form-group">
-                <span>電話 <b class="required">*</b></span>
+                <span>{{ t("pages.equipmentShared.phone") }} <b class="required">*</b></span>
                 <input v-model.trim="form.contactInfo.phone" type="tel" required />
               </label>
             </div>
             <label class="form-group">
-              <span>Email <b class="required">*</b></span>
+              <span>{{ t("common.email") }} <b class="required">*</b></span>
               <input v-model.trim="form.contactInfo.email" type="email" required />
             </label>
           </section>
@@ -117,11 +140,17 @@
             <span class="btn-icon" aria-hidden="true">
               <X :size="16" />
             </span>
-            取消
+            {{ t("common.actions.cancel") }}
           </button>
           <button class="btn btn-primary" type="submit" :disabled="isSubmitting || isEquipmentLoading">
             <Save v-if="!isSubmitting" :size="16" aria-hidden="true" />
-            <span>{{ isSubmitting ? "儲存中..." : "儲存修改" }}</span>
+            <span>
+              {{
+                isSubmitting
+                  ? t("pages.equipmentBookingEdit.saving")
+                  : t("pages.equipmentBookingEdit.saveChanges")
+              }}
+            </span>
           </button>
         </footer>
       </form>
@@ -131,15 +160,17 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { Save, X } from "lucide-vue-next";
 import { listEquipments, updateEquipmentBooking } from "@/api/equipment";
 import {
   buildEquipmentBookingUpdatePayload,
   canBorrowEquipmentStandalone,
-  formatEquipmentBoundVenueText,
   normalizeEquipmentMasters,
 } from "@/utils/equipment";
 import { useToast } from "@/utils/useToast.js";
+import { resolveErrorMessage } from "@/utils/errorMessage";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 
 const props = defineProps({
   visible: Boolean,
@@ -150,6 +181,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:visible", "success"]);
+const { locale, t } = useI18n();
 const toast = useToast();
 
 const isSubmitting = ref(false);
@@ -195,7 +227,7 @@ const equipmentSelectionOptions = computed(() => {
 
     optionMap.set(item.equipmentId, {
       id: item.equipmentId,
-      name: item.equipmentName || `Equipment ${item.equipmentId}`,
+      name: item.equipmentName || t("pages.equipmentShared.unnamedEquipment", { id: item.equipmentId }),
       totalQuantity: item.quantity || 1,
     });
   });
@@ -207,7 +239,18 @@ const isEquipmentSelected = (equipmentId) => selectedEquipmentIds.value.has(equi
 
 const isStandaloneRestricted = (equipment) => !canBorrowEquipmentStandalone(equipment);
 
-const getEquipmentBoundVenueText = (equipment) => formatEquipmentBoundVenueText(equipment);
+const getEquipmentBoundVenueText = (equipment) => {
+  if (canBorrowEquipmentStandalone(equipment)) return "";
+
+  const venueNames = (Array.isArray(equipment.allowedVenues) ? equipment.allowedVenues : [])
+    .map((venue) => formatVenueDisplayName(venue?.venueName, locale.value)
+      || t("pages.equipmentShared.unnamedVenue"));
+  const venues = venueNames.length > 0
+    ? venueNames.join(t("pages.equipmentShared.listSeparator"))
+    : t("pages.equipmentShared.unnamedVenue");
+
+  return t("pages.equipmentShared.boundVenues", { venues });
+};
 
 const resetEquipmentSelection = () => {
   form.equipmentItems = [];
@@ -254,7 +297,7 @@ const loadEquipmentOptions = async () => {
     equipmentOptions.value = normalizeEquipmentMasters(await listEquipments());
   } catch (error) {
     equipmentOptions.value = [];
-    toast.warning(error.message || "載入設備資料失敗");
+    toast.warning(resolveErrorMessage(error, t, "pages.equipmentShared.loadEquipmentFailed"));
   } finally {
     isEquipmentLoading.value = false;
   }
@@ -324,7 +367,7 @@ const handleSubmit = async () => {
 
   if (form.slots.length === 0) {
     formErrors.slots = true;
-    toast.warning("請至少選擇一個借用時段");
+    toast.warning(t("pages.equipmentShared.validation.selectTimeSlot"));
     return;
   }
 
@@ -346,7 +389,7 @@ const handleSubmit = async () => {
   });
 
   if (payload.items.length === 0) {
-    toast.warning("請至少選擇一項設備");
+    toast.warning(t("pages.equipmentShared.validation.selectEquipment"));
     return;
   }
 
@@ -354,11 +397,11 @@ const handleSubmit = async () => {
 
   try {
     await updateEquipmentBooking(props.booking.id, payload);
-    toast.success("設備借用已更新");
+    toast.success(t("pages.equipmentBookingEdit.updateSuccess"));
     emit("success");
     emit("update:visible", false);
   } catch (error) {
-    toast.error(error.message || "設備借用更新失敗");
+    toast.error(resolveErrorMessage(error, t, "pages.equipmentBookingEdit.updateFailed"));
   } finally {
     isSubmitting.value = false;
   }

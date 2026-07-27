@@ -25,10 +25,10 @@ export const getDailyEventCount = (events, date) => {
 
 /**
  * 產生 FullCalendar more link 的 HTML 內容。
- * `unitLabel` 讓不同頁面可以保留「個 / 筆」等量詞差異。
+ * `label` 由呼叫端先依目前語系完成格式化，helper 僅負責安全的顯示包裝。
  */
-export const renderMoreLinkContent = (arg, unitLabel = "筆") => {
+export const renderMoreLinkContent = (label) => {
   return {
-    html: `<span class="calendar-more-link-text">還有 ${arg.num} ${unitLabel}</span>`,
+    html: `<span class="calendar-more-link-text">${label}</span>`,
   };
 };

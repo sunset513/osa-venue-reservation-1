@@ -7,59 +7,64 @@
             <component :is="headerIcon" :size="44" aria-hidden="true" />
           </span>
           <div>
-            <p class="eyebrow">設備借用審核</p>
-            <h2>{{ booking?.itemSummary || "設備預約申請詳情" }}</h2>
+            <p class="eyebrow">{{ t("pages.review.modal.equipmentReview") }}</p>
+            <h2>{{ booking ? getEquipmentSummary(booking) : t("pages.review.modal.equipmentDetails") }}</h2>
           </div>
         </div>
         <button class="close-btn" type="button" @click="$emit('close')">✕</button>
       </header>
 
       <div v-if="booking" class="modal-body">
-        <section class="status-strip" aria-label="目前申請狀態">
-          <span class="status-strip-label">目前狀態</span>
+        <section class="status-strip" :aria-label="t('pages.review.modal.currentStatusAria')">
+          <span class="status-strip-label">{{ t("pages.review.modal.currentStatus") }}</span>
           <span class="status-pill" :class="statusMeta.className">
-            {{ statusMeta.text }}
+            {{ t(statusMeta.labelKey) }}
           </span>
-          <span class="status-strip-id review-id-pill">設備借用編號 #{{ booking.id }}</span>
+          <span class="status-strip-id review-id-pill">{{ t("common.equipmentBookingId", { id: booking.id }) }}</span>
         </section>
 
         <section class="summary-grid">
           <article class="summary-card">
-            <span class="summary-label">借用時段</span>
+            <span class="summary-label">{{ t("pages.review.modal.borrowingPeriod") }}</span>
             <strong>{{ formatDateDisplay(booking.borrowDate) }}</strong>
-            <span class="summary-subtle">{{ booking.timeRange }}</span>
+            <span class="summary-subtle">{{ booking.timeRange || t("common.noTimeRange") }}</span>
           </article>
 
           <article class="summary-card">
-            <span class="summary-label">借用型態</span>
-            <strong>{{ booking.relatedVenueName || "單獨借用設備" }}</strong>
+            <span class="summary-label">{{ t("pages.review.modal.borrowingType") }}</span>
+            <strong>
+              {{
+                formatVenueDisplayName(booking.relatedVenueName, locale)
+                  || t("pages.review.modal.standaloneEquipment")
+              }}
+            </strong>
             <span class="summary-subtle" v-if="booking.relatedVenueBookingId">
-              <span class="review-id-pill">場地預約編號 #{{ booking.relatedVenueBookingId }}</span>
+              <span class="review-id-pill">{{ t("common.bookingId", { id: booking.relatedVenueBookingId }) }}</span>
             </span>
             <span class="summary-subtle" v-else-if="booking.relatedVenueName">
-              關聯場地
+              {{ t("pages.review.modal.linkedVenue") }}
             </span>
             <span class="summary-subtle" v-else>
-              無綁定場地
+              {{ t("pages.review.modal.noLinkedVenue") }}
             </span>
           </article>
         </section>
 
         <section class="detail-grid">
           <article class="detail-card detail-card-wide">
-            <span class="detail-label">申請目的</span>
-            <p>{{ booking.purpose || "未填寫用途" }}</p>
+            <span class="detail-label">{{ t("common.purpose") }}</span>
+            <p>{{ booking.purpose || t("common.noPurpose") }}</p>
           </article>
 
           <article class="detail-card">
-            <span class="detail-label">申請人</span>
-            <p>{{ booking.contact.name || booking.userId || "未提供" }}</p>
-            <p class="detail-subtle">{{ booking.contact.phone || "未提供電話" }}</p>
-            <p class="detail-subtle">{{ booking.contact.email || "未提供信箱" }}</p>
+            <span class="detail-label">{{ t("common.applicant") }}</span>
+            <p>{{ booking.contact.name || booking.userId || t("common.notProvided") }}</p>
+            <p class="detail-subtle">{{ booking.contact.phone || t("pages.review.modal.noPhone") }}</p>
+            <p class="detail-subtle">{{ booking.contact.email || t("pages.review.modal.noEmail") }}</p>
           </article>
 
           <article class="detail-card">
-            <span class="detail-label">設備明細</span>
+            <span class="detail-label">{{ t("pages.review.modal.equipmentItems") }}</span>
             <div class="equipment-review-list">
               <article
                 v-for="item in booking.items"
@@ -67,7 +72,12 @@
                 class="equipment-review-item"
               >
                 <div class="equipment-review-content">
-                  <strong>{{ item.equipmentName }}</strong>
+                  <strong>
+                    {{
+                      item.equipmentName
+                        || t("pages.equipmentShared.unnamedEquipment", { id: item.equipmentId })
+                    }}
+                  </strong>
                 </div>
                 <div class="equipment-review-actions">
                   <span class="status-pill quantity-pill">x {{ item.quantity }}</span>
@@ -83,7 +93,7 @@
           <span class="btn-icon">
             <X :size="16" />
           </span>
-          <span>關閉</span>
+          <span>{{ t("common.actions.close") }}</span>
         </button>
         <button
           v-for="action in actions"
@@ -106,8 +116,13 @@
 
 <script setup>
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { Wrench, Check, Clock3, RotateCcw, X, XCircle } from "lucide-vue-next";
-import { getEquipmentBookingStatusMeta } from "@/utils/equipment";
+import {
+  formatEquipmentItemSummary,
+  getEquipmentBookingStatusMeta,
+} from "@/utils/equipment";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 
 const props = defineProps({
   visible: Boolean,
@@ -124,20 +139,22 @@ const emit = defineEmits([
 ]);
 
 const headerIcon = Wrench;
+const { locale, t } = useI18n();
 
-const statusMeta = computed(() => {
-  const meta = getEquipmentBookingStatusMeta(props.booking?.status);
-  return {
-    ...meta,
-    text: meta.text === "審核中" ? "待審核" : meta.text,
-  };
+const statusMeta = computed(() => getEquipmentBookingStatusMeta(props.booking?.status));
+
+const getEquipmentSummary = (booking) => formatEquipmentItemSummary(booking?.items, {
+  separator: t("pages.equipmentShared.listSeparator"),
+  fallback: t("pages.review.modal.noEquipment"),
+  getName: (item) => item.equipmentName
+    || t("pages.equipmentShared.unnamedEquipment", { id: item.equipmentId }),
 });
 
 const formatDateDisplay = (dateString) => {
-  if (!dateString) return "未提供日期";
+  if (!dateString) return t("pages.review.modal.noDate");
   const date = new Date(`${dateString}T00:00:00`);
   if (Number.isNaN(date.getTime())) return dateString;
-  return new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat(locale.value, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -150,17 +167,17 @@ const actions = computed(() => {
   switch (props.booking.status) {
     case 1:
       return [
-        { key: "reject", label: "拒絕申請", icon: XCircle, variant: "btn-danger", status: 3 },
-        { key: "approve", label: "通過申請", icon: Check, variant: "btn-primary", status: 2 },
+        { key: "reject", label: t("pages.review.modal.rejectRequest"), icon: XCircle, variant: "btn-danger", status: 3 },
+        { key: "approve", label: t("pages.review.modal.approveRequest"), icon: Check, variant: "btn-primary", status: 2 },
       ];
     case 2:
       return [
-        { key: "reject-approved", label: "改為拒絕", icon: XCircle, variant: "btn-danger", status: 3 },
+        { key: "reject-approved", label: t("pages.review.actions.changeToRejected"), icon: XCircle, variant: "btn-danger", status: 3 },
       ];
     case 3:
       return [
-        { key: "pending-rejected", label: "改為待審核", icon: Clock3, variant: "btn-secondary-alt", status: 1 },
-        { key: "approve-rejected", label: "改為通過", icon: Check, variant: "btn-primary", status: 2 },
+        { key: "pending-rejected", label: t("pages.review.actions.changeToPending"), icon: Clock3, variant: "btn-secondary-alt", status: 1 },
+        { key: "approve-rejected", label: t("pages.review.actions.changeToApproved"), icon: Check, variant: "btn-primary", status: 2 },
       ];
     default:
       return [];

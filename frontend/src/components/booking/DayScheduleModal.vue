@@ -11,7 +11,11 @@
 
       <div class="modal-body">
         <div v-if="bookings.length === 0" class="empty-state">
-          {{ canCreate ? "這一天目前沒有活動，可以直接新增預約。" : "這一天目前沒有活動，但過去日期不可新增預約。" }}
+          {{
+            canCreate
+              ? t("pages.venueCalendar.daySchedule.emptyAvailable")
+              : t("pages.venueCalendar.daySchedule.emptyPast")
+          }}
         </div>
 
         <div v-else class="schedule-list">
@@ -24,12 +28,16 @@
           >
             <div class="schedule-main">
               <div class="schedule-top">
-                <span class="venue-chip">{{ venueName || "未提供場地" }}</span>
+                <span class="venue-chip">
+                  {{ venueName || t("pages.venueCalendar.fallbacks.noVenue") }}
+                </span>
                 <span class="contact-name">{{ booking.contactName }}</span>
               </div>
 
               <div class="schedule-meta">
-                <p class="purpose">{{ booking.purpose || "未填寫用途" }}</p>
+                <p class="purpose">
+                  {{ booking.purpose || t("pages.venueCalendar.fallbacks.noPurpose") }}
+                </p>
               </div>
             </div>
 
@@ -41,7 +49,7 @@
                   {{ booking.statusText }}
                 </span>
                 <span class="count-badge">
-                  {{ booking.participantCount }}人
+                  {{ t("common.people", { count: booking.participantCount }) }}
                 </span>
               </div>
             </div>
@@ -54,13 +62,19 @@
           <span class="btn-icon btn-icon-plain">
             <X :size="16" />
           </span>
-          <span>關閉</span>
+          <span>{{ t("common.actions.close") }}</span>
         </button>
         <button class="btn btn-primary" :disabled="!canCreate" @click="$emit('create')">
           <span class="btn-icon">
             <Plus :size="16" />
           </span>
-          <span>{{ canCreate ? "新增預約" : "過去日期不可預約" }}</span>
+          <span>
+            {{
+              canCreate
+                ? t("pages.venueCalendar.actions.createBooking")
+                : t("pages.venueCalendar.actions.pastDateUnavailable")
+            }}
+          </span>
         </button>
       </footer>
     </div>
@@ -70,6 +84,9 @@
 <script setup>
 import { computed } from "vue";
 import { Plus, X } from "lucide-vue-next";
+import { useI18n } from "vue-i18n";
+
+const { locale, t } = useI18n();
 
 const props = defineProps({
   visible: Boolean,
@@ -98,10 +115,18 @@ const props = defineProps({
 const emit = defineEmits(["close", "create", "edit-booking"]);
 
 const formattedTitle = computed(() => {
-  if (!props.selectedDate) return "預約詳情";
+  if (!props.selectedDate) return t("pages.venueCalendar.daySchedule.title");
 
-  const [year, month, day] = props.selectedDate.split("-");
-  return `${year}年${Number(month)}月${Number(day)}日 ${props.dayOfWeek} 預約詳情`;
+  const [year, month, day] = props.selectedDate.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const dateLabel = new Intl.DateTimeFormat(locale.value, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(date);
+
+  return t("pages.venueCalendar.daySchedule.datedTitle", { date: dateLabel });
 });
 
 const closeModal = () => {

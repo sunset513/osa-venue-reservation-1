@@ -1,34 +1,36 @@
 <template>
   <div class="history-page page-enter">
-    <div v-if="loading" class="loading-state">載入預約歷史紀錄中...</div>
+    <div v-if="loading" class="loading-state">
+      {{ t("pages.myBookings.loading") }}
+    </div>
 
     <div v-else-if="loadError" class="empty-state history-feedback">
-      <h3>目前無法載入預約紀錄</h3>
+      <h3>{{ t("pages.myBookings.loadErrorTitle") }}</h3>
       <p>{{ loadError }}</p>
       <button type="button" class="btn btn-secondary retry-btn" @click="loadBookings">
-        重新載入
+        {{ t("pages.myBookings.actions.reload") }}
       </button>
     </div>
 
     <div v-else-if="historyItems.length === 0" class="empty-state history-feedback">
-      <h3>還沒有任何預約紀錄</h3>
-      <p>你建立的預約申請會顯示在這裡，之後可以回來追蹤審核狀態。</p>
+      <h3>{{ t("pages.myBookings.emptyTitle") }}</h3>
+      <p>{{ t("pages.myBookings.emptyDescription") }}</p>
       <button type="button" class="btn btn-primary explore-btn" @click="router.push('/')">
-        {{ GO_TO_UNIT_SELECTOR_LABEL }}
+        {{ t("nav.goToUnits") }}
       </button>
     </div>
 
     <template v-else>
       <header class="page-header history-page-header">
         <button class="back-btn" @click="router.push('/')">
-          ← {{ BACK_TO_UNIT_SELECTOR_LABEL }}
+          ← {{ t("nav.backToUnits") }}
         </button>
-        <p class="hero-eyebrow">Booking Archive</p>
+        <p class="hero-eyebrow">{{ t("pages.myBookings.eyebrow") }}</p>
         <h1 class="page-title">
           <History :size="28" aria-hidden="true" class="page-title-icon" />
-          <span>我的預約歷史紀錄</span>
+          <span>{{ t("pages.myBookings.historyTitle") }}</span>
         </h1>
-        <p>集中查看所有預約申請、借用時段與目前審核狀態。</p>
+        <p>{{ t("pages.myBookings.description") }}</p>
       </header>
 
       <section class="history-layout">
@@ -36,31 +38,33 @@
           <section class="filter-panel">
             <div class="filter-toolbar">
               <div class="filter-field">
-                <label for="booking-keyword">關鍵字搜尋</label>
+                <label for="booking-keyword">{{ t("pages.myBookings.filters.keyword") }}</label>
                 <input
                   id="booking-keyword"
                   v-model.trim="keywordFilter"
                   type="text"
-                  placeholder="搜尋場地名稱或用途"
+                  :placeholder="t('pages.myBookings.filters.keywordPlaceholder')"
                 />
               </div>
 
               <div class="filter-field">
-                <label for="booking-venue">場地</label>
+                <label for="booking-venue">{{ t("pages.myBookings.fields.venue") }}</label>
                 <select id="booking-venue" v-model="venueFilter">
-                  <option value="">全部場地</option>
+                  <option value="">{{ t("pages.myBookings.filters.allVenues") }}</option>
                   <option
                     v-for="venueName in venueOptions"
                     :key="venueName"
                     :value="venueName"
                   >
-                    {{ venueName }}
+                    {{ formatVenueDisplayName(venueName, locale) }}
                   </option>
                 </select>
               </div>
 
               <div ref="dateRangePickerRef" class="date-range-picker">
-                <label for="booking-date-range-trigger">借用日期</label>
+                <label for="booking-date-range-trigger">
+                  {{ t("pages.myBookings.filters.bookingDate") }}
+                </label>
                 <button
                   id="booking-date-range-trigger"
                   type="button"
@@ -71,11 +75,15 @@
                   @click="toggleDatePicker"
                 >
                   <span class="date-range-segment" :class="{ 'has-value': startDateFilter }">
-                    <span class="date-range-label">借用日期起</span>
+                    <span class="date-range-label">
+                      {{ t("pages.myBookings.filters.startDate") }}
+                    </span>
                     <strong>{{ formatDatePickerLabel(startDateFilter) }}</strong>
                   </span>
                   <span class="date-range-segment" :class="{ 'has-value': endDateFilter }">
-                    <span class="date-range-label">借用日期迄</span>
+                    <span class="date-range-label">
+                      {{ t("pages.myBookings.filters.endDate") }}
+                    </span>
                     <strong>{{ formatDatePickerLabel(endDateFilter) }}</strong>
                   </span>
                   <ChevronDown :size="20" class="date-range-chevron" aria-hidden="true" />
@@ -85,11 +93,11 @@
                   v-if="startDateFilter || endDateFilter"
                   type="button"
                   class="date-range-clear"
-                  aria-label="清除借用日期篩選"
-                  title="清除借用日期篩選"
+                  :aria-label="t('pages.myBookings.filters.clearDateAria')"
+                  :title="t('pages.myBookings.filters.clearDateAria')"
                   @click.stop="clearDateRange"
                 >
-                  清除
+                  {{ t("common.actions.clear") }}
                 </button>
 
                 <Teleport to="body">
@@ -101,13 +109,15 @@
                   >
                     <div class="calendar-selection-footer">
                       <div class="calendar-selection-summary" aria-live="polite">
-                        <span class="calendar-selection-label">已選日期</span>
+                        <span class="calendar-selection-label">
+                          {{ t("pages.myBookings.filters.selectedDates") }}
+                        </span>
                         <strong>{{ selectedCalendarRangeLabel }}</strong>
                         <span class="calendar-selection-hint">{{ selectedCalendarRangeHint }}</span>
                       </div>
                       <div class="calendar-manual-inputs">
                         <label class="calendar-manual-field">
-                          <span>起始日期</span>
+                          <span>{{ t("pages.myBookings.filters.manualStartDate") }}</span>
                           <input
                             type="date"
                             :value="startDateFilter"
@@ -115,7 +125,7 @@
                           />
                         </label>
                         <label class="calendar-manual-field">
-                          <span>結束日期</span>
+                          <span>{{ t("pages.myBookings.filters.manualEndDate") }}</span>
                           <input
                             type="date"
                             :value="endDateFilter"
@@ -129,15 +139,17 @@
               </div>
 
               <div class="filter-summary">
-                <span class="summary-label">篩選結果</span>
-                <strong>{{ nonStatusFilteredHistoryItems.length }} 筆</strong>
+                <span class="summary-label">{{ t("pages.myBookings.filters.results") }}</span>
+                <strong>
+                  {{ t("common.items", { count: nonStatusFilteredHistoryItems.length }) }}
+                </strong>
                 <button
                   v-if="hasActiveFilters"
                   type="button"
                   class="clear-filter-btn"
                   @click="clearFilters"
                 >
-                  清除篩選
+                  {{ t("pages.myBookings.actions.clearFilters") }}
                 </button>
               </div>
             </div>
@@ -145,34 +157,34 @@
 
           <section class="summary-grid">
             <article class="summary-card card">
-              <span class="summary-card-label">全部申請</span>
+              <span class="summary-card-label">{{ t("pages.myBookings.summary.all") }}</span>
               <strong>{{ keywordFilteredHistoryItems.length }}</strong>
             </article>
             <article class="summary-card card">
               <span class="summary-card-label">
                 <Clock3 :size="18" aria-hidden="true" />
-                審核中
+                {{ t("common.status.pending") }}
               </span>
               <strong>{{ statusCounts.pending }}</strong>
             </article>
             <article class="summary-card card">
               <span class="summary-card-label">
                 <CheckCircle2 :size="18" aria-hidden="true" />
-                已通過
+                {{ t("common.status.approved") }}
               </span>
               <strong>{{ statusCounts.approved }}</strong>
             </article>
             <article class="summary-card card">
               <span class="summary-card-label">
                 <Ban :size="18" aria-hidden="true" />
-                已被拒絕
+                {{ t("common.status.rejected") }}
               </span>
               <strong>{{ statusCounts.rejected }}</strong>
             </article>
             <article class="summary-card card">
               <span class="summary-card-label">
                 <RotateCcw :size="18" aria-hidden="true" />
-                已撤回
+                {{ t("common.status.withdrawn") }}
               </span>
               <strong>{{ statusCounts.withdrawn }}</strong>
             </article>
@@ -180,7 +192,11 @@
         </section>
 
         <section class="history-records">
-          <div class="filter-tabs record-tabs" role="tablist" aria-label="申請狀態篩選">
+          <div
+            class="filter-tabs record-tabs"
+            role="tablist"
+            :aria-label="t('pages.myBookings.filters.statusAria')"
+          >
             <button
               v-for="tab in statusTabs"
               :key="tab.value"
@@ -198,15 +214,15 @@
                 class="filter-tab-icon"
                 aria-hidden="true"
               />
-              {{ tab.label }}
+              {{ t(tab.labelKey) }}
             </button>
           </div>
 
           <div v-if="filteredHistoryItems.length === 0" class="empty-state history-feedback record-empty-state">
-            <h3>目前沒有符合條件的預約紀錄</h3>
-            <p>可以調整篩選條件，或清除篩選後查看全部預約。</p>
+            <h3>{{ t("pages.myBookings.noResultsTitle") }}</h3>
+            <p>{{ t("pages.myBookings.noResultsDescription") }}</p>
             <button type="button" class="btn btn-secondary retry-btn" @click="clearFilters">
-              清除篩選
+              {{ t("pages.myBookings.actions.clearFilters") }}
             </button>
           </div>
 
@@ -249,20 +265,22 @@
                       <div class="time-focus-header">
                         <span class="time-focus-badge">
                           <Clock3 :size="16" aria-hidden="true" />
-                          借用時段
+                          {{ t("pages.myBookings.fields.borrowingPeriod") }}
                         </span>
                       </div>
                       <strong class="time-range-emphasis">{{ booking.bookingDateLabel }}</strong>
                       <div class="time-focus-meta">
-                        <span class="time-focus-meta-label">時段</span>
+                        <span class="time-focus-meta-label">
+                          {{ t("pages.myBookings.fields.timeSlot") }}
+                        </span>
                         <span class="time-focus-meta-value">{{ booking.timeRange }}</span>
                       </div>
                     </div>
                     <div class="info-item is-side-info">
-                      <span class="info-label">場地</span>
+                      <span class="info-label">{{ t("pages.myBookings.fields.venue") }}</span>
                       <strong>
                         <template
-                          v-for="(segment, index) in getHighlightedSegments(booking.venueName)"
+                          v-for="(segment, index) in getHighlightedSegments(formatVenueDisplayName(booking.venueName, locale))"
                           :key="`${booking.id}-venue-${index}`"
                         >
                           <span
@@ -274,8 +292,10 @@
                       </strong>
                     </div>
                     <div class="info-item is-side-info">
-                      <span class="info-label">預估人數</span>
-                      <strong>{{ booking.pCount }} 人</strong>
+                      <span class="info-label">
+                        {{ t("pages.myBookings.fields.participantCount") }}
+                      </span>
+                      <strong>{{ t("common.people", { count: booking.pCount }) }}</strong>
                     </div>
                   </div>
                 </div>
@@ -289,13 +309,27 @@
                     @click="openEditModal(booking)"
                   >
                     <Pencil :size="16" aria-hidden="true" />
-                    <span>{{ editingBookingId === booking.id ? "載入中..." : "修改預約" }}</span>
+                    <span>
+                      {{
+                        editingBookingId === booking.id
+                          ? t("common.loading")
+                          : t("pages.myBookings.actions.editBooking")
+                      }}
+                    </span>
                   </button>
                   <button
                     type="button"
                     class="btn btn-secondary detail-toggle"
-                    :aria-label="expandedBookingId === booking.id ? '收起詳情' : '查看詳情'"
-                    :title="expandedBookingId === booking.id ? '收起詳情' : '查看詳情'"
+                    :aria-label="
+                      expandedBookingId === booking.id
+                        ? t('pages.myBookings.actions.collapseDetails')
+                        : t('pages.myBookings.actions.viewDetails')
+                    "
+                    :title="
+                      expandedBookingId === booking.id
+                        ? t('pages.myBookings.actions.collapseDetails')
+                        : t('pages.myBookings.actions.viewDetails')
+                    "
                     @click="toggleExpanded(booking.id)"
                   >
                     <component
@@ -309,16 +343,24 @@
 
               <div v-if="expandedBookingId === booking.id" class="history-details">
                 <div class="detail-block">
-                  <span class="detail-title">聯絡人資訊</span>
-                  <p>{{ booking.contact.name || "未提供姓名" }}</p>
-                  <p>{{ booking.contact.phone || "未提供電話" }}</p>
-                  <p>{{ booking.contact.email || "未提供 Email" }}</p>
+                  <span class="detail-title">{{ t("pages.myBookings.details.contact") }}</span>
+                  <p>
+                    {{ booking.contact.name || t("pages.myBookings.fallbacks.noName") }}
+                  </p>
+                  <p>
+                    {{ booking.contact.phone || t("pages.myBookings.fallbacks.noPhone") }}
+                  </p>
+                  <p>
+                    {{ booking.contact.email || t("pages.myBookings.fallbacks.noEmail") }}
+                  </p>
                 </div>
 
                 <div class="detail-block">
-                  <span class="detail-title">借用設備</span>
-                  <p v-if="booking.equipments.length">{{ booking.equipments.join("、") }}</p>
-                  <p v-else>未借用額外設備</p>
+                  <span class="detail-title">{{ t("pages.myBookings.details.equipment") }}</span>
+                  <p v-if="booking.equipments.length">
+                    {{ formatEquipmentList(booking.equipments) }}
+                  </p>
+                  <p v-else>{{ t("pages.myBookings.fallbacks.noEquipment") }}</p>
                 </div>
               </div>
             </article>
@@ -327,18 +369,24 @@
           <nav
             v-if="paginationTotalPages > 1"
             class="pagination-bar"
-            aria-label="預約紀錄分頁"
+            :aria-label="t('pages.myBookings.pagination.aria')"
           >
             <p class="pagination-summary">
-              第 {{ paginationStartIndex }} - {{ paginationEndIndex }} 筆，共 {{ filteredHistoryItems.length }} 筆
+              {{
+                t("pages.myBookings.pagination.summary", {
+                  start: paginationStartIndex,
+                  end: paginationEndIndex,
+                  total: filteredHistoryItems.length,
+                })
+              }}
             </p>
             <div class="pagination-controls">
               <button
                 type="button"
                 class="pagination-btn"
                 :disabled="!canGoPreviousPage"
-                aria-label="上一頁"
-                title="上一頁"
+                :aria-label="t('common.actions.previous')"
+                :title="t('common.actions.previous')"
                 @click="goToPreviousPage"
               >
                 <ChevronLeft :size="17" aria-hidden="true" />
@@ -358,8 +406,8 @@
                 type="button"
                 class="pagination-btn"
                 :disabled="!canGoNextPage"
-                aria-label="下一頁"
-                title="下一頁"
+                :aria-label="t('common.actions.next')"
+                :title="t('common.actions.next')"
                 @click="goToNextPage"
               >
                 <ChevronRight :size="17" aria-hidden="true" />
@@ -396,6 +444,7 @@ import {
   RotateCcw,
 } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import BookingModal from "@/components/booking/BookingModal.vue";
 import { queryMyBookings, withdrawBooking } from "@/api/booking";
 import { queryMyEquipmentBookings } from "@/api/equipment";
@@ -404,15 +453,16 @@ import { getBookingStatusMeta, parseContactInfo } from "@/utils/bookingMeta";
 import { buildBookingQueryPayload, normalizeBookingPage } from "@/utils/bookingQuery";
 import { formatSlotGroupsAsTimeRange } from "@/utils/dateHelper";
 import { normalizeEquipmentBookingPage } from "@/utils/equipment";
-import {
-  BACK_TO_UNIT_SELECTOR_LABEL,
-  GO_TO_UNIT_SELECTOR_LABEL,
-} from "@/utils/navigationLabels";
 import { useToast } from "@/utils/useToast.js";
-import { normalizeVenueDisplayName } from "@/utils/venueLabels";
+import { createLocalizedError, resolveErrorMessage } from "@/utils/errorMessage";
+import {
+  formatVenueDisplayName,
+  normalizeVenueDisplayName,
+} from "@/utils/venueLabels";
 
 const route = useRoute();
 const router = useRouter();
+const { locale, t } = useI18n();
 const { error, warning } = useToast();
 const loading = ref(true);
 const loadError = ref("");
@@ -437,14 +487,13 @@ const dateRangePopoverRef = ref(null);
 const handledEditBookingId = ref(null);
 
 const BOOKING_PAGE_SIZE = 10;
-const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
 
 const statusTabs = [
-  { value: "", label: "全部", icon: null },
-  { value: "1", label: "審核中", icon: Clock3 },
-  { value: "2", label: "已通過", icon: CheckCircle2 },
-  { value: "3", label: "已被拒絕", icon: Ban },
-  { value: "0", label: "已撤回", icon: RotateCcw },
+  { value: "", labelKey: "common.status.all", icon: null },
+  { value: "1", labelKey: "common.status.pending", icon: Clock3 },
+  { value: "2", labelKey: "common.status.approved", icon: CheckCircle2 },
+  { value: "3", labelKey: "common.status.rejected", icon: Ban },
+  { value: "0", labelKey: "common.status.withdrawn", icon: RotateCcw },
 ];
 
 const getStatusIcon = (status) => {
@@ -485,7 +534,7 @@ const getHighlightedSegments = (value) => {
 };
 
 const formatDateLabel = (value) => {
-  if (!value) return "未提供日期";
+  if (!value) return t("pages.myBookings.fallbacks.noDate");
 
   const date = new Date(value);
 
@@ -493,7 +542,7 @@ const formatDateLabel = (value) => {
     return value;
   }
 
-  return new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat(locale.value, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -502,7 +551,7 @@ const formatDateLabel = (value) => {
 };
 
 const formatDateTimeLabel = (value) => {
-  if (!value) return "未提供申請時間";
+  if (!value) return t("pages.myBookings.fallbacks.noCreatedAt");
 
   const date = new Date(value);
 
@@ -510,7 +559,7 @@ const formatDateTimeLabel = (value) => {
     return value.replace("T", " ");
   }
 
-  return new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat(locale.value, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -518,6 +567,13 @@ const formatDateTimeLabel = (value) => {
     minute: "2-digit",
     hour12: false,
   }).format(date);
+};
+
+const formatEquipmentList = (equipmentNames) => {
+  return new Intl.ListFormat(locale.value, {
+    style: "long",
+    type: "conjunction",
+  }).format(equipmentNames);
 };
 
 const parseDateString = (value) => {
@@ -569,24 +625,24 @@ const canEditBooking = (booking) => {
 const formatDatePickerLabel = (value) => {
   const date = parseDateString(value);
 
-  if (!date) return "選擇日期";
+  if (!date) return t("pages.myBookings.filters.selectDate");
 
-  const dateLabel = new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat(locale.value, {
     month: "numeric",
     day: "numeric",
+    weekday: "short",
   }).format(date);
-  const weekdayLabel = WEEKDAY_LABELS[date.getDay()];
-
-  return `${dateLabel}（${weekdayLabel}）`;
 };
 
 const selectedCalendarRangeLabel = computed(() => {
   if (!startDateFilter.value && !endDateFilter.value) {
-    return "尚未選擇日期";
+    return t("pages.myBookings.filters.noDateSelected");
   }
 
   if (!startDateFilter.value && endDateFilter.value) {
-    return `截至 ${formatDatePickerLabel(endDateFilter.value)}`;
+    return t("pages.myBookings.filters.untilDate", {
+      date: formatDatePickerLabel(endDateFilter.value),
+    });
   }
 
   if (startDateFilter.value && endDateFilter.value) {
@@ -594,26 +650,31 @@ const selectedCalendarRangeLabel = computed(() => {
       return formatDatePickerLabel(startDateFilter.value);
     }
 
-    return `${formatDatePickerLabel(startDateFilter.value)} - ${formatDatePickerLabel(endDateFilter.value)}`;
+    return t("pages.myBookings.filters.dateRange", {
+      start: formatDatePickerLabel(startDateFilter.value),
+      end: formatDatePickerLabel(endDateFilter.value),
+    });
   }
 
-  return `自 ${formatDatePickerLabel(startDateFilter.value)} 起`;
+  return t("pages.myBookings.filters.fromDate", {
+    date: formatDatePickerLabel(startDateFilter.value),
+  });
 });
 
 const selectedCalendarRangeHint = computed(() => {
   if (!startDateFilter.value && !endDateFilter.value) {
-    return "請先選擇起始日期";
+    return t("pages.myBookings.filters.hints.selectStart");
   }
 
   if (!startDateFilter.value && endDateFilter.value) {
-    return "可再輸入起始日期";
+    return t("pages.myBookings.filters.hints.enterStart");
   }
 
   if (startDateFilter.value && !endDateFilter.value) {
-    return "再選擇結束日期，或再次選取同一天";
+    return t("pages.myBookings.filters.hints.selectEnd");
   }
 
-  return "日期範圍已套用";
+  return t("pages.myBookings.filters.hints.applied");
 });
 
 const updateManualStartDate = (dateString) => {
@@ -676,13 +737,15 @@ const historyItems = computed(() => {
 
       return {
         ...booking,
-        venueName: normalizeVenueDisplayName(booking.venueName) || "未提供場地名稱",
-        purpose: booking.purpose || "未填寫用途",
+        venueName: normalizeVenueDisplayName(booking.venueName)
+          || t("pages.myBookings.fallbacks.noVenueName"),
+        purpose: booking.purpose || t("pages.myBookings.fallbacks.noPurpose"),
         pCount: booking.pCount || 0,
-        timeRange: formatSlotGroupsAsTimeRange(booking.slots) || "未提供時段",
+        timeRange: formatSlotGroupsAsTimeRange(booking.slots)
+          || t("pages.myBookings.fallbacks.noTimeRange"),
         bookingDateLabel: formatDateLabel(booking.bookingDate),
         createdAtLabel: formatDateTimeLabel(booking.createdAt),
-        statusText: statusMeta.text,
+        statusText: t(statusMeta.labelKey),
         statusClass: statusMeta.className,
         statusIcon: getStatusIcon(booking.status),
         contact: parseContactInfo(booking.contactInfo),
@@ -696,7 +759,7 @@ const historyItems = computed(() => {
 const venueOptions = computed(() => {
   return [...new Set(historyItems.value.map((booking) => booking.venueName))]
     .filter(Boolean)
-    .sort((left, right) => left.localeCompare(right, "zh-Hant"));
+    .sort((left, right) => left.localeCompare(right, locale.value));
 });
 
 const keywordFilteredHistoryItems = computed(() => {
@@ -706,6 +769,7 @@ const keywordFilteredHistoryItems = computed(() => {
     return (
       keyword === ""
       || booking.venueName.toLowerCase().includes(keyword)
+      || formatVenueDisplayName(booking.venueName, locale.value).toLowerCase().includes(keyword)
       || booking.purpose.toLowerCase().includes(keyword)
     );
   });
@@ -877,7 +941,7 @@ const resolveVenueInfo = async (booking, linkedEquipmentBooking = null) => {
   const matchedVenue = lookup.get(getVenueLookupKey(booking.venueName));
 
   if (!matchedVenue?.id) {
-    throw new Error("無法判斷此預約的場地 ID，請從場地月曆頁修改。");
+    throw createLocalizedError("pages.myBookings.errors.unresolvedVenue");
   }
 
   return {
@@ -896,7 +960,7 @@ const fetchLinkedEquipmentBooking = async (bookingId) => {
   );
 
   if (equipmentPage.items.length > 1) {
-    throw new Error("此場地預約關聯了多筆設備申請，暫時無法在此頁直接修改。");
+    throw createLocalizedError("pages.myBookings.errors.multipleEquipmentBookings");
   }
 
   return equipmentPage.items[0] || null;
@@ -927,13 +991,13 @@ const openEditModal = async (booking) => {
       canWithdraw: booking.canWithdraw === true,
       linkedEquipmentBooking,
       equipmentReadonly,
-      equipmentReadonlyMessage: equipmentReadonly
-        ? "此筆設備申請目前不是審核中，本次只會更新場地預約。"
-        : "",
+      equipmentReadonlyMessageKey: equipmentReadonly
+        ? "pages.bookingModal.equipment.nonPendingVenueOnly"
+        : null,
     };
     isModalVisible.value = true;
   } catch (openError) {
-    error(openError.message || "載入可修改的設備資料失敗。");
+    error(resolveErrorMessage(openError, t, "pages.myBookings.errors.editableEquipmentLoadFailed"));
   } finally {
     editingBookingId.value = null;
   }
@@ -957,12 +1021,12 @@ const openRequestedEditBooking = async () => {
   handledEditBookingId.value = bookingId;
 
   if (!booking) {
-    warning("找不到要修改的場地預約。");
+    warning(t("pages.myBookings.toast.bookingNotFound"));
     return;
   }
 
   if (!booking.canEdit) {
-    warning("這筆場地預約目前無法修改。只有待審核且尚未開始的預約可以自行修改；若預約已開始、已過期、已通過、退回或撤回，請重新送出申請或聯絡管理單位協助。");
+    warning(t("pages.myBookings.toast.bookingNotEditable"));
     return;
   }
 
@@ -984,7 +1048,7 @@ const handleWithdrawBooking = async (bookingId) => {
     isModalVisible.value = false;
     await loadBookings();
   } catch (withdrawError) {
-    warning(withdrawError.message || "撤回預約失敗。");
+    warning(resolveErrorMessage(withdrawError, t, "pages.myBookings.errors.withdrawFailed"));
   } finally {
     isWithdrawing.value = false;
   }
@@ -1015,7 +1079,7 @@ const loadBookings = async () => {
     bookings.value = await fetchAllBookings();
   } catch (error) {
     console.error("載入個人預約清單失敗:", error);
-    loadError.value = error.message || "請稍後再試一次。";
+    loadError.value = resolveErrorMessage(error, t, "pages.myBookings.errors.tryAgainLater");
   } finally {
     loading.value = false;
   }

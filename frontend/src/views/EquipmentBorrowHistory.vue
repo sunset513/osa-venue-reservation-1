@@ -2,11 +2,11 @@
   <div class="equipment-history-page page-enter">
     <header class="page-header equipment-history-header">
       <button class="back-btn" type="button" @click="router.push({ name: 'EquipmentStatus' })">
-        返回設備狀態
+        {{ t("pages.equipmentHistory.backToStatus") }}
       </button>
-      <p class="hero-eyebrow">Equipment Records</p>
-      <h1>我的設備借用記錄</h1>
-      <p>查看設備借用申請狀態，待審核的獨立設備借用可在此修改。</p>
+      <p class="hero-eyebrow">{{ t("pages.equipmentHistory.eyebrow") }}</p>
+      <h1>{{ t("pages.equipmentHistory.heading") }}</h1>
+      <p>{{ t("pages.equipmentHistory.description") }}</p>
     </header>
 
     <section class="history-toolbar">
@@ -15,11 +15,11 @@
         <strong>{{ borrowPage.total }}</strong>
       </div>
       <label class="page-size-control">
-        每頁
+        {{ t("pages.equipmentHistory.perPage") }}
         <select v-model.number="pageSize">
-          <option :value="10">10 筆</option>
-          <option :value="20">20 筆</option>
-          <option :value="50">50 筆</option>
+          <option :value="10">{{ t("common.items", { count: 10 }) }}</option>
+          <option :value="20">{{ t("common.items", { count: 20 }) }}</option>
+          <option :value="50">{{ t("common.items", { count: 50 }) }}</option>
         </select>
       </label>
     </section>
@@ -27,69 +27,75 @@
     <section v-if="hasActiveFilters" class="active-filter-bar">
       <div class="filter-chips">
         <span v-if="activeFilters.equipmentName" class="filter-chip">
-          設備：{{ activeFilters.equipmentName }}
+          {{ t("pages.equipmentHistory.equipmentFilter", { name: activeFilters.equipmentName }) }}
         </span>
       </div>
       <button type="button" class="page-btn filter-clear-btn" @click="clearFilters">
-        清除篩選
+        {{ t("pages.equipmentHistory.clearFilters") }}
       </button>
     </section>
 
-    <div v-if="loading" class="loading-state">載入設備借用記錄中...</div>
+    <div v-if="loading" class="loading-state">{{ t("pages.equipmentHistory.loading") }}</div>
 
     <div v-else-if="loadError" class="empty-state history-feedback">
-      <h3>無法載入設備借用記錄</h3>
+      <h3>{{ t("pages.equipmentHistory.loadFailedTitle") }}</h3>
       <p>{{ loadError }}</p>
-      <button type="button" class="btn btn-secondary" @click="loadBorrowHistory">重新載入</button>
+      <button type="button" class="btn btn-secondary" @click="loadBorrowHistory">
+        {{ t("pages.equipmentHistory.reload") }}
+      </button>
     </div>
 
     <section v-else class="borrow-record-section">
       <div v-if="borrowPage.items.length === 0" class="empty-state history-feedback">
-        <h3>目前沒有設備借用記錄</h3>
-        <p>送出設備借用申請後，就可以在這裡追蹤狀態。</p>
+        <h3>{{ t("pages.equipmentHistory.emptyTitle") }}</h3>
+        <p>{{ t("pages.equipmentHistory.emptyDescription") }}</p>
       </div>
 
       <div v-else class="borrow-table-wrap">
         <table class="borrow-table">
           <thead>
             <tr>
-              <th>借用編號</th>
-              <th>設備</th>
-              <th>關聯場地預約編號</th>
-              <th>借用日期 / 時段</th>
-              <th>狀態</th>
-              <th>用途</th>
-              <th>操作</th>
+              <th>{{ t("pages.equipmentHistory.columns.borrowId") }}</th>
+              <th>{{ t("pages.equipmentHistory.columns.equipment") }}</th>
+              <th>{{ t("pages.equipmentHistory.columns.relatedVenueBookingId") }}</th>
+              <th>{{ t("pages.equipmentHistory.columns.schedule") }}</th>
+              <th>{{ t("pages.equipmentHistory.columns.status") }}</th>
+              <th>{{ t("pages.equipmentHistory.columns.purpose") }}</th>
+              <th>{{ t("pages.equipmentHistory.columns.actions") }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="record in borrowPage.items" :key="record.id">
               <td>#{{ record.id }}</td>
               <td>
-                <strong>{{ record.itemSummary }}</strong>
+                <strong>{{ getEquipmentSummary(record) }}</strong>
                 <p v-if="record.relatedVenueName" class="row-subtle">
-                  關聯場地：{{ record.relatedVenueName }}
+                  {{
+                    t("pages.equipmentHistory.relatedVenue", {
+                      name: formatVenueDisplayName(record.relatedVenueName, locale),
+                    })
+                  }}
                 </p>
-                <p v-else class="row-subtle">獨立設備借用</p>
+                <p v-else class="row-subtle">{{ t("pages.equipmentHistory.standaloneRequest") }}</p>
               </td>
               <td>
                 <span v-if="record.relatedVenueBookingId" class="venue-booking-id">
                   #{{ record.relatedVenueBookingId }}
                 </span>
-                <span v-else class="row-subtle">單獨借用</span>
+                <span v-else class="row-subtle">{{ t("pages.equipmentHistory.standaloneBorrow") }}</span>
               </td>
               <td>
                 <div class="schedule-cell">
                   <span class="schedule-date">{{ formatDateLabel(record.borrowDate) }}</span>
-                  <span class="time-chip">{{ record.timeRange }}</span>
+                  <span class="time-chip">{{ record.timeRange || t("common.noTimeRange") }}</span>
                 </div>
               </td>
               <td>
                 <span class="status-pill" :class="getEquipmentBookingStatusMeta(record.status).className">
-                  {{ getEquipmentBookingStatusMeta(record.status).text }}
+                  {{ t(getEquipmentBookingStatusMeta(record.status).labelKey) }}
                 </span>
               </td>
-              <td>{{ record.purpose }}</td>
+              <td>{{ record.purpose || t("common.noPurpose") }}</td>
               <td>
                 <button
                   v-if="getEditTarget(record) === 'equipment'"
@@ -100,7 +106,7 @@
                   <span class="btn-icon" aria-hidden="true">
                     <FilePenLine :size="16" />
                   </span>
-                  <span>修改</span>
+                  <span>{{ t("common.actions.edit") }}</span>
                 </button>
                 <button
                   v-else-if="getEditTarget(record) === 'venue'"
@@ -111,7 +117,7 @@
                   <span class="btn-icon" aria-hidden="true">
                     <FilePenLine :size="16" />
                   </span>
-                  <span>至場地預約修改</span>
+                  <span>{{ t("pages.equipmentHistory.editVenueBooking") }}</span>
                 </button>
               </td>
             </tr>
@@ -126,16 +132,23 @@
           :disabled="borrowPage.pageNo <= 1 || loading"
           @click="goToPage(borrowPage.pageNo - 1)"
         >
-          上一頁
+          {{ t("common.actions.previous") }}
         </button>
-        <span class="page-indicator">第 {{ borrowPage.pageNo }} / {{ displayTotalPages }} 頁</span>
+        <span class="page-indicator">
+          {{
+            t("pages.equipmentHistory.pageIndicator", {
+              current: borrowPage.pageNo,
+              total: displayTotalPages,
+            })
+          }}
+        </span>
         <button
           type="button"
           class="page-btn"
           :disabled="borrowPage.pageNo >= displayTotalPages || loading"
           @click="goToPage(borrowPage.pageNo + 1)"
         >
-          下一頁
+          {{ t("common.actions.next") }}
         </button>
       </footer>
     </section>
@@ -152,16 +165,21 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { FilePenLine } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import EquipmentBookingEditModal from "@/components/equipment/EquipmentBookingEditModal.vue";
 import { queryMyEquipmentBookings } from "@/api/equipment";
 import {
   getEquipmentBookingEditTarget,
   getEquipmentBookingStatusMeta,
+  formatEquipmentItemSummary,
   normalizeEquipmentBookingPage,
 } from "@/utils/equipment";
+import { resolveErrorMessage } from "@/utils/errorMessage";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 
 const route = useRoute();
 const router = useRouter();
+const { locale, t } = useI18n();
 
 const loading = ref(true);
 const loadError = ref("");
@@ -190,15 +208,19 @@ const activeFilters = computed(() => ({
 
 const hasActiveFilters = computed(() => Boolean(activeFilters.value.equipmentId));
 
-const activeFilterLabel = computed(() => (hasActiveFilters.value ? "篩選結果" : "全部記錄"));
+const activeFilterLabel = computed(() =>
+  hasActiveFilters.value
+    ? t("pages.equipmentHistory.filteredRecords")
+    : t("pages.equipmentHistory.allRecords"),
+);
 
 const formatDateLabel = (value) => {
-  if (!value) return "未提供日期";
+  if (!value) return t("pages.equipmentHistory.dateNotProvided");
 
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
 
-  return new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat(locale.value, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -229,7 +251,7 @@ const loadBorrowHistory = async () => {
     );
   } catch (error) {
     console.error("載入設備借用記錄失敗:", error);
-    loadError.value = error.message || "請稍後再試，或聯絡系統管理員。";
+    loadError.value = resolveErrorMessage(error, t, "pages.equipmentHistory.loadFailedHelp");
   } finally {
     loading.value = false;
   }
@@ -246,6 +268,13 @@ const goToPage = async (targetPage) => {
 };
 
 const getEditTarget = (record) => getEquipmentBookingEditTarget(record);
+
+const getEquipmentSummary = (record) => formatEquipmentItemSummary(record.items, {
+  separator: t("pages.equipmentShared.listSeparator"),
+  fallback: t("pages.equipmentShared.noEquipment"),
+  getName: (item) => item.equipmentName
+    || t("pages.equipmentShared.unnamedEquipment", { id: item.equipmentId }),
+});
 
 const openEquipmentEditModal = (record) => {
   if (getEditTarget(record) !== "equipment") return;

@@ -42,42 +42,49 @@ request.interceptors.response.use(
     } else {
       // 處理業務邏輯錯誤 (例如 400 參數錯誤)
       console.error("API 業務錯誤:", res.message);
-      // showErrorToast(res.message || "系統發生未知錯誤");
-      return Promise.reject(new Error(res.message || "系統發生未知錯誤"));
+      return Promise.reject(Object.assign(new Error("API business error"), {
+        code: "API_BUSINESS_ERROR",
+        serverMessage: res.message,
+      }));
     }
   },
   (error) => {
     // 處理 HTTP 狀態碼錯誤 (如 401, 404, 500)
     if (error.response) {
       const status = error.response.status;
-      let errorMsg = "發生未知錯誤";
+      let errorCode = "HTTP_ERROR";
 
       switch (status) {
         case 401:
-          errorMsg = "尚未登入或登入狀態已失效";
+          errorCode = "AUTH_REQUIRED";
           redirectToLogin();
           break;
         case 403:
-          errorMsg = "無權限執行此操作";
+          errorCode = "FORBIDDEN";
           break;
         case 404:
-          errorMsg = "請求的資源不存在";
+          errorCode = "NOT_FOUND";
           break;
         case 500:
-          errorMsg = "伺服器內部錯誤";
+          errorCode = "SERVER_ERROR";
           break;
         default:
-          errorMsg = `連線錯誤 (${status})`;
+          errorCode = "HTTP_ERROR";
       }
 
-      console.error(errorMsg);
-      // 實際觸發 HTTP 狀態碼錯誤的 Toast
-      // showErrorToast(errorMsg);
+      console.error("HTTP request failed:", status, error);
+      return Promise.reject(Object.assign(new Error("HTTP request failed"), {
+        code: errorCode,
+        status,
+        cause: error,
+      }));
     } else {
       console.error("網路連線失敗，請檢查伺服器狀態");
-      // showErrorToast("網路連線失敗，請檢查伺服器狀態");
+      return Promise.reject(Object.assign(new Error("Network request failed"), {
+        code: "NETWORK_ERROR",
+        cause: error,
+      }));
     }
-    return Promise.reject(error);
   },
 );
 

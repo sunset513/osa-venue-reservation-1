@@ -2,26 +2,26 @@
   <div class="selector-page page-enter">
     <header class="home-hero">
       <p class="home-hero-kicker">NCU OSA Venue</p>
-      <h1>場地租借管理系統</h1>
-      <p>{{ UNIT_SELECTOR_DESCRIPTION }}</p>
+      <h1>{{ t("pages.unitSelector.systemTitle") }}</h1>
+      <p>{{ t("pages.unitSelector.description") }}</p>
     </header>
 
     <section class="home-section" aria-labelledby="unit-section-title">
       <div class="section-heading">
-        <h2 id="unit-section-title">管理單位</h2>
+        <h2 id="unit-section-title">{{ t("pages.unitSelector.managingUnits") }}</h2>
       </div>
 
-      <div v-if="loading" class="loading-state">載入中...</div>
+      <div v-if="loading" class="loading-state">{{ t("common.loading") }}</div>
 
       <div v-else class="card-grid">
         <div
-          v-for="unit in units"
+          v-for="unit in displayUnits"
           :key="unit.id"
           class="select-card"
           :class="{ 'is-disabled': unit.disabled }"
           @click="selectUnit(unit)"
         >
-          <span v-if="unit.disabled" class="dev-badge">開發中</span>
+          <span v-if="unit.disabled" class="dev-badge">{{ t("pages.unitSelector.underDevelopment") }}</span>
 
           <div class="card-icon">
             <Building2 :size="32" />
@@ -34,7 +34,7 @@
 
     <section class="home-section" aria-labelledby="quick-entry-title">
       <div class="section-heading">
-        <h2 id="quick-entry-title">快速入口</h2>
+        <h2 id="quick-entry-title">{{ t("pages.unitSelector.quickAccess") }}</h2>
       </div>
 
       <div class="quick-entry-grid" :class="{ 'is-reviewer': isReviewer }">
@@ -43,8 +43,8 @@
             <Activity :size="24" />
           </span>
           <span class="quick-entry-copy">
-            <strong>今日活動看板</strong>
-            <small>查看今日已核准且尚未結束的場地活動</small>
+            <strong>{{ t("pages.unitSelector.activityTitle") }}</strong>
+            <small>{{ t("pages.unitSelector.activityDescription") }}</small>
           </span>
           <ArrowRight :size="18" />
         </button>
@@ -59,8 +59,8 @@
             <ClipboardCheck :size="24" />
           </span>
           <span class="quick-entry-copy">
-            <strong>審核工作台</strong>
-            <small>處理場地借用申請與審核作業</small>
+            <strong>{{ t("pages.unitSelector.reviewTitle") }}</strong>
+            <small>{{ t("pages.unitSelector.reviewDescription") }}</small>
           </span>
           <ArrowRight :size="18" />
         </button>
@@ -72,28 +72,29 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { Activity, ArrowRight, Building2, ClipboardCheck } from "lucide-vue-next";
 import { fetchAllUnits } from "@/api/venue";
 import { useAuthSessionStore } from "@/stores/authSession";
-import { UNIT_SELECTOR_DESCRIPTION } from "@/utils/navigationLabels";
 
 const router = useRouter();
+const { t } = useI18n();
 const authSession = useAuthSessionStore();
 const units = ref([]);
 const loading = ref(true);
 
 const isReviewer = computed(() => authSession.isReviewer);
+const displayUnits = computed(() => [
+  ...units.value,
+  { id: "dev-1", name: t("pages.unitSelector.dormitoryVenue"), code: "HSD", disabled: true },
+  { id: "dev-2", name: t("pages.unitSelector.extracurricularVenue"), code: "EAD", disabled: true },
+]);
 
 onMounted(async () => {
   try {
     const fetchedUnits = await fetchAllUnits();
     const activeUnits = fetchedUnits.map((unit) => ({ ...unit, disabled: false }));
-    const placeholderUnits = [
-      { id: "dev-1", name: "學生宿舍場地", code: "HSD", disabled: true },
-      { id: "dev-2", name: "課外活動場地", code: "EAD", disabled: true },
-    ];
-
-    units.value = [...activeUnits, ...placeholderUnits];
+    units.value = activeUnits;
   } finally {
     loading.value = false;
   }

@@ -12,7 +12,7 @@
       </header>
 
       <div class="modal-body">
-        <div v-if="bookings.length === 0" class="empty-state">這一天目前沒有申請活動。</div>
+        <div v-if="bookings.length === 0" class="empty-state">{{ t("pages.review.modal.noActivities") }}</div>
 
         <div v-else class="schedule-list">
           <article
@@ -23,12 +23,14 @@
           >
             <div class="schedule-main">
               <div class="schedule-top">
-                <span class="venue-chip">{{ booking.venueName }}</span>
+                <span class="venue-chip">
+                  {{ formatVenueDisplayName(booking.venueName, locale) }}
+                </span>
                 <span class="contact-name">{{ booking.contactName }}</span>
               </div>
 
               <div class="schedule-meta">
-                <p class="purpose">{{ booking.purpose || "未填寫用途" }}</p>
+                <p class="purpose">{{ booking.purpose || t("common.noPurpose") }}</p>
               </div>
             </div>
 
@@ -39,7 +41,7 @@
                 <span class="status-pill" :class="booking.statusClass">
                   {{ booking.statusText }}
                 </span>
-                <span class="count-badge">{{ booking.participantCount }}人</span>
+                <span class="count-badge">{{ t("common.people", { count: booking.participantCount }) }}</span>
               </div>
             </div>
           </article>
@@ -56,11 +58,11 @@
           <span class="btn-icon-plain">
             <ArrowRight :size="18" aria-hidden="true" />
           </span>
-          <span>前往預約此日</span>
+          <span>{{ t("pages.review.modal.reserveThisDay") }}</span>
         </button>
         <button class="btn btn-secondary" type="button" @click="closeModal">
           <span class="btn-icon">×</span>
-          <span>關閉</span>
+          <span>{{ t("common.actions.close") }}</span>
         </button>
       </footer>
     </div>
@@ -69,6 +71,8 @@
 
 <script setup>
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
+import { formatVenueDisplayName } from "@/utils/venueLabels";
 import { ArrowRight, Building2 } from "lucide-vue-next";
 
 const props = defineProps({
@@ -94,12 +98,19 @@ const props = defineProps({
 const emit = defineEmits(["close", "open-detail", "create-booking"]);
 
 const headerIcon = Building2;
+const { locale, t } = useI18n();
 
 const formattedTitle = computed(() => {
-  if (!props.selectedDate) return "申請活動詳情";
+  if (!props.selectedDate) return t("pages.review.modal.activityDetails");
 
-  const [year, month, day] = props.selectedDate.split("-");
-  return `${year}年${Number(month)}月${Number(day)}日 ${props.dayOfWeek} 申請活動詳情`;
+  const date = new Date(`${props.selectedDate}T00:00:00`);
+  const dateLabel = new Intl.DateTimeFormat(locale.value, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(date);
+  return t("pages.review.modal.activityDetailsForDate", { date: dateLabel });
 });
 
 const closeModal = () => {
