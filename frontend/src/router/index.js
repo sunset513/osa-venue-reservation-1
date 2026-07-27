@@ -17,6 +17,9 @@ const routes = [
     path: "/",
     name: "Home",
     component: UnitSelector,
+    meta: {
+      titleKey: "pages.unitSelector.documentTitle",
+    },
   },
   {
     path: "/unit/:unitId",
@@ -25,6 +28,7 @@ const routes = [
     props: true,
     meta: {
       validateUnit: true,
+      titleKey: "pages.venueSelector.documentTitle",
     },
   },
   {
@@ -34,17 +38,24 @@ const routes = [
     props: true,
     meta: {
       validateVenue: true,
+      titleKey: "pages.venueCalendar.documentTitle",
     },
   },
   {
     path: "/my-bookings",
     name: "MyBookingHistory",
     component: MyBookingHistory,
+    meta: {
+      titleKey: "pages.myBookings.documentTitle",
+    },
   },
   {
     path: "/activity-dashboard",
     name: "ActivityDashboard",
     component: ActivityDashboard,
+    meta: {
+      titleKey: "pages.activityDashboard.documentTitle",
+    },
   },
   {
     path: "/equipment-status",
@@ -52,12 +63,16 @@ const routes = [
     component: EquipmentStatus,
     meta: {
       requiresReviewer: true,
+      titleKey: "pages.equipmentStatus.documentTitle",
     },
   },
   {
     path: "/equipment-borrow",
     name: "EquipmentBorrowForm",
     component: EquipmentBorrowForm,
+    meta: {
+      titleKey: "pages.equipmentBorrow.documentTitle",
+    },
   },
   {
     path: "/equipment-history",
@@ -65,6 +80,7 @@ const routes = [
     component: EquipmentBorrowHistory,
     meta: {
       requiresReviewer: true,
+      titleKey: "pages.equipmentHistory.documentTitle",
     },
   },
   {
@@ -73,17 +89,24 @@ const routes = [
     component: ReviewCalendar,
     meta: {
       requiresReviewer: true,
+      titleKey: "pages.review.documentTitle",
     },
   },
   {
     path: "/consent-agreement",
     name: "ConsentAgreement",
     component: ConsentAgreement,
+    meta: {
+      titleKey: "pages.consent.documentTitle",
+    },
   },
   {
     path: "/404",
     name: "NotFound",
     component: NotFound,
+    meta: {
+      titleKey: "pages.notFound.documentTitle",
+    },
   },
   {
     path: "/:pathMatch(.*)*",

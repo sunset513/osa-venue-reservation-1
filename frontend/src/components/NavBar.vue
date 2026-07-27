@@ -2,31 +2,33 @@
   <nav class="navbar site-header">
     <div class="nav-topbar"></div>
     <div class="container navbar-inner">
-      <RouterLink class="nav-brand" :to="{ name: 'Home' }" aria-label="回到首頁">
+      <RouterLink class="nav-brand" :to="{ name: 'Home' }" :aria-label="t('nav.homeAria')">
         <span class="brand-mark">NCU OSA</span>
         <div class="brand-copy">
-          <strong>國立中央大學學務處</strong>
-          <span>場地租借系統</span>
+          <strong>{{ t("nav.university") }}</strong>
+          <span>{{ t("nav.systemName") }}</span>
         </div>
       </RouterLink>
 
-      <div ref="menuRef" class="nav-user">
-        <button
-          type="button"
-          class="avatar-trigger"
-          aria-label="開啟使用者選單"
-          aria-haspopup="menu"
-          :aria-expanded="isMenuOpen"
-          @click="toggleMenu"
-        >
-          <div class="avatar-circle">
-            <User :size="20" stroke-width="2.5" />
-          </div>
-          <ChevronDown :size="16" class="avatar-chevron" :class="{ 'is-open': isMenuOpen }" />
-        </button>
+      <div class="navbar-actions">
+        <LanguageSelector />
+        <div ref="menuRef" class="nav-user">
+          <button
+            type="button"
+            class="avatar-trigger"
+            :aria-label="t('nav.openUserMenu')"
+            aria-haspopup="menu"
+            :aria-expanded="isMenuOpen"
+            @click="toggleMenu"
+          >
+            <div class="avatar-circle">
+              <User :size="20" stroke-width="2.5" />
+            </div>
+            <ChevronDown :size="16" class="avatar-chevron" :class="{ 'is-open': isMenuOpen }" />
+          </button>
 
-        <transition name="menu-fade">
-          <div v-if="isMenuOpen" class="user-menu card" role="menu" aria-label="使用者選單">
+          <transition name="menu-fade">
+            <div v-if="isMenuOpen" class="user-menu card" role="menu" :aria-label="t('nav.userMenu')">
             <button
               type="button"
               class="menu-item"
@@ -35,7 +37,7 @@
               @click="goToMyBookings"
             >
               <ClipboardList :size="16" class="menu-item-icon" aria-hidden="true" />
-              我的場地預約紀錄
+              {{ t("nav.myBookings") }}
             </button>
 
             <button
@@ -47,7 +49,7 @@
               @click="goToEquipmentStatus"
             >
               <Wrench :size="16" class="menu-item-icon" aria-hidden="true" />
-              設備管理
+              {{ t("nav.equipmentManagement") }}
             </button>
 
             <button
@@ -59,7 +61,7 @@
               @click="goToReviewCalendar"
             >
               <ClipboardCheck :size="16" class="menu-item-icon" aria-hidden="true" />
-              管理員介面
+              {{ t("nav.reviewConsole") }}
             </button>
 
             <button
@@ -71,10 +73,11 @@
               @click="goToEquipmentHistory"
             >
               <History :size="16" class="menu-item-icon" aria-hidden="true" />
-              設備借用記錄
+              {{ t("nav.equipmentHistory") }}
             </button>
-          </div>
-        </transition>
+            </div>
+          </transition>
+        </div>
       </div>
     </div>
   </nav>
@@ -91,11 +94,14 @@ import {
   Wrench,
 } from "lucide-vue-next";
 import { RouterLink, useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+import LanguageSelector from "@/components/LanguageSelector.vue";
 import { useAuthSessionStore } from "@/stores/authSession";
 
 const route = useRoute();
 const router = useRouter();
 const authSession = useAuthSessionStore();
+const { t } = useI18n();
 const menuRef = ref(null);
 const isMenuOpen = ref(false);
 
@@ -261,6 +267,12 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .avatar-trigger {
   display: inline-flex;
   align-items: center;
@@ -341,6 +353,10 @@ onBeforeUnmount(() => {
 
   .user-menu {
     min-width: 12.5rem;
+  }
+
+  .navbar-actions {
+    gap: 0.55rem;
   }
 }
 </style>

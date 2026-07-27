@@ -15,7 +15,7 @@
           <button
             class="toast-close"
             @click="removeToast(toast.id)"
-            aria-label="關閉"
+            :aria-label="$t('common.actions.close')"
           >
             ✕
           </button>

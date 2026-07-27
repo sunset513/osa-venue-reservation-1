@@ -16,6 +16,7 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
+import i18n from "./i18n";
 
 // 導入全局設計系統
 import "./style/style.css";
@@ -35,6 +36,7 @@ app.use(createPinia());
 
 // 使用 Vue Router 路由
 app.use(router);
+app.use(i18n);
 
 // 掛載應用到 #app 元素
 app.mount("#app");
