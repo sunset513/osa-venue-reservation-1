@@ -26,7 +26,7 @@
           <div class="card-icon">
             <Building2 :size="32" />
           </div>
-          <h3>{{ unit.name }}</h3>
+          <h3>{{ formatUnitDisplayName(unit.name, locale) }}</h3>
           <span class="unit-code">{{ unit.code }}</span>
         </div>
       </div>
@@ -76,9 +76,10 @@ import { useI18n } from "vue-i18n";
 import { Activity, ArrowRight, Building2, ClipboardCheck } from "lucide-vue-next";
 import { fetchAllUnits } from "@/api/venue";
 import { useAuthSessionStore } from "@/stores/authSession";
+import { formatUnitDisplayName } from "@/utils/unitLabels";
 
 const router = useRouter();
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const authSession = useAuthSessionStore();
 const units = ref([]);
 const loading = ref(true);

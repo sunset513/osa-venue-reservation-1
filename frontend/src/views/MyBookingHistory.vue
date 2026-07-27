@@ -1257,6 +1257,7 @@ watch(
   grid-template-columns: 1fr;
   gap: 1rem;
   align-items: stretch;
+  min-width: 0;
   padding: 1rem 1.2rem;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.72);
@@ -1273,6 +1274,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  min-width: 0;
 
   label {
     color: var(--muted-strong);
@@ -1282,6 +1284,9 @@ watch(
 
   input,
   select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 2.85rem;
     padding: 0.75rem 0.95rem;
     border: 1px solid var(--line);
